@@ -4,7 +4,16 @@ Implementations of theoretical computer science algorithms in modern C++.
 
 Built with **C++23**, **xmake**, and **Catch2**.
 
-## 1. Algorithms
+## 1. Motivation
+
+Most inplace algorithms come from academic papers of the 1980s–1990s and are rarely seen outside
+theory circles. This project brings them to life: clean, self-contained implementations under the
+Word RAM model — where "inplace" means $O(1)$ extra space, not just "no heap allocation".
+
+Each header is standalone — copy a single file and use it. The goal is algorithmic clarity, not
+chasing constant factors. For deeper background, start with the [overview](docs/overview.md).
+
+## 2. Algorithms
 
 1. **Inplace Unstable Merge** — `#include <tcs/inplace_unstable_merge.hpp>`
    - $O(n)$ time, $O(1)$ extra space
