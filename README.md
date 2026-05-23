@@ -6,12 +6,19 @@ Built with **C++23**, **xmake**, and **Catch2**.
 
 ## 1. Motivation
 
-Most inplace algorithms come from academic papers of the 1980s–1990s and are rarely seen outside
-theory circles. This project brings them to life: clean, self-contained implementations under the
-Word RAM model — where "inplace" means $O(1)$ extra space, not just "no heap allocation".
+Inplace algorithms are like dancing in shackles — pushing the limits of theory under the strictest
+space constraints. Can you merge two sorted arrays in $O(n)$ time with $O(1)$ extra space? Stably?
+Partition around a predicate? Select the k-th smallest element? The answers are yes, but the
+algorithms are buried in academic papers from the 1980s–1990s and rarely implemented.
 
-Each header is standalone — copy a single file and use it. The goal is algorithmic clarity, not
-chasing constant factors. For deeper background, start with the [overview](docs/overview.md).
+This project brings them to life under the **Word RAM model** — the standard model for algorithm
+analysis where a word is just large enough to hold a pointer (think `size_t`), but can't encode
+arbitrary information. Under this model, "inplace" has a rigorous meaning: $O(1)$ extra space,
+not just "no heap allocation." Each header is self-contained — copy one file, include it, and
+you're done.
+
+The goal is **algorithmic clarity**, not chasing constant factors. For the deeper story behind
+each algorithm, start with the [overview](docs/overview.md) (Chinese).
 
 ## 2. Algorithms
 
