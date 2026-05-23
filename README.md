@@ -6,35 +6,31 @@ Built with **C++23**, **xmake**, and **Catch2**.
 
 ## 1. Algorithms
 
-1. **BFPRT** (Median of Medians) — `#include <tcs/bfprt.hpp>`
-   - $O(n)$ time, $O(\log n)$ extra space (recursion stack)
-   - k-th smallest element selection
-   - [Blog post](docs/bfprt-and-unstable-select.md) (also at [axiomofchoice-hjt.github.io](https://axiomofchoice-hjt.github.io/pages/63a6df/))
-
-2. **Inplace Unstable Select** — `#include <tcs/inplace_unstable_select.hpp>`
+1. **Inplace Unstable Merge** — `#include <tcs/inplace_unstable_merge.hpp>`
    - $O(n)$ time, $O(1)$ extra space
-   - Inplace k-th smallest selection
-   - [Blog post](docs/bfprt-and-unstable-select.md) (also at [axiomofchoice-hjt.github.io](https://axiomofchoice-hjt.github.io/pages/63a6df/))
+   - Merge two sorted adjacent subarrays (unstable)
+   - [Blog post](docs/unstable-merge.md) (also at [axiomofchoice-hjt.github.io](https://axiomofchoice-hjt.github.io/pages/c829b5/))
+
+2. **Inplace Stable Merge** — `#include <tcs/inplace_stable_merge.hpp>`
+   - $O(n)$ time, $O(1)$ extra space
+   - Merge two sorted adjacent subarrays, preserving stability
+   - [Blog post](docs/stable-merge.md) (also at [axiomofchoice-hjt.github.io](https://axiomofchoice-hjt.github.io/pages/326ae9/))
 
 3. **Inplace Stable Partition** — `#include <tcs/inplace_stable_partition.hpp>`
    - $O(n)$ time, $O(1)$ extra space
    - Partition an array around a predicate while preserving relative order
    - [Blog post](docs/stable-partition.md) (also at [axiomofchoice-hjt.github.io](https://axiomofchoice-hjt.github.io/pages/0d69d8/))
 
-4. **Inplace Stable Unpartition** — `#include <tcs/inplace_stable_unpartition.hpp>`
+4. **BFPRT** (Median of Medians) & **Inplace Unstable Select**
+   - `#include <tcs/bfprt.hpp>`, `#include <tcs/inplace_unstable_select.hpp>`
+   - $O(n)$ time; BFPRT uses $O(\log n)$ extra space (recursion), select uses $O(1)$
+   - k-th smallest element selection
+   - [Blog post](docs/bfprt-and-unstable-select.md) (also at [axiomofchoice-hjt.github.io](https://axiomofchoice-hjt.github.io/pages/63a6df/))
+
+5. **Inplace Stable Unpartition** — `#include <tcs/inplace_stable_unpartition.hpp>`
    - $O(n)$ time, $O(1)$ extra space
    - Reverse a stable partition to original order via a placement oracle
    - [Blog post](docs/stable-unpartition.md) (also at [axiomofchoice-hjt.github.io](https://axiomofchoice-hjt.github.io/pages/60450e/))
-
-5. **Inplace Stable Merge** — `#include <tcs/inplace_stable_merge.hpp>`
-   - $O(n)$ time, $O(1)$ extra space
-   - Merge two sorted adjacent subarrays, preserving stability
-   - [Blog post](docs/stable-merge.md) (also at [axiomofchoice-hjt.github.io](https://axiomofchoice-hjt.github.io/pages/326ae9/))
-
-6. **Inplace Unstable Merge** — `#include <tcs/inplace_unstable_merge.hpp>`
-   - $O(n)$ time, $O(1)$ extra space
-   - Merge two sorted adjacent subarrays (unstable)
-   - [Blog post](docs/unstable-merge.md) (also at [axiomofchoice-hjt.github.io](https://axiomofchoice-hjt.github.io/pages/c829b5/))
 
 See `examples/` for usage demos. Detailed articles in `docs/` (Chinese).
 

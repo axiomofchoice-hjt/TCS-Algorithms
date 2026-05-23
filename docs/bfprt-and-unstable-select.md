@@ -329,7 +329,9 @@ if (!prepare_buffer(buffer, tail, word_bits)) {
 
 ## 4. 完整代码
 
-完整代码包含测试：<https://gist.github.com/axiomofchoice-hjt/6c9dbf46cf8f06a9ad43e7fba0c73321>
+BFPRT [完整实现](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/include/tcs/bfprt.hpp)和[测试](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/tests/test_bfprt.cpp)。
+
+原地不稳定选择 [完整实现](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/include/tcs/inplace_unstable_select.hpp)和[测试](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/tests/test_inplace_unstable_select.cpp)。
 
 ## 5. 结尾
 
