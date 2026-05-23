@@ -322,8 +322,6 @@ inplace_01_merge(buf0, last, proj);
 
 ## 4. 完整代码
 
-完整代码包含测试：
-
 [完整实现](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/include/tcs/inplace_stable_partition.hpp)和[测试](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/tests/test_inplace_stable_partition.cpp)。
 
 ## 5. 一个争议点

@@ -292,8 +292,6 @@ unpartition_with_rotation(buf0, first, proj, placement);
 
 ## 4. 完整代码
 
-完整代码包含测试：
-
 [完整实现](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/include/tcs/inplace_stable_unpartition.hpp)和[测试](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/tests/test_inplace_stable_unpartition.cpp)。
 
 ## 5. 稳定选择预告
