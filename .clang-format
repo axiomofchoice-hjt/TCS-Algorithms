@@ -1,0 +1,8 @@
+BasedOnStyle: Google
+IndentWidth: 4
+ContinuationIndentWidth: 4
+AlignAfterOpenBracket: DontAlign
+BinPackParameters: true
+BinPackArguments: true
+ColumnLimit: 120
+AllowShortFunctionsOnASingleLine: All
