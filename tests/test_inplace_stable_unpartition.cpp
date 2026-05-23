@@ -64,9 +64,15 @@ void random_test(const TestParam& param) {
         auto expected = arr;
         std::stable_sort(arr.begin(), arr.end(), [](Element a, Element b) { return a.key < b.key; });
 
-        tcs::inplace_stable_unpartition::inplace_stable_unpartition(
-            arr.data(), arr.data() + n, [](Element e) { return e.key == 0; },
-            [&arr, &placement](Element* p) { return !placement[p - arr.data()]; });
+        try {
+            tcs::inplace_stable_unpartition::inplace_stable_unpartition(
+                arr.data(), arr.data() + n, [](Element e) { return e.key == 0; },
+                [&arr, &placement](Element* p) { return !placement[p - arr.data()]; });
+        } catch (std::exception& e) {
+            INFO(std::format("{} [total_size={}, num_ones={}, repeat_count={}]", e.what(), param.total_size,
+                param.num_ones, param.repeat_count));
+            FAIL();
+        }
 
         REQUIRE(std::ranges::all_of(std::ranges::views::zip(arr, expected), [](auto&& zip) {
             auto [result, expected] = zip;
@@ -83,7 +89,6 @@ TEST_CASE("inplace_stable_unpartition size sweep", "[inplace_stable_unpartition]
 
 TEST_CASE("inplace_stable_unpartition random tests", "[inplace_stable_unpartition]") {
     for (const auto& param : kCases) {
-        INFO("total_size=" << param.total_size << " num_ones=" << param.num_ones);
         random_test(param);
     }
 }

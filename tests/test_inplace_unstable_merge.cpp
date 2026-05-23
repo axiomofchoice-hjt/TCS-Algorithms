@@ -56,8 +56,14 @@ void random_test(const TestParam& param) {
         auto expected = arr;
         std::ranges::inplace_merge(expected, expected.begin() + param.left_size);
 
-        tcs::inplace_unstable_merge::inplace_unstable_merge(
-            arr.data(), arr.data() + param.left_size, arr.data() + param.total_size);
+        try {
+            tcs::inplace_unstable_merge::inplace_unstable_merge(
+                arr.data(), arr.data() + param.left_size, arr.data() + param.total_size);
+        } catch (std::exception& e) {
+            INFO(std::format("{} [total_size={}, left_size={}, max_key={}, repeat_count={}]", e.what(),
+                param.total_size, param.left_size, param.max_key, param.repeat_count));
+            FAIL();
+        }
 
         REQUIRE(arr == expected);
     }
@@ -71,7 +77,6 @@ TEST_CASE("inplace_unstable_merge size sweep", "[inplace_unstable_merge]") {
 
 TEST_CASE("inplace_unstable_merge random tests", "[inplace_unstable_merge]") {
     for (const auto& param : kCases) {
-        INFO("total_size=" << param.total_size << " left_size=" << param.left_size << " max_key=" << param.max_key);
         random_test(param);
     }
 }

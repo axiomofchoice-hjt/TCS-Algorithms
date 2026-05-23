@@ -68,9 +68,14 @@ void random_test(const TestParam& param) {
         auto expected = arr;
         std::ranges::inplace_merge(expected, expected.begin() + param.left_size);
 
-        tcs::inplace_stable_merge::inplace_stable_merge(
-            arr.data(), arr.data() + param.left_size, arr.data() + param.total_size);
-
+        try {
+            tcs::inplace_stable_merge::inplace_stable_merge(
+                arr.data(), arr.data() + param.left_size, arr.data() + param.total_size);
+        } catch (std::exception& e) {
+            INFO(std::format("{} [total_size={}, left_size={}, max_key={}, repeat_count={}]", e.what(),
+                param.total_size, param.left_size, param.max_key, param.repeat_count));
+            FAIL();
+        }
         REQUIRE(std::ranges::all_of(std::ranges::views::zip(arr, expected), [](auto&& zip) {
             auto [result, expected] = zip;
             return std::pair{result.key, result.index} == std::pair{expected.key, expected.index};
@@ -86,7 +91,6 @@ TEST_CASE("inplace_stable_merge size sweep", "[inplace_stable_merge]") {
 
 TEST_CASE("inplace_stable_merge random tests", "[inplace_stable_merge]") {
     for (const auto& param : kCases) {
-        INFO("total_size=" << param.total_size << " left_size=" << param.left_size << " max_key=" << param.max_key);
         random_test(param);
     }
 }

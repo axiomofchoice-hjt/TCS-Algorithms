@@ -64,8 +64,14 @@ void random_test(const TestParam& param) {
         auto expected = arr;
         std::stable_partition(expected.begin(), expected.end(), [](Element e) { return e.key == 0; });
 
-        tcs::inplace_stable_partition::inplace_stable_partition(
-            arr.data(), arr.data() + n, [](Element e) { return e.key == 0; });
+        try {
+            tcs::inplace_stable_partition::inplace_stable_partition(
+                arr.data(), arr.data() + n, [](Element e) { return e.key == 0; });
+        } catch (std::exception& e) {
+            INFO(std::format("{} [total_size={}, num_ones={}, repeat_count={}]", e.what(), param.total_size,
+                param.num_ones, param.repeat_count));
+            FAIL();
+        }
 
         REQUIRE(std::ranges::all_of(std::ranges::views::zip(arr, expected), [](auto&& zip) {
             auto [result, expected] = zip;
@@ -82,7 +88,6 @@ TEST_CASE("inplace_stable_partition size sweep", "[inplace_stable_partition]") {
 
 TEST_CASE("inplace_stable_partition random tests", "[inplace_stable_partition]") {
     for (const auto& param : kCases) {
-        INFO("total_size=" << param.total_size << " num_ones=" << param.num_ones);
         random_test(param);
     }
 }

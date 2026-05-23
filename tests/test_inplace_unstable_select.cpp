@@ -8,7 +8,6 @@
 #include "tcs/inplace_unstable_select.hpp"
 
 namespace {
-
 struct TestParam {
     int64_t total_size;
     int64_t k;
@@ -54,8 +53,14 @@ void random_test(const TestParam& param) {
         auto expected = arr;
         std::ranges::sort(expected);
 
-        tcs::inplace_unstable_select::inplace_unstable_select(
-            arr.data(), arr.data() + param.k, arr.data() + param.total_size);
+        try {
+            tcs::inplace_unstable_select::inplace_unstable_select(
+                arr.data(), arr.data() + param.k, arr.data() + param.total_size);
+        } catch (std::exception& e) {
+            INFO(std::format("{} [total_size={}, k={}, max_key={}, repeat_count={}]", e.what(), param.total_size,
+                param.k, param.max_key, param.repeat_count));
+            FAIL();
+        }
 
         int64_t pivot = arr[param.k];
         REQUIRE(pivot == expected[param.k]);
@@ -65,7 +70,6 @@ void random_test(const TestParam& param) {
         REQUIRE(arr == expected);
     }
 }
-
 }  // namespace
 
 TEST_CASE("inplace_unstable_select size sweep", "[inplace_unstable_select]") {
@@ -77,7 +81,6 @@ TEST_CASE("inplace_unstable_select size sweep", "[inplace_unstable_select]") {
 
 TEST_CASE("inplace_unstable_select random tests", "[inplace_unstable_select]") {
     for (const auto& param : kCases) {
-        INFO("total_size=" << param.total_size << " k=" << param.k << " max_key=" << param.max_key);
         random_test(param);
     }
 }
