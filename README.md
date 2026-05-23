@@ -1,48 +1,91 @@
 # TCS-Algorithms
 
-理论计算机科学算法实现（Theoretical Computer Science Algorithms）。
+Implementations of theoretical computer science algorithms in modern C++.
 
-使用 **C++23** 标准，**xmake** 构建系统，**Catch2** 测试框架。
+Built with **C++23**, **xmake**, and **Catch2**.
 
-## 目录结构
+## 1. Algorithms
+
+1. **BFPRT** (Median of Medians) — `#include <tcs/bfprt.hpp>`
+   - $O(n)$ time, $O(\log n)$ extra space (recursion stack)
+   - k-th smallest element selection
+   - [Blog post](https://axiomofchoice-hjt.github.io/pages/63a6df/) (covers both BFPRT and Inplace Unstable Select)
+
+2. **Inplace Unstable Select** — `#include <tcs/inplace_unstable_select.hpp>`
+   - $O(n)$ time, $O(1)$ extra space
+   - Inplace k-th smallest selection
+   - [Blog post](https://axiomofchoice-hjt.github.io/pages/63a6df/) (same post as BFPRT)
+
+3. **Inplace Stable Partition** — `#include <tcs/inplace_stable_partition.hpp>`
+   - $O(n)$ time, $O(1)$ extra space
+   - Partition an array around a predicate while preserving relative order
+   - [Blog post](https://axiomofchoice-hjt.github.io/pages/0d69d8/)
+
+4. **Inplace Stable Unpartition** — `#include <tcs/inplace_stable_unpartition.hpp>`
+   - $O(n)$ time, $O(1)$ extra space
+   - Reverse a stable partition to original order via a placement oracle
+   - [Blog post](https://axiomofchoice-hjt.github.io/pages/60450e/)
+
+5. **Inplace Stable Merge** — `#include <tcs/inplace_stable_merge.hpp>`
+   - $O(n)$ time, $O(1)$ extra space
+   - Merge two sorted adjacent subarrays, preserving stability
+   - [Blog post](https://axiomofchoice-hjt.github.io/pages/326ae9/)
+
+6. **Inplace Unstable Merge** — `#include <tcs/inplace_unstable_merge.hpp>`
+   - $O(n)$ time, $O(1)$ extra space
+   - Merge two sorted adjacent subarrays (unstable)
+   - [Blog post](https://axiomofchoice-hjt.github.io/pages/c829b5/)
+
+See `examples/` for usage demos. Blog posts are written in Chinese (中文).
+
+## 2. Quick Start
+
+```bash
+# Install xmake
+curl -fsSL https://xmake.io/shget.text | bash
+
+# Build & run all tests
+./run.sh
+```
+
+## 3. Directory Structure
 
 ```text
 TCS-Algorithms/
-├── include/tcs/      # Header-only 算法模板库
-├── tests/            # 单元测试（Catch2）
-├── xmake.lua         # 构建配置
-└── README.md
+├── include/tcs/           # Header-only library
+├── tests/                 # Catch2 unit tests
+├── examples/              # Usage examples
+├── scripts/               # Code quality checks
+└── xmake.lua              # Build configuration
 ```
 
-## 依赖
+## 4. Dependencies
 
-- **编译器**：GCC 14+ / Clang 18+（需支持 C++23）
-- **构建工具**：[xmake](https://xmake.io/)
-- **测试框架**：[Catch2](https://github.com/catchorg/Catch2)（xmake 自动拉取）
+- **Compiler**: GCC 14+ / Clang 18+ (C++23 support required)
+- **Build tool**: [xmake](https://xmake.io/)
+- **Test framework**: [Catch2](https://github.com/catchorg/Catch2) (auto-fetched by xmake)
 
-## 构建与运行
+## 5. Usage
 
-```bash
-# 安装 xmake（如未安装）
-curl -fsSL https://xmake.io/shget.text | bash
-
-# 构建并运行所有测试
-xmake run test
-```
-
-## 使用
-
-Header-only，拷贝 `include/` 到你的项目或通过 xmake 集成：
+Header-only — copy `include/tcs/` into your project, or integrate via xmake:
 
 ```cpp
 #include <tcs/bfprt.hpp>
+#include <vector>
 
 std::vector<int> arr = {3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5};
 int k = 5;
-bfprt(arr.data(), arr.data() + k, arr.data() + arr.size());
-// arr[k] 即为第 k 小的元素，且已三路划分
+tcs::bfprt::bfprt(arr.data(), arr.data() + k, arr.data() + arr.size());
+// arr[k] holds the k-th smallest element
 ```
 
-## 已实现的算法
+## 6. Code Quality
 
-- **BFPRT** — 最坏情况 O(n) 的第 k 小选择算法（Median of Medians）
+```bash
+# Run clang-format and clang-tidy checks
+./scripts/code-quality.sh
+```
+
+## 7. License
+
+MIT
