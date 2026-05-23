@@ -48,7 +48,7 @@ void random_test(const TestParam& param) {
     int64_t n = param.total_size;
     int64_t num_ones = param.num_ones;
 
-    for (int64_t i : std::views::iota(0, param.repeat_count)) {
+    for ([[maybe_unused]] int64_t i : std::views::iota(0, param.repeat_count)) {
         std::vector<Element> arr(n);
         std::vector<bool> placement(n);
 

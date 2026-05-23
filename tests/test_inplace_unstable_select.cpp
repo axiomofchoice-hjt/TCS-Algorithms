@@ -41,11 +41,22 @@ constexpr TestParam kCases[] = {
     {1000, 999, 1, 1},     // k = n-1, single key
 };
 
+void verify_select_result(std::pair<std::vector<int64_t>&, std::vector<int64_t>&> result, const TestParam& param) {
+    auto [arr, expected] = result;
+    int64_t pivot = arr[param.k];
+    REQUIRE(pivot == expected[param.k]);
+    REQUIRE(std::ranges::all_of(arr | std::views::take(param.k), [pivot](int64_t x) { return x <= pivot; }));
+    REQUIRE(std::ranges::all_of(arr | std::views::drop(param.k + 1), [pivot](int64_t x) { return x >= pivot; }));
+    auto sorted = arr;
+    std::ranges::sort(sorted);
+    REQUIRE(sorted == expected);
+}
+
 void random_test(const TestParam& param) {
     static std::mt19937 gen(kRandomSeed);
     std::uniform_int_distribution<int64_t> key_dist(1, param.max_key);
 
-    for (int64_t i : std::views::iota(0, param.repeat_count)) {
+    for ([[maybe_unused]] int64_t i : std::views::iota(0, param.repeat_count)) {
         auto arr = std::views::iota(0, param.total_size) |
                    std::views::transform([&](int64_t) { return key_dist(gen); }) |
                    std::ranges::to<std::vector<int64_t>>();
@@ -62,12 +73,7 @@ void random_test(const TestParam& param) {
             FAIL();
         }
 
-        int64_t pivot = arr[param.k];
-        REQUIRE(pivot == expected[param.k]);
-        REQUIRE(std::ranges::all_of(arr | std::views::take(param.k), [pivot](int64_t x) { return x <= pivot; }));
-        REQUIRE(std::ranges::all_of(arr | std::views::drop(param.k + 1), [pivot](int64_t x) { return x >= pivot; }));
-        std::ranges::sort(arr);
-        REQUIRE(arr == expected);
+        verify_select_result({arr, expected}, param);
     }
 }
 }  // namespace

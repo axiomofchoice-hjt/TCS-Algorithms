@@ -45,7 +45,7 @@ void random_test(const TestParam& param) {
     static std::mt19937 gen(kRandomSeed);
     std::uniform_int_distribution<int64_t> key_dist(1, param.max_key);
 
-    for (int64_t i : std::views::iota(0, param.repeat_count)) {
+    for ([[maybe_unused]] int64_t i : std::views::iota(0, param.repeat_count)) {
         auto arr = std::views::iota(0, param.total_size) |
                    std::views::transform([&key_dist](int64_t i) { return key_dist(gen); }) |
                    std::ranges::to<std::vector<int64_t>>();
