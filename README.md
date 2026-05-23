@@ -6,19 +6,17 @@ Built with **C++23**, **xmake**, and **Catch2**.
 
 ## 1. Motivation
 
-In-place algorithms are like dancing in shackles — pushing the limits of theory under the strictest
-space constraints. Can you merge two sorted arrays in $O(n)$ time with $O(1)$ extra space? Stably?
-Partition around a predicate? Select the k-th smallest element? The answer to all of these is yes, but the
-algorithms are buried in academic papers from the 1980s–1990s and rarely implemented.
+In-place algorithms are like dancing in shackles — pushing theoretical boundaries under the strictest space constraints.
+Can we merge two sorted arrays in $O(n)$ time and $O(1)$ extra space — and do it stably?
+Partition around a predicate? Select the k-th smallest element?
+The answer to each of these is yes, but the algorithms are buried in academic papers from the 1980s–1990s and rarely implemented.
 
-This project brings them to life under the **Word RAM model** — the standard model for algorithm
-analysis where a word is just large enough to hold a pointer (like `size_t`), but cannot encode
-arbitrary information. Under this model, "in-place" has a rigorous meaning: $O(1)$ extra space,
-not just "no heap allocation." Each header is self-contained — copy one file, include it, and
-you're done.
+This project brings them to life under the **Word RAM model** — the standard model for algorithm analysis where a word is just large enough to hold a pointer (like `size_t`), but cannot encode arbitrary information.
+Under this model, "in-place" has a rigorous meaning: $O(1)$ extra space, not just "no heap allocation."
+Each header is self-contained — copy one file, include it, and you're done.
 
-The goal is **algorithmic clarity**, not chasing constant factors. For the full story story behind
-each algorithm, start with the [overview](docs/overview.md) (Chinese).
+The goal is **algorithmic clarity**, not chasing constant factors.
+For the full story behind each algorithm, start with the [overview](docs/overview.md) (Chinese).
 
 ## 2. Algorithms
 
@@ -48,7 +46,7 @@ each algorithm, start with the [overview](docs/overview.md) (Chinese).
    - Reverse a stable partition to its original order via a placement oracle
    - [Blog post](docs/stable-unpartition.md) (also at [axiomofchoice-hjt.github.io](https://axiomofchoice-hjt.github.io/pages/60450e/))
 
-See `examples/` for usage demos. Detailed articles in `docs/` (Chinese).
+See `examples/` for usage demos and `docs/` for detailed articles (Chinese).
 
 ## 3. Quick Start
 
@@ -92,13 +90,6 @@ tcs::bfprt::bfprt(arr.data(), arr.data() + k, arr.data() + arr.size());
 // arr[k] holds the k-th smallest element
 ```
 
-## 7. Code Quality
-
-```bash
-# Run clang-format and clang-tidy checks
-./scripts/code-quality.sh
-```
-
-## 8. License
+## 7. License
 
 MIT
