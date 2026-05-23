@@ -8,16 +8,16 @@ Built with **C++23**, **xmake**, and **Catch2**.
 
 In-place algorithms are like dancing in shackles — pushing the limits of theory under the strictest
 space constraints. Can you merge two sorted arrays in $O(n)$ time with $O(1)$ extra space? Stably?
-Partition around a predicate? Select the k-th smallest element? The answers are yes, but the
+Partition around a predicate? Select the k-th smallest element? The answer to all of these is yes, but the
 algorithms are buried in academic papers from the 1980s–1990s and rarely implemented.
 
 This project brings them to life under the **Word RAM model** — the standard model for algorithm
-analysis where a word is just large enough to hold a pointer (think `size_t`), but can't encode
+analysis where a word is just large enough to hold a pointer (like `size_t`), but cannot encode
 arbitrary information. Under this model, "in-place" has a rigorous meaning: $O(1)$ extra space,
 not just "no heap allocation." Each header is self-contained — copy one file, include it, and
 you're done.
 
-The goal is **algorithmic clarity**, not chasing constant factors. For the deeper story behind
+The goal is **algorithmic clarity**, not chasing constant factors. For the full story story behind
 each algorithm, start with the [overview](docs/overview.md) (Chinese).
 
 ## 2. Algorithms
@@ -39,18 +39,18 @@ each algorithm, start with the [overview](docs/overview.md) (Chinese).
 
 4. **BFPRT** (Median of Medians) & **In-place Unstable Select**
    - `#include <tcs/bfprt.hpp>`, `#include <tcs/inplace_unstable_select.hpp>`
-   - $O(n)$ time; BFPRT uses $O(\log n)$ extra space (recursion), select uses $O(1)$
+   - $O(n)$ time; BFPRT uses $O(\log n)$ extra space (recursion), while in-place unstable select uses $O(1)$
    - k-th smallest element selection
    - [Blog post](docs/bfprt-and-unstable-select.md) (also at [axiomofchoice-hjt.github.io](https://axiomofchoice-hjt.github.io/pages/63a6df/))
 
 5. **In-place Stable Unpartition** — `#include <tcs/inplace_stable_unpartition.hpp>`
    - $O(n)$ time, $O(1)$ extra space
-   - Reverse a stable partition to original order via a placement oracle
+   - Reverse a stable partition to its original order via a placement oracle
    - [Blog post](docs/stable-unpartition.md) (also at [axiomofchoice-hjt.github.io](https://axiomofchoice-hjt.github.io/pages/60450e/))
 
 See `examples/` for usage demos. Detailed articles in `docs/` (Chinese).
 
-## 2. Quick Start
+## 3. Quick Start
 
 ```bash
 # Install xmake
@@ -60,7 +60,7 @@ curl -fsSL https://xmake.io/shget.text | bash
 ./run.sh
 ```
 
-## 3. Directory Structure
+## 4. Directory Structure
 
 ```text
 TCS-Algorithms/
@@ -72,13 +72,13 @@ TCS-Algorithms/
 └── xmake.lua              # Build configuration
 ```
 
-## 4. Dependencies
+## 5. Dependencies
 
 - **Compiler**: GCC 14+ / Clang 18+ (C++23 support required)
 - **Build tool**: [xmake](https://xmake.io/)
 - **Test framework**: [Catch2](https://github.com/catchorg/Catch2) (auto-fetched by xmake)
 
-## 5. Usage
+## 6. Usage
 
 Header-only — copy `include/tcs/` into your project, or integrate via xmake:
 
@@ -92,13 +92,13 @@ tcs::bfprt::bfprt(arr.data(), arr.data() + k, arr.data() + arr.size());
 // arr[k] holds the k-th smallest element
 ```
 
-## 6. Code Quality
+## 7. Code Quality
 
 ```bash
 # Run clang-format and clang-tidy checks
 ./scripts/code-quality.sh
 ```
 
-## 7. License
+## 8. License
 
 MIT
