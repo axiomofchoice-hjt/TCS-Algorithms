@@ -3,11 +3,19 @@
 #include <climits>
 #include <cmath>
 #include <format>
-
-#include "assert.hpp"
+#include <source_location>
+#include <stdexcept>
+#include <string_view>
 
 namespace tcs {
 namespace inplace_stable_partition {
+inline void assert_or_throw(bool condition, std::string_view message = "empty message",
+    const std::source_location& loc = std::source_location::current()) {
+    if (!condition) [[unlikely]] {
+        throw std::runtime_error(std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
+    }
+}
+
 inline int64_t ceil_log2(int64_t x) {
     assert_or_throw(x > 0);
     return std::bit_width(static_cast<uint64_t>(x) - 1);
