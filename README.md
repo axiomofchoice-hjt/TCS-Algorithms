@@ -1,6 +1,6 @@
 # TCS-Algorithms
 
-Implementations of theoretical computer science algorithms in modern C++.
+In-place algorithms in modern C++ — with more to come.
 
 Built with **C++23**, **xmake**, and **Catch2**.
 
