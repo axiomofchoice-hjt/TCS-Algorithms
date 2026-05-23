@@ -3,6 +3,7 @@ Checks: >
   bugprone-*,
   -bugprone-exception-escape,
   clang-analyzer-*,
+  -clang-analyzer-deadcode.DeadStores,
   performance-*,
   readability-*,
   -readability-identifier-length,
