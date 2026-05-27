@@ -32,3 +32,6 @@ core
 
 # Editor backup files
 *.bak
+
+# Temporary
+temp
