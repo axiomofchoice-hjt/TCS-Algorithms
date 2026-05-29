@@ -64,3 +64,33 @@ complexity guarantees, and invariants.
 Some assertions guard normal branching logic (not just debug-only invariants). Consider
 splitting into `ASSERT` (debug-only) and `VERIFY` (always-active) macros to make intent
 clear.
+
+## Future Algorithms
+
+- In-place Stable Selection
+- O(n) Moves In-place Stable Sort
+- In-place Burrows–Wheeler Transform
+- Rank-Pairing Heap
+- Hollow Heap
+- Soft Heap
+- Strict Fibonacci Heap
+- Brodal Queue
+- Fusion Tree
+- Cuckoo Hashing
+- Tango Tree
+- Deamortized Splay Tree
+- Succinct Bit Vector
+- Cache-Oblivious B-Tree
+- In-place Linked List Shuffle
+- Stable Duplicate-Key Extraction
+
+## Search Channels
+
+- Google Scholar cited-by chains
+- https://cstheory.stackexchange.com/questions/tagged/ds.algorithms
+- STOC/FOCS/SODA proceedings (1980–2015)
+- Jeff Erickson's Algorithms notes references
+- arXiv cs.DS
+- Wikipedia List of algorithms footnotes
+- Semantic Scholar "Highly Influenced" on classic papers
+- Huang & Langston 1989 cited-by chain for all O(1)-space lineage
