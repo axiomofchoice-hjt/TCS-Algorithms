@@ -6,6 +6,7 @@
 #include <climits>
 #include <cstdint>
 #include <format>
+#include <functional>
 #include <source_location>
 #include <stdexcept>
 #include <string_view>
@@ -68,26 +69,26 @@ struct BitStack {
     }
 };
 
-template <typename RandomIt>
-void bubble_sort(RandomIt first, RandomIt last) {
+template <typename RandomIt, typename Proj = std::identity>
+void bubble_sort(RandomIt first, RandomIt last, Proj proj = {}) {
     int64_t len = last - first;
     for (int64_t i = 0; i + 1 < len; i++) {
         for (RandomIt j = first; j < last - i - 1; j++) {
-            if (*j > *(j + 1)) {
+            if (proj(*j) > proj(*(j + 1))) {
                 std::swap(*j, *(j + 1));
             }
         }
     }
 }
 
-template <typename RandomIt>
-bool prepare_buffer(RandomIt first, RandomIt last, int64_t n_bits) {
+template <typename RandomIt, typename Proj = std::identity>
+bool prepare_buffer(RandomIt first, RandomIt last, int64_t n_bits, Proj proj = {}) {
     RandomIt majority_ptr = first;
     for (RandomIt iter = first; iter < last; iter++) {
         if (majority_ptr - first == n_bits * 2) {
             break;
         }
-        if (majority_ptr < iter && *majority_ptr != *iter) {
+        if (majority_ptr < iter && proj(*majority_ptr) != proj(*iter)) {
             std::swap(*majority_ptr, *iter);
             majority_ptr += 2;
         }
@@ -95,34 +96,35 @@ bool prepare_buffer(RandomIt first, RandomIt last, int64_t n_bits) {
     return majority_ptr - first == n_bits * 2;
 }
 
-template <typename RandomIt>
-bool write_buffer(RandomIt buffer, uint64_t value, int64_t n_bits) {
+template <typename RandomIt, typename Proj = std::identity>
+bool write_buffer(RandomIt buffer, uint64_t value, int64_t n_bits, Proj proj = {}) {
     assert_or_throw(ceil_log2(static_cast<int64_t>(value + 1)) <= n_bits);
 
     for (int64_t i = 0; i < n_bits; i++) {
-        assert_or_throw(buffer[i * 2] != buffer[(i * 2) + 1]);
-        if ((buffer[i * 2] > buffer[(i * 2) + 1]) != ((value >> i) & 1)) {
+        assert_or_throw(proj(buffer[i * 2]) != proj(buffer[(i * 2) + 1]));
+        if ((proj(buffer[i * 2]) > proj(buffer[(i * 2) + 1])) != ((value >> i) & 1)) {
             std::swap(buffer[i * 2], buffer[(i * 2) + 1]);
         }
     }
     return true;
 }
 
-template <typename RandomIt>
-uint64_t read_buffer(RandomIt buffer, int64_t n_bits) {
+template <typename RandomIt, typename Proj = std::identity>
+uint64_t read_buffer(RandomIt buffer, int64_t n_bits, Proj proj = {}) {
     uint64_t res = 0;
     for (int64_t i = 0; i < n_bits; i++) {
-        assert_or_throw(buffer[i * 2] != buffer[(i * 2) + 1]);
-        res |= (buffer[i * 2] > buffer[(i * 2) + 1] ? uint64_t{1} : uint64_t{0}) << i;
+        assert_or_throw(proj(buffer[i * 2]) != proj(buffer[(i * 2) + 1]));
+        res |= (proj(buffer[i * 2]) > proj(buffer[(i * 2) + 1]) ? uint64_t{1} : uint64_t{0}) << i;
     }
     return res;
 }
 
-template <typename RandomIt>
-void move_largest_to_end(RandomIt first, RandomIt mid, RandomIt last) {
+template <typename RandomIt, typename Proj = std::identity>
+void move_largest_to_end(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
     int64_t right_size = last - mid;
     for (int64_t i = 0; i < right_size; i++) {
-        std::swap(*std::max_element(first, last - i), *(last - i - 1));
+        std::swap(*std::max_element(first, last - i, [proj](auto& a, auto& b) { return proj(a) < proj(b); }),
+            *(last - i - 1));
     }
 }
 
@@ -133,8 +135,8 @@ static constexpr uint64_t restore_right = 2;
 static constexpr uint64_t restore_left = 3;
 }  // namespace Stage
 
-template <typename RandomIt>
-void inplace_unstable_select(RandomIt first, RandomIt mid, RandomIt last) {
+template <typename RandomIt, typename Proj = std::identity>
+void inplace_unstable_select(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
     using T = typename std::iterator_traits<RandomIt>::value_type;
     constexpr int64_t group_size = 5;
     constexpr int64_t shrink_num = (group_size + 1) / 2;  // 3
@@ -142,7 +144,7 @@ void inplace_unstable_select(RandomIt first, RandomIt mid, RandomIt last) {
     constexpr int64_t alignment = group_size * 2;         // 10
     int64_t len = last - first;
     if (len < alignment) {
-        bubble_sort(first, last);
+        bubble_sort(first, last, proj);
         return;
     }
     int64_t word_bits = ceil_log2(len);
@@ -159,26 +161,27 @@ void inplace_unstable_select(RandomIt first, RandomIt mid, RandomIt last) {
             // align to alignment
             RandomIt tail = first + (len % alignment);
             int64_t aligned_len = tail - first;
-            move_largest_to_end(first, tail, last);
+            move_largest_to_end(first, tail, last, proj);
             if (k >= aligned_len) {
                 continue;
             }
             // median of medians of each group
             for (int64_t i = 0; i + group_size <= aligned_len; i += group_size) {
-                bubble_sort(first + i, first + i + group_size);
+                bubble_sort(first + i, first + i + group_size, proj);
                 std::swap(first[i / group_size], first[i + (group_size / 2)]);
             }
             // prepare buffer
             RandomIt buffer = first + (aligned_len / group_size);
-            if (!prepare_buffer(buffer, tail, word_bits)) {
+            if (!prepare_buffer(buffer, tail, word_bits, proj)) {
                 T possible_majority = *(tail - 1);
-                RandomIt mid = std::partition(first, tail, [&](T x) { return x != possible_majority; });
-                bubble_sort(first, mid);
-                std::rotate(std::find_if(first, mid, [&](T x) { return x >= possible_majority; }), mid, tail);
+                RandomIt mid = std::partition(first, tail, [&](T x) { return proj(x) != proj(possible_majority); });
+                bubble_sort(first, mid, proj);
+                std::rotate(
+                    std::find_if(first, mid, [&](T x) { return proj(x) >= proj(possible_majority); }), mid, tail);
                 continue;
             }
             // store (k, tail_size)
-            write_buffer(buffer, k, word_bits);
+            write_buffer(buffer, k, word_bits, proj);
             stages.push(Stage::partition);
             tail_sizes.push(last - tail);
             stages.push(Stage::median_of_medians);
@@ -187,13 +190,13 @@ void inplace_unstable_select(RandomIt first, RandomIt mid, RandomIt last) {
         } else if (stage == Stage::partition) {
             T pivot = first[k];
             // restore (first, last, k)
-            k = read_buffer(last, word_bits);
+            k = read_buffer(last, word_bits, proj);
             int64_t len = last - first;
             last += len * (group_size - 1);
             len = last - first;
             // three-way partition
-            RandomIt pivot_start = std::partition(first, last, [pivot](T el) { return el < pivot; });
-            RandomIt pivot_end = std::partition(pivot_start, last, [pivot](T el) { return el == pivot; });
+            RandomIt pivot_start = std::partition(first, last, [&](T el) { return proj(el) < proj(pivot); });
+            RandomIt pivot_end = std::partition(pivot_start, last, [&](T el) { return proj(el) == proj(pivot); });
             RandomIt kth = first + k;
             if (kth < pivot_start) {
                 // shrink right
