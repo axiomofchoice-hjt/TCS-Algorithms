@@ -30,6 +30,7 @@ avoid ODR conflicts when multiple headers are included together.
 ### 5. Add missing assertions to internal helpers
 
 Some internal functions lack precondition checks. Candidates:
+
 - `bubble_sort(first, last)` — assert `first <= last`
 - `block_selection_sort` — assert `first <= last` and alignment
 - `stable_collect_first_n` — assert `n >= 0`
@@ -94,7 +95,7 @@ Split into `ASSERT` (debug-only) vs `VERIFY` (always-active) for intent clarity.
 ## Search Channels
 
 - Google Scholar cited-by chains
-- https://cstheory.stackexchange.com/questions/tagged/ds.algorithms
+- <https://cstheory.stackexchange.com/questions/tagged/ds.algorithms>
 - STOC/FOCS/SODA proceedings (1980–2015)
 - Jeff Erickson's Algorithms notes references
 - arXiv cs.DS
