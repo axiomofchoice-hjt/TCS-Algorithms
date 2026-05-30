@@ -49,7 +49,8 @@ void random_test(const TestParam& param) {
 
     for ([[maybe_unused]] int64_t i : std::views::iota(0, param.repeat_count)) {
         auto arr = std::views::iota(0, param.total_size) |
-                   std::views::transform([&key_dist](int64_t i) { return IndexedElement{key_dist(gen), 0}; }) |
+                   std::views::transform(
+                       [&key_dist](int64_t i) { return IndexedElement{key_dist(gen), 0}; }) |
                    std::ranges::to<std::vector<IndexedElement>>();
 
         std::ranges::sort(arr.begin(), arr.begin() + param.left_size, {}, IndexedElement::proj);
@@ -60,14 +61,15 @@ void random_test(const TestParam& param) {
         }
 
         auto expected = arr;
-        std::ranges::inplace_merge(expected, expected.begin() + param.left_size, {}, IndexedElement::proj);
+        std::ranges::inplace_merge(
+            expected, expected.begin() + param.left_size, {}, IndexedElement::proj);
 
         try {
             tcs::inplace_stable_merge::inplace_stable_merge(
                 arr.begin(), arr.begin() + param.left_size, arr.end(), IndexedElement::proj);
         } catch (std::exception& e) {
-            INFO(std::format("{} [total_size={}, left_size={}, max_key={}, repeat_count={}]", e.what(),
-                param.total_size, param.left_size, param.max_key, param.repeat_count));
+            INFO(std::format("{} [total_size={}, left_size={}, max_key={}, repeat_count={}]",
+                e.what(), param.total_size, param.left_size, param.max_key, param.repeat_count));
             FAIL();
         }
         REQUIRE(is_stable(arr));

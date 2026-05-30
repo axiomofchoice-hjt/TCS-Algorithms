@@ -16,7 +16,8 @@ namespace inplace_stable_unpartition {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
-        throw std::runtime_error(std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
+        throw std::runtime_error(
+            std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
     }
 }
 
@@ -42,12 +43,14 @@ void check_partition_consistency(RandomIt first, RandomIt last, Proj proj, Place
     using T = typename std::iterator_traits<RandomIt>::value_type;
     static_assert(std::is_invocable_v<Proj, T>);
     static_assert(std::is_invocable_v<Placement, RandomIt>);
-    assert_or_throw(
-        std::ranges::count_if(first, last, proj) == count_if_placement_equals(first, last, 1, placement), "empty message", loc);
+    assert_or_throw(std::ranges::count_if(first, last, proj) ==
+                        count_if_placement_equals(first, last, 1, placement),
+        "empty message", loc);
 }
 
 template <typename RandomIt, typename Proj = std::identity, typename Placement>
-void dehomogenize_blocks(RandomIt first, RandomIt last, int64_t block_size, Proj proj, Placement placement) {
+void dehomogenize_blocks(
+    RandomIt first, RandomIt last, int64_t block_size, Proj proj, Placement placement) {
     using T = typename std::iterator_traits<RandomIt>::value_type;
     assert_or_throw((last - first) % block_size == 0);
     int64_t n_blocks = (last - first) / block_size;
@@ -57,7 +60,8 @@ void dehomogenize_blocks(RandomIt first, RandomIt last, int64_t block_size, Proj
         RandomIt right = mid + block_size;
         RandomIt split01 = std::ranges::find_if(left, mid, proj);
         assert_or_throw(std::ranges::is_sorted(left, mid, {}, proj));
-        assert_or_throw(std::ranges::all_of(mid, right, [proj, mid](T x) { return proj(x) == proj(*mid); }));
+        assert_or_throw(
+            std::ranges::all_of(mid, right, [proj, mid](T x) { return proj(x) == proj(*mid); }));
         int64_t cnt0_left = count_if_placement_equals(left, mid, 0, placement);
         if (split01 < left + cnt0_left) {
             assert_or_throw(proj(*mid) == 0);
@@ -112,8 +116,11 @@ struct BufferStorage {
     static_assert(std::is_invocable_v<Proj, T>);
 
     static BufferStorage create(StorageAttributes attr, RandomIt buf0, RandomIt buf1, Proj proj) {
-        return BufferStorage{
-            .buf0 = buf0, .buf1 = buf1, .n_bits = attr.n_bits, .element_bits = attr.element_bits, .proj = proj};
+        return BufferStorage{.buf0 = buf0,
+            .buf1 = buf1,
+            .n_bits = attr.n_bits,
+            .element_bits = attr.element_bits,
+            .proj = proj};
     }
 
     uint64_t get(int64_t index) const {
@@ -143,7 +150,8 @@ struct BufferStorage {
 };
 
 template <typename RandomIt, typename Proj = std::identity, typename Placement>
-void inplace_01_split(RandomIt first, RandomIt split, RandomIt last, Proj proj, Placement placement) {
+void inplace_01_split(
+    RandomIt first, RandomIt split, RandomIt last, Proj proj, Placement placement) {
     check_partition_consistency(first, last, proj, placement);
     RandomIt mid = std::ranges::find_if(first, last, proj);
     RandomIt l = first + count_if_placement_equals(first, split, 0, placement);
@@ -197,8 +205,8 @@ void unpartition_with_rotation(RandomIt first, RandomIt last, Proj proj, Placeme
 }
 
 template <typename RandomIt, typename Storage, typename Proj = std::identity, typename Placement>
-void merge_blocks_impl(
-    RandomIt first, RandomIt last, int64_t block_size, Storage& storage, Proj proj, Placement placement) {
+void merge_blocks_impl(RandomIt first, RandomIt last, int64_t block_size, Storage& storage,
+    Proj proj, Placement placement) {
     check_partition_consistency(first, last, proj, placement);
     int64_t n_blocks = (last - first) / block_size;
     if (n_blocks <= 2) {
@@ -233,7 +241,8 @@ void merge_blocks_impl(
     }
     for (int64_t i = 0; i < n_blocks; i++) {
         for (int64_t j = storage.get(i); j != i;) {
-            std::swap_ranges(first + (i * block_size), first + ((i + 1) * block_size), first + (j * block_size));
+            std::swap_ranges(
+                first + (i * block_size), first + ((i + 1) * block_size), first + (j * block_size));
             int next = storage.get(j);
             storage.set(j, j);
             j = next;
@@ -244,23 +253,24 @@ void merge_blocks_impl(
 }
 
 template <typename RandomIt, typename Proj = std::identity, typename Placement>
-void merge_blocks_using_word(
-    RandomIt first, RandomIt last, int64_t block_size, Proj proj, Placement placement, int64_t word_bits) {
+void merge_blocks_using_word(RandomIt first, RandomIt last, int64_t block_size, Proj proj,
+    Placement placement, int64_t word_bits) {
     assert_or_throw((last - first) % block_size == 0);
     int64_t n_blocks = (last - first) / block_size;
     if (n_blocks <= 2) {
         return;
     }
     int64_t element_bits = ceil_log2(n_blocks);
-    assert_or_throw(n_blocks * element_bits <= word_bits, std::format("{} {} {}", n_blocks, element_bits, word_bits));
+    assert_or_throw(n_blocks * element_bits <= word_bits,
+        std::format("{} {} {}", n_blocks, element_bits, word_bits));
     assert_or_throw(word_bits <= static_cast<int64_t>(sizeof(uint64_t) * CHAR_BIT));
     auto storage = WordStorage::create({.n_bits = word_bits, .element_bits = element_bits});
     merge_blocks_impl(first, last, block_size, storage, proj, placement);
 }
 
 template <typename RandomIt, typename Proj = std::identity, typename Placement>
-void merge_blocks_using_buffer(RandomIt first, RandomIt last, int64_t block_size, RandomIt buf0, RandomIt buf1,
-    int64_t buffer_len, Proj proj, Placement placement) {
+void merge_blocks_using_buffer(RandomIt first, RandomIt last, int64_t block_size, RandomIt buf0,
+    RandomIt buf1, int64_t buffer_len, Proj proj, Placement placement) {
     using T = typename std::iterator_traits<RandomIt>::value_type;
     assert_or_throw((last - first) % block_size == 0);
     int64_t n_blocks = (last - first) / block_size;
@@ -268,9 +278,10 @@ void merge_blocks_using_buffer(RandomIt first, RandomIt last, int64_t block_size
         return;
     }
     int64_t element_bits = ceil_log2(n_blocks);
-    assert_or_throw(n_blocks * element_bits <= buffer_len, std::format("{} {} {}", n_blocks, element_bits, buffer_len));
-    auto storage =
-        BufferStorage<RandomIt, Proj>::create({.n_bits = buffer_len, .element_bits = element_bits}, buf0, buf1, proj);
+    assert_or_throw(n_blocks * element_bits <= buffer_len,
+        std::format("{} {} {}", n_blocks, element_bits, buffer_len));
+    auto storage = BufferStorage<RandomIt, Proj>::create(
+        {.n_bits = buffer_len, .element_bits = element_bits}, buf0, buf1, proj);
     merge_blocks_impl(first, last, block_size, storage, proj, placement);
 }
 
@@ -300,10 +311,11 @@ void inplace_stable_01_unpartition(RandomIt first, RandomIt last, Proj proj, Pla
         return;
     }
     len = last - first;
-    int64_t merge_size = max_blocks_for_word * max_blocks_for_word * max_blocks_for_buffer * max_blocks_for_buffer *
-                         max_blocks_for_buffer;
+    int64_t merge_size = max_blocks_for_word * max_blocks_for_word * max_blocks_for_buffer *
+                         max_blocks_for_buffer * max_blocks_for_buffer;
     assert_or_throw(merge_size >= len);
-    // inter-block unpartition, using buffer as counter and marker, merge_size divided by (sqrtn / logn)
+    // inter-block unpartition, using buffer as counter and marker, merge_size divided by (sqrtn /
+    // logn)
     for (int64_t step = 0; step < 3; step++) {
         int64_t block_size = merge_size / max_blocks_for_buffer;
         for (int64_t start = 0; start < len; start += merge_size) {
@@ -315,13 +327,14 @@ void inplace_stable_01_unpartition(RandomIt first, RandomIt last, Proj proj, Pla
                 std::rotate(first + start + (mid % block_size), first + mid,
                     first + ((mid + block_size - 1) / block_size * block_size));
             }
-            merge_blocks_using_buffer(
-                first + start, first + end_l2_aligned, block_size, buf0, buf1, buffer_len, proj, placement);
+            merge_blocks_using_buffer(first + start, first + end_l2_aligned, block_size, buf0, buf1,
+                buffer_len, proj, placement);
             dehomogenize_blocks(first + start, first + end_l2_aligned, block_size, proj, placement);
         }
         merge_size = block_size;
     }
-    // inter-block unpartition, using word as counter and marker, merge_size divided by (logn / loglogn)
+    // inter-block unpartition, using word as counter and marker, merge_size divided by (logn /
+    // loglogn)
     for (int64_t step = 0; step < 2; step++) {
         int64_t block_size = merge_size / max_blocks_for_word;
         for (int64_t start = 0; start < len; start += merge_size) {
@@ -333,7 +346,8 @@ void inplace_stable_01_unpartition(RandomIt first, RandomIt last, Proj proj, Pla
                 std::rotate(first + start + (mid % block_size), first + mid,
                     first + ((mid + block_size - 1) / block_size * block_size));
             }
-            merge_blocks_using_word(first + start, first + end_l2_aligned, block_size, proj, placement, max_word_bits);
+            merge_blocks_using_word(
+                first + start, first + end_l2_aligned, block_size, proj, placement, max_word_bits);
             dehomogenize_blocks(first + start, first + end_l2_aligned, block_size, proj, placement);
         }
         merge_size = block_size;
@@ -348,7 +362,8 @@ void inplace_stable_unpartition(RandomIt first, RandomIt last, Pred pred, Placem
     static_assert(std::is_invocable_r_v<bool, Pred, T>);
     static_assert(std::is_invocable_r_v<bool, Placement, RandomIt>);
     inplace_stable_01_unpartition(
-        first, last, [pred](T x) { return pred(x) ? 0 : 1; }, [placement](RandomIt x) { return placement(x) ? 0 : 1; });
+        first, last, [pred](T x) { return pred(x) ? 0 : 1; },
+        [placement](RandomIt x) { return placement(x) ? 0 : 1; });
 }
 }  // namespace inplace_stable_unpartition
 }  // namespace tcs

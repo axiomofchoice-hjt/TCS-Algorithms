@@ -14,7 +14,8 @@ int main() {
 
     print_arr(arr, "before");
 
-    tcs::inplace_stable_select::inplace_stable_select(arr.begin(), arr.begin() + kTargetRank, arr.end());
+    tcs::inplace_stable_select::inplace_stable_select(
+        arr.begin(), arr.begin() + kTargetRank, arr.end());
 
     print_arr(arr, "after ");
     std::println("{}-th smallest element: {}", kTargetRank, arr[kTargetRank]);

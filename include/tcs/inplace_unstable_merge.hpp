@@ -13,7 +13,8 @@ namespace inplace_unstable_merge {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
-        throw std::runtime_error(std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
+        throw std::runtime_error(
+            std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
     }
 }
 
@@ -79,11 +80,11 @@ template <typename RandomIt, typename Proj = std::identity>
 void block_merge_pairwise(RandomIt first, RandomIt last, int64_t block_size, Proj proj = {}) {
     int64_t n_blocks = (last - first) / block_size;
     for (int64_t i = 0; i + 2 < n_blocks; i++) {
-        merge_with_swap(first + (i * block_size), first + ((i + 1) * block_size), first + ((i + 2) * block_size),
-            first + ((i + 3) * block_size), proj);
+        merge_with_swap(first + (i * block_size), first + ((i + 1) * block_size),
+            first + ((i + 2) * block_size), first + ((i + 3) * block_size), proj);
         if (i + 3 < n_blocks) {
-            std::swap_ranges(
-                first + ((i + 1) * block_size), first + ((i + 2) * block_size), first + ((i + 2) * block_size));
+            std::swap_ranges(first + ((i + 1) * block_size), first + ((i + 2) * block_size),
+                first + ((i + 2) * block_size));
         }
     }
 }

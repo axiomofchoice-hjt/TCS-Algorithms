@@ -13,7 +13,8 @@ namespace inplace_stable_merge {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
-        throw std::runtime_error(std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
+        throw std::runtime_error(
+            std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
     }
 }
 
@@ -23,7 +24,8 @@ std::tuple<RandomIt, RandomIt, RandomIt> merge_with_swap(
     RandomIt left_ptr = first;
     RandomIt right_ptr = mid;
     while (left_ptr < mid && right_ptr < last) {
-        if (std::pair{proj(*left_ptr), proj(labels[1])} <= std::pair{proj(*right_ptr), proj(labels[2])}) {
+        if (std::pair{proj(*left_ptr), proj(labels[1])} <=
+            std::pair{proj(*right_ptr), proj(labels[2])}) {
             std::swap(*output, *left_ptr);
             output++;
             left_ptr++;
@@ -43,7 +45,8 @@ std::tuple<RandomIt, RandomIt, RandomIt> merge_with_swap(
 }
 
 template <typename RandomIt, typename Proj = std::identity>
-void inplace_merge_with_rotation_scroll_right(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
+void inplace_merge_with_rotation_scroll_right(
+    RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
     while (first < mid && mid < last) {
         RandomIt split_right = mid;
         while (split_right < last && proj(*split_right) < proj(*first)) {
@@ -64,7 +67,8 @@ void inplace_merge_with_rotation_scroll_right(RandomIt first, RandomIt mid, Rand
 }
 
 template <typename RandomIt, typename Proj = std::identity>
-void inplace_merge_with_rotation_scroll_left(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
+void inplace_merge_with_rotation_scroll_left(
+    RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
     while (first < mid && mid < last) {
         RandomIt split_left = mid;
         while (split_left > first && proj(*(split_left - 1)) > proj(*(last - 1))) {
@@ -98,8 +102,8 @@ std::tuple<RandomIt, RandomIt> inplace_merge_with_rotation_indexed(
     RandomIt first, RandomIt mid, RandomIt last, RandomIt labels, Proj proj = {}) {
     while (first < mid && mid < last) {
         RandomIt split_right = mid;
-        while (split_right < last &&
-               std::pair{proj(*split_right), proj(labels[1])} < std::pair{proj(*first), proj(labels[0])}) {
+        while (split_right < last && std::pair{proj(*split_right), proj(labels[1])} <
+                                         std::pair{proj(*first), proj(labels[0])}) {
             split_right++;
         }
         if (mid != split_right) {
@@ -150,8 +154,8 @@ std::tuple<RandomIt, RandomIt, RandomIt, RandomIt> stable_unique_limit(
 }
 
 template <typename RandomIt, typename Proj = std::identity>
-std::tuple<RandomIt, RandomIt, RandomIt, RandomIt> align_blocks_limit(
-    RandomIt first, RandomIt mid, RandomIt last, int64_t block_size, int64_t n_blocks, Proj proj = {}) {
+std::tuple<RandomIt, RandomIt, RandomIt, RandomIt> align_blocks_limit(RandomIt first, RandomIt mid,
+    RandomIt last, int64_t block_size, int64_t n_blocks, Proj proj = {}) {
     assert_or_throw(block_size > 0 && n_blocks > 0);
     assert_or_throw(block_size * n_blocks <= static_cast<int64_t>(last - first));
     RandomIt original_mid = mid;
@@ -167,7 +171,8 @@ std::tuple<RandomIt, RandomIt, RandomIt, RandomIt> align_blocks_limit(
 }
 
 template <typename RandomIt, typename Proj = std::identity>
-void block_selection_sort(RandomIt first, RandomIt last, RandomIt labels, int64_t block_size, Proj proj = {}) {
+void block_selection_sort(
+    RandomIt first, RandomIt last, RandomIt labels, int64_t block_size, Proj proj = {}) {
     int64_t n_blocks = (last - first) / block_size;
     for (int64_t cur = 0; cur < n_blocks; cur++) {
         int64_t min = cur;
@@ -178,14 +183,16 @@ void block_selection_sort(RandomIt first, RandomIt last, RandomIt labels, int64_
             }
         }
         if (min != cur) {
-            std::swap_ranges(first + (cur * block_size), first + ((cur + 1) * block_size), first + (min * block_size));
+            std::swap_ranges(first + (cur * block_size), first + ((cur + 1) * block_size),
+                first + (min * block_size));
             std::swap(labels[cur], labels[min]);
         }
     }
 }
 
 template <typename RandomIt, typename Proj = std::identity>
-void block_merge_pairwise(RandomIt first, RandomIt last, RandomIt labels, int64_t block_size, Proj proj = {}) {
+void block_merge_pairwise(
+    RandomIt first, RandomIt last, RandomIt labels, int64_t block_size, Proj proj = {}) {
     int64_t n_blocks = (last - first) / block_size;
     RandomIt buffer = first;
     for (int64_t i = 0; i + 2 < n_blocks; i++) {
@@ -196,12 +203,13 @@ void block_merge_pairwise(RandomIt first, RandomIt last, RandomIt labels, int64_
 }
 
 template <typename RandomIt, typename Proj = std::identity>
-void inplace_block_merge_pairwise(RandomIt first, RandomIt last, RandomIt labels, int64_t block_size, Proj proj = {}) {
+void inplace_block_merge_pairwise(
+    RandomIt first, RandomIt last, RandomIt labels, int64_t block_size, Proj proj = {}) {
     int64_t n_blocks = (last - first) / block_size;
     RandomIt start = first;
     for (int64_t i = 0; i + 1 < n_blocks; i++) {
-        std::tie(start, std::ignore) = inplace_merge_with_rotation_indexed(
-            start, first + ((i + 1) * block_size), first + ((i + 2) * block_size), labels + i, proj);
+        std::tie(start, std::ignore) = inplace_merge_with_rotation_indexed(start,
+            first + ((i + 1) * block_size), first + ((i + 2) * block_size), labels + i, proj);
     }
 }
 
@@ -230,14 +238,16 @@ void inplace_stable_merge(RandomIt first, RandomIt mid, RandomIt last, Proj proj
     }
     int64_t n_blocks = len / block_size;
     RandomIt buf1;
-    std::tie(buf1, first, mid, last) = stable_unique_limit(first, mid, last, n_blocks + block_size, proj);
+    std::tie(buf1, first, mid, last) =
+        stable_unique_limit(first, mid, last, n_blocks + block_size, proj);
     // buf1 [buffer] first [left_elements] mid [right_elements]
     assert_or_throw(std::ranges::is_sorted(buf1, first, std::less{}, proj));
     int64_t buffer_len = first - buf1;
     if (buffer_len == n_blocks + block_size) {  // enough unique values
         n_blocks = (last - first) / block_size;
         RandomIt original_last;
-        std::tie(first, mid, last, original_last) = align_blocks_limit(first, mid, last, block_size, n_blocks, proj);
+        std::tie(first, mid, last, original_last) =
+            align_blocks_limit(first, mid, last, block_size, n_blocks, proj);
         // buf1 [buffer] first [left_elements_aligned] mid
         // [right_elements_aligned] last [tail_elements] original_last
         RandomIt buf2 = first - block_size;
@@ -250,7 +260,8 @@ void inplace_stable_merge(RandomIt first, RandomIt mid, RandomIt last, Proj proj
     } else {
         block_size = (len - buffer_len) / buffer_len;
         RandomIt original_last;
-        std::tie(first, mid, last, original_last) = align_blocks_limit(first, mid, last, block_size, buffer_len, proj);
+        std::tie(first, mid, last, original_last) =
+            align_blocks_limit(first, mid, last, block_size, buffer_len, proj);
         block_selection_sort(first, last, buf1, block_size, proj);
         inplace_block_merge_pairwise(first, last, buf1, block_size, proj);
         bubble_sort(buf1, first, proj);

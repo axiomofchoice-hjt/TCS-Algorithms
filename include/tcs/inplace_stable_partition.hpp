@@ -15,7 +15,8 @@ namespace inplace_stable_partition {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
-        throw std::runtime_error(std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
+        throw std::runtime_error(
+            std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
     }
 }
 
@@ -25,7 +26,8 @@ inline int64_t ceil_log2(int64_t x) {
 }
 
 template <typename RandomIt, typename Pred>
-std::tuple<RandomIt, RandomIt, RandomIt> stable_collect_first_n(RandomIt first, RandomIt last, int64_t n, Pred pred) {
+std::tuple<RandomIt, RandomIt, RandomIt> stable_collect_first_n(
+    RandomIt first, RandomIt last, int64_t n, Pred pred) {
     using T = typename std::iterator_traits<RandomIt>::value_type;
     static_assert(std::is_invocable_r_v<bool, Pred, T>);
     RandomIt collect = first;
@@ -123,8 +125,11 @@ struct BufferStorage {
     static_assert(std::is_invocable_v<Proj, T>);
 
     static BufferStorage create(StorageAttributes attr, RandomIt buf0, RandomIt buf1, Proj proj) {
-        return BufferStorage{
-            .buf0 = buf0, .buf1 = buf1, .n_bits = attr.n_bits, .element_bits = attr.element_bits, .proj = proj};
+        return BufferStorage{.buf0 = buf0,
+            .buf1 = buf1,
+            .n_bits = attr.n_bits,
+            .element_bits = attr.element_bits,
+            .proj = proj};
     }
 
     uint64_t get(int64_t index) const {
@@ -154,14 +159,16 @@ struct BufferStorage {
 };
 
 template <typename RandomIt, typename Proj = std::identity, typename Storage>
-void sort_blocks_impl(RandomIt first, RandomIt last, int64_t block_size, Proj proj, Storage& storage) {
+void sort_blocks_impl(
+    RandomIt first, RandomIt last, int64_t block_size, Proj proj, Storage& storage) {
     using T = typename std::iterator_traits<RandomIt>::value_type;
     static_assert(std::is_invocable_v<Proj, T>);
     int64_t n_blocks = (last - first) / block_size;
     if (n_blocks <= 1) {
         return;
     }
-    int64_t n_zeros = block_count_if(first, last, block_size, [&proj](T x) { return proj(x) == 0; });
+    int64_t n_zeros =
+        block_count_if(first, last, block_size, [&proj](T x) { return proj(x) == 0; });
     std::array<int64_t, 2> pointers = {0, n_zeros};
     for (int64_t i = 0; i < n_blocks; i++) {
         int64_t key = proj(first[i * block_size]);
@@ -170,7 +177,8 @@ void sort_blocks_impl(RandomIt first, RandomIt last, int64_t block_size, Proj pr
     }
     for (int64_t i = 0; i < n_blocks; i++) {
         for (int64_t j = storage.get(i); j != i;) {
-            std::swap_ranges(first + (i * block_size), first + ((i + 1) * block_size), first + (j * block_size));
+            std::swap_ranges(
+                first + (i * block_size), first + ((i + 1) * block_size), first + (j * block_size));
             int next = storage.get(j);
             storage.set(j, j);
             j = next;
@@ -181,7 +189,8 @@ void sort_blocks_impl(RandomIt first, RandomIt last, int64_t block_size, Proj pr
 }
 
 template <typename RandomIt, typename Proj = std::identity>
-void sort_blocks_using_word(RandomIt first, RandomIt last, int64_t block_size, Proj proj, int64_t word_bits) {
+void sort_blocks_using_word(
+    RandomIt first, RandomIt last, int64_t block_size, Proj proj, int64_t word_bits) {
     using T = typename std::iterator_traits<RandomIt>::value_type;
     static_assert(std::is_invocable_v<Proj, T>);
     assert_or_throw((last - first) % block_size == 0);
@@ -190,14 +199,15 @@ void sort_blocks_using_word(RandomIt first, RandomIt last, int64_t block_size, P
         return;
     }
     int64_t element_bits = ceil_log2(n_blocks);
-    assert_or_throw(n_blocks * element_bits <= word_bits, std::format("{} {} {}", n_blocks, element_bits, word_bits));
+    assert_or_throw(n_blocks * element_bits <= word_bits,
+        std::format("{} {} {}", n_blocks, element_bits, word_bits));
     auto storage = WordStorage::create({.n_bits = word_bits, .element_bits = element_bits});
     sort_blocks_impl(first, last, block_size, proj, storage);
 }
 
 template <typename RandomIt, typename Proj = std::identity>
-void sort_blocks_using_buffer(
-    RandomIt first, RandomIt last, int64_t block_size, RandomIt buf0, RandomIt buf1, int64_t buffer_len, Proj proj) {
+void sort_blocks_using_buffer(RandomIt first, RandomIt last, int64_t block_size, RandomIt buf0,
+    RandomIt buf1, int64_t buffer_len, Proj proj) {
     using T = typename std::iterator_traits<RandomIt>::value_type;
     static_assert(std::is_invocable_v<Proj, T>);
     assert_or_throw((last - first) % block_size == 0);
@@ -206,9 +216,10 @@ void sort_blocks_using_buffer(
         return;
     }
     int64_t element_bits = ceil_log2(n_blocks);
-    assert_or_throw(n_blocks * element_bits <= buffer_len, std::format("{} {} {}", n_blocks, element_bits, buffer_len));
-    auto storage =
-        BufferStorage<RandomIt, Proj>::create({.n_bits = buffer_len, .element_bits = element_bits}, buf0, buf1, proj);
+    assert_or_throw(n_blocks * element_bits <= buffer_len,
+        std::format("{} {} {}", n_blocks, element_bits, buffer_len));
+    auto storage = BufferStorage<RandomIt, Proj>::create(
+        {.n_bits = buffer_len, .element_bits = element_bits}, buf0, buf1, proj);
     sort_blocks_impl(first, last, block_size, proj, storage);
 }
 
@@ -243,12 +254,14 @@ void inplace_stable_01_partition(RandomIt first, RandomIt last, Proj proj) {
     }
     // buffer area
     RandomIt buf0;
-    std::tie(buf0, first, last) = stable_collect_first_n(first, last, buffer_len, [proj](T x) { return proj(x) == 0; });
+    std::tie(buf0, first, last) =
+        stable_collect_first_n(first, last, buffer_len, [proj](T x) { return proj(x) == 0; });
     if (first - buf0 < buffer_len) {
         return;
     }
     RandomIt buf1;
-    std::tie(buf1, first, last) = stable_collect_first_n(first, last, buffer_len, [proj](T x) { return proj(x) == 1; });
+    std::tie(buf1, first, last) =
+        stable_collect_first_n(first, last, buffer_len, [proj](T x) { return proj(x) == 1; });
     if (first - buf1 < buffer_len) {
         std::rotate(buf1, first, last);
         return;
@@ -277,7 +290,8 @@ void inplace_stable_01_partition(RandomIt first, RandomIt last, Proj proj) {
             int64_t end_l2_aligned = end / block_size * block_size;
             int64_t mid = std::max(start, end_l2_aligned - block_size);
             homogenize_blocks(first + start, first + end_l2_aligned, block_size, proj);
-            sort_blocks_using_buffer(first + start, first + mid, block_size, buf0, buf1, buffer_len, proj);
+            sort_blocks_using_buffer(
+                first + start, first + mid, block_size, buf0, buf1, buffer_len, proj);
             inplace_01_merge(first + start, first + end_l2_aligned, proj);
             inplace_01_merge(first + start, first + end, proj);
         }

@@ -62,11 +62,12 @@ void random_test(const TestParam& param) {
 
         try {
             tcs::inplace_stable_unpartition::inplace_stable_unpartition(
-                arr.begin(), arr.end(), [](IndexedElement e) { return IndexedElement::proj(e) == 0; },
+                arr.begin(), arr.end(),
+                [](IndexedElement e) { return IndexedElement::proj(e) == 0; },
                 [&arr, &placement](auto p) { return !placement[p - arr.begin()]; });
         } catch (std::exception& e) {
-            INFO(std::format("{} [total_size={}, num_ones={}, repeat_count={}]", e.what(), param.total_size,
-                param.num_ones, param.repeat_count));
+            INFO(std::format("{} [total_size={}, num_ones={}, repeat_count={}]", e.what(),
+                param.total_size, param.num_ones, param.repeat_count));
             FAIL();
         }
 

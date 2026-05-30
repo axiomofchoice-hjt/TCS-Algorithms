@@ -12,7 +12,8 @@ namespace bfprt {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
-        throw std::runtime_error(std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
+        throw std::runtime_error(
+            std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
     }
 }
 
@@ -46,8 +47,10 @@ void bfprt(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
     bfprt(first, first + (len / group_size / 2), first + (len / group_size), proj);
     // three-way partition
     T pivot = first[len / group_size / 2];
-    RandomIt pivot_start = std::partition(first, last, [pivot, proj](T el) { return proj(el) < proj(pivot); });
-    RandomIt pivot_end = std::partition(pivot_start, last, [pivot, proj](T el) { return proj(el) == proj(pivot); });
+    RandomIt pivot_start =
+        std::partition(first, last, [pivot, proj](T el) { return proj(el) < proj(pivot); });
+    RandomIt pivot_end =
+        std::partition(pivot_start, last, [pivot, proj](T el) { return proj(el) == proj(pivot); });
     // recurse
     if (mid < pivot_start) {
         bfprt(first, mid, pivot_start, proj);

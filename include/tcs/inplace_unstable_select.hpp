@@ -17,7 +17,8 @@ namespace inplace_unstable_select {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
-        throw std::runtime_error(std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
+        throw std::runtime_error(
+            std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
     }
 }
 
@@ -39,7 +40,8 @@ struct BitStack {
     std::array<uint64_t, N> storage = {};
 
     static BitStack create(BitStackAttributes attr) {
-        assert_or_throw(attr.word_bits > 0 && attr.word_bits <= int64_t{sizeof(uint64_t) * CHAR_BIT});
+        assert_or_throw(
+            attr.word_bits > 0 && attr.word_bits <= int64_t{sizeof(uint64_t) * CHAR_BIT});
         assert_or_throw(attr.element_bits > 0);
         return BitStack{.word_bits = attr.word_bits, .element_bits = attr.element_bits};
     }
@@ -123,8 +125,7 @@ template <typename RandomIt, typename Proj = std::identity>
 void move_largest_to_end(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
     int64_t right_size = last - mid;
     for (int64_t i = 0; i < right_size; i++) {
-        std::swap(*std::ranges::max_element(first, last - i, std::less{}, proj),
-            *(last - i - 1));
+        std::swap(*std::ranges::max_element(first, last - i, std::less{}, proj), *(last - i - 1));
     }
 }
 
@@ -174,10 +175,12 @@ void inplace_unstable_select(RandomIt first, RandomIt mid, RandomIt last, Proj p
             RandomIt buffer = first + (aligned_len / group_size);
             if (!prepare_buffer(buffer, tail, word_bits, proj)) {
                 T possible_majority = *(tail - 1);
-                RandomIt mid = std::partition(first, tail, [&](T x) { return proj(x) != proj(possible_majority); });
+                RandomIt mid = std::partition(
+                    first, tail, [&](T x) { return proj(x) != proj(possible_majority); });
                 bubble_sort(first, mid, proj);
-                std::rotate(
-                    std::ranges::find_if(first, mid, [&](T x) { return proj(x) >= proj(possible_majority); }), mid, tail);
+                std::rotate(std::ranges::find_if(first, mid,
+                                [&](T x) { return proj(x) >= proj(possible_majority); }),
+                    mid, tail);
                 continue;
             }
             // store (k, tail_size)
@@ -195,8 +198,10 @@ void inplace_unstable_select(RandomIt first, RandomIt mid, RandomIt last, Proj p
             last += len * (group_size - 1);
             len = last - first;
             // three-way partition
-            RandomIt pivot_start = std::partition(first, last, [&](T el) { return proj(el) < proj(pivot); });
-            RandomIt pivot_end = std::partition(pivot_start, last, [&](T el) { return proj(el) == proj(pivot); });
+            RandomIt pivot_start =
+                std::partition(first, last, [&](T el) { return proj(el) < proj(pivot); });
+            RandomIt pivot_end =
+                std::partition(pivot_start, last, [&](T el) { return proj(el) == proj(pivot); });
             RandomIt kth = first + k;
             if (kth < pivot_start) {
                 // shrink right

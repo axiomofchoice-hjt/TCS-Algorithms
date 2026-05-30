@@ -59,8 +59,8 @@ void random_test(const TestParam& param) {
         tcs::inplace_stable_select::inplace_stable_select(
             arr.begin(), arr.begin() + param.k, arr.end(), IndexedElement::proj);
     } catch (std::exception& e) {
-        INFO(std::format("{} [total_size={}, k={}, max_key={}, repeat_count={}]", e.what(), param.total_size, param.k,
-            param.max_key, param.repeat_count));
+        INFO(std::format("{} [total_size={}, k={}, max_key={}, repeat_count={}]", e.what(),
+            param.total_size, param.k, param.max_key, param.repeat_count));
         FAIL();
     }
 

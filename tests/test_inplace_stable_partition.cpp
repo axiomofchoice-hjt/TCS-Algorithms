@@ -54,15 +54,15 @@ void random_test(const TestParam& param) {
         iota_index(arr);
 
         auto expected = arr;
-        std::stable_partition(
-            expected.begin(), expected.end(), [](IndexedElement e) { return IndexedElement::proj(e) == 0; });
+        std::stable_partition(expected.begin(), expected.end(),
+            [](IndexedElement e) { return IndexedElement::proj(e) == 0; });
 
         try {
-            tcs::inplace_stable_partition::inplace_stable_partition(
-                arr.begin(), arr.end(), [](IndexedElement e) { return IndexedElement::proj(e) == 0; });
+            tcs::inplace_stable_partition::inplace_stable_partition(arr.begin(), arr.end(),
+                [](IndexedElement e) { return IndexedElement::proj(e) == 0; });
         } catch (std::exception& e) {
-            INFO(std::format("{} [total_size={}, num_ones={}, repeat_count={}]", e.what(), param.total_size,
-                param.num_ones, param.repeat_count));
+            INFO(std::format("{} [total_size={}, num_ones={}, repeat_count={}]", e.what(),
+                param.total_size, param.num_ones, param.repeat_count));
             FAIL();
         }
 
