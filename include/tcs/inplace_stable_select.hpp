@@ -8,6 +8,7 @@
 #include <source_location>
 #include <stdexcept>
 #include <string_view>
+#include <vector>
 
 namespace tcs {
 namespace inplace_stable_select {
@@ -17,6 +18,30 @@ inline void assert_or_throw(bool condition, std::string_view message = "empty me
         throw std::runtime_error(
             std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
     }
+}
+
+template <typename RandomIt, typename Pred>
+void inplace_stable_partition_stub(RandomIt first, RandomIt last, Pred pred) {
+    std::stable_partition(first, last, pred);
+}
+
+template <typename RandomIt, typename Pred, typename Placement>
+void inplace_stable_unpartition_stub(
+    RandomIt first, RandomIt last, Pred pred, Placement placement) {
+    using T = typename std::iterator_traits<RandomIt>::value_type;
+    RandomIt left_it = first;
+    RandomIt right_it = std::find_if(first, last, [pred](T x) { return !pred(x); });
+    std::vector<T> buffer;
+    for (RandomIt it = first; it < last; it++) {
+        if (placement(it)) {
+            buffer.push_back(*left_it);
+            left_it++;
+        } else {
+            buffer.push_back(*right_it);
+            right_it++;
+        }
+    }
+    std::ranges::copy(buffer, first);
 }
 
 inline int64_t ceil_log2(int64_t x) {
@@ -71,7 +96,7 @@ bool extract_buffer(RandomIt first, RandomIt last, int64_t buffer_len, Proj proj
         len - buffer_len) {
         return false;
     }
-    std::stable_partition(first, last, [&](T x) { return proj(x) != proj(major); });
+    inplace_stable_partition_stub(first, last, [&](T x) { return proj(x) != proj(major); });
     RandomIt major_it =
         std::ranges::find_if(first, last, [&](T x) { return proj(x) == proj(major); });
     std::ranges::rotate(first + buffer_len, major_it, major_it + buffer_len);
@@ -86,7 +111,7 @@ void inplace_stable_select(RandomIt first, RandomIt mid, RandomIt last, Proj pro
     int64_t buffer_len = static_cast<int64_t>(std::floor(std::sqrt(len))) * 2;
     if (!extract_buffer(first, last, buffer_len, proj)) {
         T major = probable_major(first, last, proj);
-        std::stable_partition(first, last, [&](T x) { return proj(x) != proj(major); });
+        inplace_stable_partition_stub(first, last, [&](T x) { return proj(x) != proj(major); });
         RandomIt major_it =
             std::ranges::find_if(first, last, [&](T x) { return proj(x) == proj(major); });
         bubble_sort(first, major_it, proj);
