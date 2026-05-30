@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <format>
+#include <functional>
 #include <source_location>
 #include <stdexcept>
 #include <string_view>
@@ -15,10 +16,10 @@ inline void assert_or_throw(bool condition, std::string_view message = "empty me
     }
 }
 
-template <typename RandomIt>
-void inplace_stable_select(RandomIt first, RandomIt mid, RandomIt last) {
+template <typename RandomIt, typename Proj = std::identity>
+void inplace_stable_select(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
     assert_or_throw(first <= mid && mid < last);
-    std::stable_sort(first, last);  // TODO: implement inplace_stable_select
+    std::ranges::stable_sort(first, last, {}, proj);  // TODO: implement inplace_stable_select
 }
 }  // namespace inplace_stable_select
 }  // namespace tcs
