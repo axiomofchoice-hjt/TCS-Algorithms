@@ -23,12 +23,13 @@ inline int64_t ceil_log2(int64_t x) {
     return std::bit_width(static_cast<uint64_t>(x) - 1);
 }
 
-template <typename T, typename Pred>
-std::tuple<T*, T*, T*> stable_collect_first_n(T* first, T* last, int64_t n, Pred pred) {
+template <typename RandomIt, typename Pred>
+std::tuple<RandomIt, RandomIt, RandomIt> stable_collect_first_n(RandomIt first, RandomIt last, int64_t n, Pred pred) {
+    using T = typename std::iterator_traits<RandomIt>::value_type;
     static_assert(std::is_invocable_r_v<bool, Pred, T>);
-    T* collect = first;
+    RandomIt collect = first;
     int64_t count = 0;
-    for (T* iter = first; iter < last; iter++) {
+    for (RandomIt iter = first; iter < last; iter++) {
         if (count < n && pred(*iter)) {
             std::rotate(collect, collect + count, iter);
             collect = iter - count;
@@ -39,19 +40,20 @@ std::tuple<T*, T*, T*> stable_collect_first_n(T* first, T* last, int64_t n, Pred
     return {first, first + count, last};
 }
 
-template <typename T, typename Proj>
-void homogenize_blocks(T* first, T* last, int64_t block_size, Proj proj) {
+template <typename RandomIt, typename Proj>
+void homogenize_blocks(RandomIt first, RandomIt last, int64_t block_size, Proj proj) {
+    using T = typename std::iterator_traits<RandomIt>::value_type;
     static_assert(std::is_invocable_v<Proj, T>);
     assert_or_throw((last - first) % block_size == 0);
     int64_t n_blocks = (last - first) / block_size;
     for (int64_t i = 0; i + 2 <= n_blocks; i++) {
-        T* left = first + (i * block_size);
-        T* mid = left + block_size;
-        T* right = mid + block_size;
+        RandomIt left = first + (i * block_size);
+        RandomIt mid = left + block_size;
+        RandomIt right = mid + block_size;
         assert_or_throw(std::is_sorted(left, mid, [proj](T a, T b) { return proj(a) < proj(b); }));
         assert_or_throw(std::is_sorted(mid, right, [proj](T a, T b) { return proj(a) < proj(b); }));
-        T* split_left = std::find_if(left, mid, proj);
-        T* split_right = std::find_if(mid, right, proj);
+        RandomIt split_left = std::find_if(left, mid, proj);
+        RandomIt split_right = std::find_if(mid, right, proj);
         int64_t n_zeros = (split_left - left) + (split_right - mid);
         if (n_zeros >= block_size) {
             std::rotate(split_left, mid, split_right);
@@ -63,8 +65,9 @@ void homogenize_blocks(T* first, T* last, int64_t block_size, Proj proj) {
     }
 }
 
-template <typename T, typename Pred>
-int64_t block_count_if(T* first, T* last, int64_t block_size, Pred pred) {
+template <typename RandomIt, typename Pred>
+int64_t block_count_if(RandomIt first, RandomIt last, int64_t block_size, Pred pred) {
+    using T = typename std::iterator_traits<RandomIt>::value_type;
     static_assert(std::is_invocable_r_v<bool, Pred, T>);
     assert_or_throw((last - first) % block_size == 0);
     int64_t n_blocks = (last - first) / block_size;
@@ -107,17 +110,18 @@ struct WordStorage {
     void reset() { word = 0; }
 };
 
-template <typename T, typename Proj>
+template <typename RandomIt, typename Proj>
 struct BufferStorage {
-    T* buf0;
-    T* buf1;
+    RandomIt buf0;
+    RandomIt buf1;
     int64_t n_bits;
     int64_t element_bits;
     Proj proj;
 
+    using T = typename std::iterator_traits<RandomIt>::value_type;
     static_assert(std::is_invocable_v<Proj, T>);
 
-    static BufferStorage create(StorageAttributes attr, T* buf0, T* buf1, Proj proj) {
+    static BufferStorage create(StorageAttributes attr, RandomIt buf0, RandomIt buf1, Proj proj) {
         return BufferStorage{
             .buf0 = buf0, .buf1 = buf1, .n_bits = attr.n_bits, .element_bits = attr.element_bits, .proj = proj};
     }
@@ -148,8 +152,9 @@ struct BufferStorage {
     }
 };
 
-template <typename T, typename Proj, typename Storage>
-void sort_blocks_impl(T* first, T* last, int64_t block_size, Proj proj, Storage& storage) {
+template <typename RandomIt, typename Proj, typename Storage>
+void sort_blocks_impl(RandomIt first, RandomIt last, int64_t block_size, Proj proj, Storage& storage) {
+    using T = typename std::iterator_traits<RandomIt>::value_type;
     static_assert(std::is_invocable_v<Proj, T>);
     int64_t n_blocks = (last - first) / block_size;
     if (n_blocks <= 1) {
@@ -174,8 +179,9 @@ void sort_blocks_impl(T* first, T* last, int64_t block_size, Proj proj, Storage&
     storage.reset();
 }
 
-template <typename T, typename Proj>
-void sort_blocks_using_word(T* first, T* last, int64_t block_size, Proj proj, int64_t word_bits) {
+template <typename RandomIt, typename Proj>
+void sort_blocks_using_word(RandomIt first, RandomIt last, int64_t block_size, Proj proj, int64_t word_bits) {
+    using T = typename std::iterator_traits<RandomIt>::value_type;
     static_assert(std::is_invocable_v<Proj, T>);
     assert_or_throw((last - first) % block_size == 0);
     int64_t n_blocks = (last - first) / block_size;
@@ -188,8 +194,10 @@ void sort_blocks_using_word(T* first, T* last, int64_t block_size, Proj proj, in
     sort_blocks_impl(first, last, block_size, proj, storage);
 }
 
-template <typename T, typename Proj>
-void sort_blocks_using_buffer(T* first, T* last, int64_t block_size, T* buf0, T* buf1, int64_t buffer_len, Proj proj) {
+template <typename RandomIt, typename Proj>
+void sort_blocks_using_buffer(
+    RandomIt first, RandomIt last, int64_t block_size, RandomIt buf0, RandomIt buf1, int64_t buffer_len, Proj proj) {
+    using T = typename std::iterator_traits<RandomIt>::value_type;
     static_assert(std::is_invocable_v<Proj, T>);
     assert_or_throw((last - first) % block_size == 0);
     int64_t n_blocks = (last - first) / block_size;
@@ -199,22 +207,24 @@ void sort_blocks_using_buffer(T* first, T* last, int64_t block_size, T* buf0, T*
     int64_t element_bits = ceil_log2(n_blocks);
     assert_or_throw(n_blocks * element_bits <= buffer_len, std::format("{} {} {}", n_blocks, element_bits, buffer_len));
     auto storage =
-        BufferStorage<T, Proj>::create({.n_bits = buffer_len, .element_bits = element_bits}, buf0, buf1, proj);
+        BufferStorage<RandomIt, Proj>::create({.n_bits = buffer_len, .element_bits = element_bits}, buf0, buf1, proj);
     sort_blocks_impl(first, last, block_size, proj, storage);
 }
 
-template <typename T, typename Proj>
-void inplace_01_merge(T* first, T* last, Proj proj) {
+template <typename RandomIt, typename Proj>
+void inplace_01_merge(RandomIt first, RandomIt last, Proj proj) {
+    using T = typename std::iterator_traits<RandomIt>::value_type;
     static_assert(std::is_invocable_v<Proj, T>);
-    T* split_left = std::find_if(first, last, proj);
-    T* mid = std::find_if(split_left, last, [proj](T x) { return proj(x) == 0; });
-    T* split_right = std::find_if(mid, last, proj);
+    RandomIt split_left = std::find_if(first, last, proj);
+    RandomIt mid = std::find_if(split_left, last, [proj](T x) { return proj(x) == 0; });
+    RandomIt split_right = std::find_if(mid, last, proj);
     std::rotate(split_left, mid, split_right);
     assert_or_throw(std::is_sorted(first, last, [proj](T a, T b) { return proj(a) < proj(b); }));
 }
 
-template <typename T, typename Proj>
-void inplace_stable_01_partition(T* first, T* last, Proj proj) {
+template <typename RandomIt, typename Proj>
+void inplace_stable_01_partition(RandomIt first, RandomIt last, Proj proj) {
+    using T = typename std::iterator_traits<RandomIt>::value_type;
     static_assert(std::is_invocable_v<Proj, T>);
     if (last - first <= 1) {
         return;
@@ -231,12 +241,12 @@ void inplace_stable_01_partition(T* first, T* last, Proj proj) {
         max_blocks_for_buffer++;
     }
     // buffer area
-    T* buf0;
+    RandomIt buf0;
     std::tie(buf0, first, last) = stable_collect_first_n(first, last, buffer_len, [proj](T x) { return proj(x) == 0; });
     if (first - buf0 < buffer_len) {
         return;
     }
-    T* buf1;
+    RandomIt buf1;
     std::tie(buf1, first, last) = stable_collect_first_n(first, last, buffer_len, [proj](T x) { return proj(x) == 1; });
     if (first - buf1 < buffer_len) {
         std::rotate(buf1, first, last);
@@ -277,8 +287,9 @@ void inplace_stable_01_partition(T* first, T* last, Proj proj) {
     inplace_01_merge(buf0, last, proj);
 }
 
-template <typename T, typename Pred>
-void inplace_stable_partition(T* first, T* last, Pred pred) {
+template <typename RandomIt, typename Pred>
+void inplace_stable_partition(RandomIt first, RandomIt last, Pred pred) {
+    using T = typename std::iterator_traits<RandomIt>::value_type;
     static_assert(std::is_invocable_r_v<bool, Pred, T>);
     inplace_stable_01_partition(first, last, [pred](T x) { return pred(x) ? 0 : 1; });
 }

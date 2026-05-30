@@ -24,10 +24,10 @@ inline int64_t ceil_log2(int64_t x) {
     return std::bit_width(static_cast<uint64_t>(x) - 1);
 }
 
-template <typename T, typename Placement>
-int64_t count_if_placement_equals(T* first, T* last, int key, Placement placement) {
+template <typename RandomIt, typename Placement>
+int64_t count_if_placement_equals(RandomIt first, RandomIt last, int key, Placement placement) {
     int64_t cnt = 0;
-    for (T* it = first; it < last; it++) {
+    for (RandomIt it = first; it < last; it++) {
         if (placement(it) == key) {
             cnt++;
         }
@@ -35,24 +35,26 @@ int64_t count_if_placement_equals(T* first, T* last, int key, Placement placemen
     return cnt;
 }
 
-template <typename T, typename Proj, typename Placement>
-void check_partition_consistency(T* first, T* last, Proj proj, Placement placement,
+template <typename RandomIt, typename Proj, typename Placement>
+void check_partition_consistency(RandomIt first, RandomIt last, Proj proj, Placement placement,
     const std::source_location& loc = std::source_location::current()) {
+    using T = typename std::iterator_traits<RandomIt>::value_type;
     static_assert(std::is_invocable_v<Proj, T>);
-    static_assert(std::is_invocable_v<Placement, T*>);
+    static_assert(std::is_invocable_v<Placement, RandomIt>);
     assert_or_throw(
         std::count_if(first, last, proj) == count_if_placement_equals(first, last, 1, placement), "empty message", loc);
 }
 
-template <typename T, typename Proj, typename Placement>
-void dehomogenize_blocks(T* first, T* last, int64_t block_size, Proj proj, Placement placement) {
+template <typename RandomIt, typename Proj, typename Placement>
+void dehomogenize_blocks(RandomIt first, RandomIt last, int64_t block_size, Proj proj, Placement placement) {
+    using T = typename std::iterator_traits<RandomIt>::value_type;
     assert_or_throw((last - first) % block_size == 0);
     int64_t n_blocks = (last - first) / block_size;
     for (int64_t i = 0; i + 2 <= n_blocks; i++) {
-        T* left = first + (i * block_size);
-        T* mid = left + block_size;
-        T* right = mid + block_size;
-        T* split01 = std::find_if(left, mid, proj);
+        RandomIt left = first + (i * block_size);
+        RandomIt mid = left + block_size;
+        RandomIt right = mid + block_size;
+        RandomIt split01 = std::find_if(left, mid, proj);
         assert_or_throw(std::is_sorted(left, mid, [proj](T a, T b) { return proj(a) < proj(b); }));
         assert_or_throw(std::all_of(mid, right, [proj, mid](T x) { return proj(x) == proj(*mid); }));
         int64_t cnt0_left = count_if_placement_equals(left, mid, 0, placement);
@@ -97,17 +99,18 @@ struct WordStorage {
     void reset() { word = 0; }
 };
 
-template <typename T, typename Proj>
+template <typename RandomIt, typename Proj>
 struct BufferStorage {
-    T* buf0;
-    T* buf1;
+    RandomIt buf0;
+    RandomIt buf1;
     int64_t n_bits;
     int64_t element_bits;
     Proj proj;
 
+    using T = typename std::iterator_traits<RandomIt>::value_type;
     static_assert(std::is_invocable_v<Proj, T>);
 
-    static BufferStorage create(StorageAttributes attr, T* buf0, T* buf1, Proj proj) {
+    static BufferStorage create(StorageAttributes attr, RandomIt buf0, RandomIt buf1, Proj proj) {
         return BufferStorage{
             .buf0 = buf0, .buf1 = buf1, .n_bits = attr.n_bits, .element_bits = attr.element_bits, .proj = proj};
     }
@@ -138,21 +141,22 @@ struct BufferStorage {
     }
 };
 
-template <typename T, typename Proj, typename Placement>
-void inplace_01_split(T* first, T* split, T* last, Proj proj, Placement placement) {
+template <typename RandomIt, typename Proj, typename Placement>
+void inplace_01_split(RandomIt first, RandomIt split, RandomIt last, Proj proj, Placement placement) {
     check_partition_consistency(first, last, proj, placement);
-    T* mid = std::find_if(first, last, proj);
-    T* l = first + count_if_placement_equals(first, split, 0, placement);
-    T* r = split + count_if_placement_equals(split, last, 0, placement);
+    RandomIt mid = std::find_if(first, last, proj);
+    RandomIt l = first + count_if_placement_equals(first, split, 0, placement);
+    RandomIt r = split + count_if_placement_equals(split, last, 0, placement);
     assert_or_throw(l <= mid && mid <= r);
     std::rotate(l, mid, r);
 }
 
-template <typename T, typename Proj, typename Placement>
-std::tuple<T*, T*, T*, T*> extract_buffer(T* first, T* last, Proj proj, Placement placement, int64_t buffer_len) {
+template <typename RandomIt, typename Proj, typename Placement>
+std::tuple<RandomIt, RandomIt, RandomIt, RandomIt> extract_buffer(
+    RandomIt first, RandomIt last, Proj proj, Placement placement, int64_t buffer_len) {
     check_partition_consistency(first, last, proj, placement);
     std::array<int64_t, 2> cnt = {};
-    for (T* it = first; it < last; it++) {
+    for (RandomIt it = first; it < last; it++) {
         cnt[placement(it)]++;
         if (cnt[0] >= buffer_len && cnt[1] >= buffer_len) {
             break;
@@ -165,13 +169,13 @@ std::tuple<T*, T*, T*, T*> extract_buffer(T* first, T* last, Proj proj, Placemen
     return {first, first, first, last};
 }
 
-template <typename T, typename Proj, typename Placement>
-void unpartition_with_rotation(T* first, T* last, Proj proj, Placement placement) {
-    T* mid = std::find_if(first, last, proj);
+template <typename RandomIt, typename Proj, typename Placement>
+void unpartition_with_rotation(RandomIt first, RandomIt last, Proj proj, Placement placement) {
+    RandomIt mid = std::find_if(first, last, proj);
     if (mid - first < last - mid) {
-        T* zero_start = first;
+        RandomIt zero_start = first;
         int64_t n_zeros = mid - first;
-        for (T* it = first; it < last; it++) {
+        for (RandomIt it = first; it < last; it++) {
             if (placement(it) == 0) {
                 std::rotate(zero_start, zero_start + n_zeros, it + n_zeros);
                 zero_start = it + 1;
@@ -179,9 +183,9 @@ void unpartition_with_rotation(T* first, T* last, Proj proj, Placement placement
             }
         }
     } else {
-        T* one_end = last;
+        RandomIt one_end = last;
         int64_t n_ones = last - mid;
-        for (T* it = last; it > first; it--) {
+        for (RandomIt it = last; it > first; it--) {
             if (placement(it - 1) == 1) {
                 std::rotate(it - n_ones, one_end - n_ones, one_end);
                 one_end = it - 1;
@@ -191,21 +195,22 @@ void unpartition_with_rotation(T* first, T* last, Proj proj, Placement placement
     }
 }
 
-template <typename T, typename Storage, typename Proj, typename Placement>
-void merge_blocks_impl(T* first, T* last, int64_t block_size, Storage& storage, Proj proj, Placement placement) {
+template <typename RandomIt, typename Storage, typename Proj, typename Placement>
+void merge_blocks_impl(
+    RandomIt first, RandomIt last, int64_t block_size, Storage& storage, Proj proj, Placement placement) {
     check_partition_consistency(first, last, proj, placement);
     int64_t n_blocks = (last - first) / block_size;
     if (n_blocks <= 2) {
         return;
     }
-    T* homogenized = first + block_size;
-    T* mid = std::find_if(homogenized, last, proj);
+    RandomIt homogenized = first + block_size;
+    RandomIt mid = std::find_if(homogenized, last, proj);
     int64_t block0_cnt1 = std::count_if(first, homogenized, proj);
     std::array<int64_t, 2> counters = {block_size - block0_cnt1, block0_cnt1};
     std::array<int64_t, 2> pointers = {1, (mid - first) / block_size};
     int64_t global_pos = 1;
     storage.set(0, 0);
-    auto update = [&](T* left, T* right) {
+    auto update = [&](RandomIt left, RandomIt right) {
         int64_t cnt0_placement = count_if_placement_equals(left, right, 0, placement);
         if (counters[0] <= cnt0_placement && pointers[0] < (mid - first) / block_size) {
             storage.set(pointers[0], global_pos);
@@ -237,8 +242,9 @@ void merge_blocks_impl(T* first, T* last, int64_t block_size, Storage& storage, 
     storage.reset();
 }
 
-template <typename T, typename Proj, typename Placement>
-void merge_blocks_using_word(T* first, T* last, int64_t block_size, Proj proj, Placement placement, int64_t word_bits) {
+template <typename RandomIt, typename Proj, typename Placement>
+void merge_blocks_using_word(
+    RandomIt first, RandomIt last, int64_t block_size, Proj proj, Placement placement, int64_t word_bits) {
     assert_or_throw((last - first) % block_size == 0);
     int64_t n_blocks = (last - first) / block_size;
     if (n_blocks <= 2) {
@@ -251,9 +257,10 @@ void merge_blocks_using_word(T* first, T* last, int64_t block_size, Proj proj, P
     merge_blocks_impl(first, last, block_size, storage, proj, placement);
 }
 
-template <typename T, typename Proj, typename Placement>
-void merge_blocks_using_buffer(
-    T* first, T* last, int64_t block_size, T* buf0, T* buf1, int64_t buffer_len, Proj proj, Placement placement) {
+template <typename RandomIt, typename Proj, typename Placement>
+void merge_blocks_using_buffer(RandomIt first, RandomIt last, int64_t block_size, RandomIt buf0, RandomIt buf1,
+    int64_t buffer_len, Proj proj, Placement placement) {
+    using T = typename std::iterator_traits<RandomIt>::value_type;
     assert_or_throw((last - first) % block_size == 0);
     int64_t n_blocks = (last - first) / block_size;
     if (n_blocks <= 2) {
@@ -262,12 +269,12 @@ void merge_blocks_using_buffer(
     int64_t element_bits = ceil_log2(n_blocks);
     assert_or_throw(n_blocks * element_bits <= buffer_len, std::format("{} {} {}", n_blocks, element_bits, buffer_len));
     auto storage =
-        BufferStorage<T, Proj>::create({.n_bits = buffer_len, .element_bits = element_bits}, buf0, buf1, proj);
+        BufferStorage<RandomIt, Proj>::create({.n_bits = buffer_len, .element_bits = element_bits}, buf0, buf1, proj);
     merge_blocks_impl(first, last, block_size, storage, proj, placement);
 }
 
-template <typename T, typename Proj, typename Placement>
-void inplace_stable_01_unpartition(T* first, T* last, Proj proj, Placement placement) {
+template <typename RandomIt, typename Proj, typename Placement>
+void inplace_stable_01_unpartition(RandomIt first, RandomIt last, Proj proj, Placement placement) {
     check_partition_consistency(first, last, proj, placement);
     if (last - first <= 1) {
         return;
@@ -284,8 +291,8 @@ void inplace_stable_01_unpartition(T* first, T* last, Proj proj, Placement place
         max_blocks_for_buffer++;
     }
     // buffer area
-    T* buf0;
-    T* buf1;
+    RandomIt buf0;
+    RandomIt buf1;
     std::tie(buf0, buf1, first, last) = extract_buffer(first, last, proj, placement, buffer_len);
     if (buf0 == first) {  // failed branch
         unpartition_with_rotation(first, last, proj, placement);
@@ -334,12 +341,13 @@ void inplace_stable_01_unpartition(T* first, T* last, Proj proj, Placement place
     unpartition_with_rotation(buf0, first, proj, placement);
 }
 
-template <typename T, typename Pred, typename Placement>
-void inplace_stable_unpartition(T* first, T* last, Pred pred, Placement placement) {
+template <typename RandomIt, typename Pred, typename Placement>
+void inplace_stable_unpartition(RandomIt first, RandomIt last, Pred pred, Placement placement) {
+    using T = typename std::iterator_traits<RandomIt>::value_type;
     static_assert(std::is_invocable_r_v<bool, Pred, T>);
-    static_assert(std::is_invocable_r_v<bool, Placement, T*>);
+    static_assert(std::is_invocable_r_v<bool, Placement, RandomIt>);
     inplace_stable_01_unpartition(
-        first, last, [pred](T x) { return pred(x) ? 0 : 1; }, [placement](T* x) { return placement(x) ? 0 : 1; });
+        first, last, [pred](T x) { return pred(x) ? 0 : 1; }, [placement](RandomIt x) { return placement(x) ? 0 : 1; });
 }
 }  // namespace inplace_stable_unpartition
 }  // namespace tcs

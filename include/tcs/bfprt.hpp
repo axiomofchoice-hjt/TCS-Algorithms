@@ -15,8 +15,9 @@ inline void assert_or_throw(bool condition, std::string_view message = "empty me
     }
 }
 
-template <typename T>
-void bfprt(T* first, T* mid, T* last) {
+template <typename RandomIt>
+void bfprt(RandomIt first, RandomIt mid, RandomIt last) {
+    using T = typename std::iterator_traits<RandomIt>::value_type;
     assert_or_throw(first <= mid && mid < last);
     int64_t len = last - first;
     constexpr int64_t group_size = 5;
@@ -32,8 +33,8 @@ void bfprt(T* first, T* mid, T* last) {
     bfprt(first, first + (len / group_size / 2), first + (len / group_size));
     // three-way partition
     T pivot = first[len / group_size / 2];
-    T* pivot_start = std::partition(first, last, [pivot](T el) { return el < pivot; });
-    T* pivot_end = std::partition(pivot_start, last, [pivot](T el) { return el == pivot; });
+    RandomIt pivot_start = std::partition(first, last, [pivot](T el) { return el < pivot; });
+    RandomIt pivot_end = std::partition(pivot_start, last, [pivot](T el) { return el == pivot; });
     // recurse
     if (mid < pivot_start) {
         bfprt(first, mid, pivot_start);

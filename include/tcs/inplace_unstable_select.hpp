@@ -5,11 +5,11 @@
 #include <bit>
 #include <climits>
 #include <cstdint>
-#include <utility>
 #include <format>
 #include <source_location>
 #include <stdexcept>
 #include <string_view>
+#include <utility>
 
 namespace tcs {
 namespace inplace_unstable_select {
@@ -68,11 +68,11 @@ struct BitStack {
     }
 };
 
-template <typename T>
-void bubble_sort(T* first, T* last) {
+template <typename RandomIt>
+void bubble_sort(RandomIt first, RandomIt last) {
     int64_t len = last - first;
     for (int64_t i = 0; i + 1 < len; i++) {
-        for (T* j = first; j < last - i - 1; j++) {
+        for (RandomIt j = first; j < last - i - 1; j++) {
             if (*j > *(j + 1)) {
                 std::swap(*j, *(j + 1));
             }
@@ -80,10 +80,10 @@ void bubble_sort(T* first, T* last) {
     }
 }
 
-template <typename T>
-bool prepare_buffer(T* first, T* last, int64_t n_bits) {
-    T* majority_ptr = first;
-    for (T* iter = first; iter < last; iter++) {
+template <typename RandomIt>
+bool prepare_buffer(RandomIt first, RandomIt last, int64_t n_bits) {
+    RandomIt majority_ptr = first;
+    for (RandomIt iter = first; iter < last; iter++) {
         if (majority_ptr - first == n_bits * 2) {
             break;
         }
@@ -95,8 +95,8 @@ bool prepare_buffer(T* first, T* last, int64_t n_bits) {
     return majority_ptr - first == n_bits * 2;
 }
 
-template <typename T>
-bool write_buffer(T* buffer, uint64_t value, int64_t n_bits) {
+template <typename RandomIt>
+bool write_buffer(RandomIt buffer, uint64_t value, int64_t n_bits) {
     assert_or_throw(ceil_log2(static_cast<int64_t>(value + 1)) <= n_bits);
 
     for (int64_t i = 0; i < n_bits; i++) {
@@ -108,8 +108,8 @@ bool write_buffer(T* buffer, uint64_t value, int64_t n_bits) {
     return true;
 }
 
-template <typename T>
-uint64_t read_buffer(T* buffer, int64_t n_bits) {
+template <typename RandomIt>
+uint64_t read_buffer(RandomIt buffer, int64_t n_bits) {
     uint64_t res = 0;
     for (int64_t i = 0; i < n_bits; i++) {
         assert_or_throw(buffer[i * 2] != buffer[(i * 2) + 1]);
@@ -118,8 +118,8 @@ uint64_t read_buffer(T* buffer, int64_t n_bits) {
     return res;
 }
 
-template <typename T>
-void move_largest_to_end(T* first, T* mid, T* last) {
+template <typename RandomIt>
+void move_largest_to_end(RandomIt first, RandomIt mid, RandomIt last) {
     int64_t right_size = last - mid;
     for (int64_t i = 0; i < right_size; i++) {
         std::swap(*std::max_element(first, last - i), *(last - i - 1));
@@ -133,8 +133,9 @@ static constexpr uint64_t restore_right = 2;
 static constexpr uint64_t restore_left = 3;
 }  // namespace Stage
 
-template <typename T>
-void inplace_unstable_select(T* first, T* mid, T* last) {
+template <typename RandomIt>
+void inplace_unstable_select(RandomIt first, RandomIt mid, RandomIt last) {
+    using T = typename std::iterator_traits<RandomIt>::value_type;
     constexpr int64_t group_size = 5;
     constexpr int64_t shrink_num = (group_size + 1) / 2;  // 3
     constexpr int64_t shrink_den = group_size * 2;        // 10
@@ -156,7 +157,7 @@ void inplace_unstable_select(T* first, T* mid, T* last) {
         if (stage == Stage::median_of_medians) {
             int64_t len = last - first;
             // align to alignment
-            T* tail = first + (len % alignment);
+            RandomIt tail = first + (len % alignment);
             int64_t aligned_len = tail - first;
             move_largest_to_end(first, tail, last);
             if (k >= aligned_len) {
@@ -168,10 +169,10 @@ void inplace_unstable_select(T* first, T* mid, T* last) {
                 std::swap(first[i / group_size], first[i + (group_size / 2)]);
             }
             // prepare buffer
-            T* buffer = first + (aligned_len / group_size);
+            RandomIt buffer = first + (aligned_len / group_size);
             if (!prepare_buffer(buffer, tail, word_bits)) {
                 T possible_majority = *(tail - 1);
-                T* mid = std::partition(first, tail, [&](T x) { return x != possible_majority; });
+                RandomIt mid = std::partition(first, tail, [&](T x) { return x != possible_majority; });
                 bubble_sort(first, mid);
                 std::rotate(std::find_if(first, mid, [&](T x) { return x >= possible_majority; }), mid, tail);
                 continue;
@@ -191,9 +192,9 @@ void inplace_unstable_select(T* first, T* mid, T* last) {
             last += len * (group_size - 1);
             len = last - first;
             // three-way partition
-            T* pivot_start = std::partition(first, last, [pivot](T el) { return el < pivot; });
-            T* pivot_end = std::partition(pivot_start, last, [pivot](T el) { return el == pivot; });
-            T* kth = first + k;
+            RandomIt pivot_start = std::partition(first, last, [pivot](T el) { return el < pivot; });
+            RandomIt pivot_end = std::partition(pivot_start, last, [pivot](T el) { return el == pivot; });
+            RandomIt kth = first + k;
             if (kth < pivot_start) {
                 // shrink right
                 last -= len * shrink_num / shrink_den;  // len * 3 / 10

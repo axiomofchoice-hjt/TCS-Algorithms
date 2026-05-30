@@ -15,8 +15,8 @@ inline void assert_or_throw(bool condition, std::string_view message = "empty me
     }
 }
 
-template <typename T>
-void inplace_stable_select(T* first, T* mid, T* last) {
+template <typename RandomIt>
+void inplace_stable_select(RandomIt first, RandomIt mid, RandomIt last) {
     assert_or_throw(first <= mid && mid < last);
     std::stable_sort(first, last);  // TODO: implement inplace_stable_select
 }
