@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators_range.hpp>
+#include <compare>
 #include <random>
 #include <ranges>
 #include <vector>
@@ -8,6 +9,14 @@
 #include "tcs/inplace_stable_select.hpp"
 
 namespace {
+
+struct Element {
+    int64_t key;
+    int64_t index;
+    std::strong_ordering operator<=>(const Element& other) const { return key <=> other.key; }
+    bool operator==(const Element& other) const { return key == other.key && index == other.index; }
+};
+
 struct TestParam {
     int64_t total_size;
     int64_t k;
@@ -45,20 +54,25 @@ void random_test(const TestParam& param) {
     static std::mt19937 gen(kRandomSeed);
     std::uniform_int_distribution<int64_t> key_dist(1, param.max_key);
 
-    auto arr = std::views::iota(0, param.total_size) | std::views::transform([&](int64_t) { return key_dist(gen); }) |
-               std::ranges::to<std::vector<int64_t>>();
+    auto arr = std::views::iota(0, param.total_size) |
+               std::views::transform([&](int64_t i) { return Element{key_dist(gen), i}; }) |
+               std::ranges::to<std::vector<Element>>();
 
     auto expected = arr;
     std::ranges::stable_sort(expected);
 
-    tcs::inplace_stable_select::inplace_stable_select(arr.data(), arr.data() + param.k, arr.data() + param.total_size);
+    tcs::inplace_stable_select::inplace_stable_select(
+        arr.data(), arr.data() + param.k, arr.data() + param.total_size);
 
-    int64_t pivot = arr[param.k];
-    REQUIRE(pivot == expected[param.k]);
-    REQUIRE(std::ranges::all_of(arr | std::views::take(param.k), [pivot](int64_t x) { return x <= pivot; }));
-    REQUIRE(std::ranges::all_of(arr | std::views::drop(param.k + 1), [pivot](int64_t x) { return x >= pivot; }));
-    REQUIRE(arr == expected);
+    int64_t pivot = arr[param.k].key;
+    REQUIRE(pivot == expected[param.k].key);
+    REQUIRE(std::ranges::all_of(arr | std::views::take(param.k), [pivot](Element e) { return e.key <= pivot; }));
+    REQUIRE(std::ranges::all_of(arr | std::views::drop(param.k + 1), [pivot](Element e) { return e.key >= pivot; }));
+    // verify stability: equal keys maintain original index order
+    REQUIRE(std::ranges::is_sorted(arr, std::less<>{},
+        [](Element e) { return std::pair{e.key, e.index}; }));
 }
+
 }  // namespace
 
 TEST_CASE("inplace_stable_select size sweep", "[inplace_stable_select]") {
