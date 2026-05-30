@@ -5,6 +5,7 @@
 #include <climits>
 #include <cmath>
 #include <format>
+#include <functional>
 #include <source_location>
 #include <stdexcept>
 #include <string_view>
@@ -40,7 +41,7 @@ std::tuple<RandomIt, RandomIt, RandomIt> stable_collect_first_n(RandomIt first, 
     return {first, first + count, last};
 }
 
-template <typename RandomIt, typename Proj>
+template <typename RandomIt, typename Proj = std::identity>
 void homogenize_blocks(RandomIt first, RandomIt last, int64_t block_size, Proj proj) {
     using T = typename std::iterator_traits<RandomIt>::value_type;
     static_assert(std::is_invocable_v<Proj, T>);
@@ -50,8 +51,8 @@ void homogenize_blocks(RandomIt first, RandomIt last, int64_t block_size, Proj p
         RandomIt left = first + (i * block_size);
         RandomIt mid = left + block_size;
         RandomIt right = mid + block_size;
-        assert_or_throw(std::is_sorted(left, mid, [proj](T a, T b) { return proj(a) < proj(b); }));
-        assert_or_throw(std::is_sorted(mid, right, [proj](T a, T b) { return proj(a) < proj(b); }));
+        assert_or_throw(std::ranges::is_sorted(left, mid, {}, proj));
+        assert_or_throw(std::ranges::is_sorted(mid, right, {}, proj));
         RandomIt split_left = std::find_if(left, mid, proj);
         RandomIt split_right = std::find_if(mid, right, proj);
         int64_t n_zeros = (split_left - left) + (split_right - mid);
@@ -110,7 +111,7 @@ struct WordStorage {
     void reset() { word = 0; }
 };
 
-template <typename RandomIt, typename Proj>
+template <typename RandomIt, typename Proj = std::identity>
 struct BufferStorage {
     RandomIt buf0;
     RandomIt buf1;
@@ -152,7 +153,7 @@ struct BufferStorage {
     }
 };
 
-template <typename RandomIt, typename Proj, typename Storage>
+template <typename RandomIt, typename Proj = std::identity, typename Storage>
 void sort_blocks_impl(RandomIt first, RandomIt last, int64_t block_size, Proj proj, Storage& storage) {
     using T = typename std::iterator_traits<RandomIt>::value_type;
     static_assert(std::is_invocable_v<Proj, T>);
@@ -179,7 +180,7 @@ void sort_blocks_impl(RandomIt first, RandomIt last, int64_t block_size, Proj pr
     storage.reset();
 }
 
-template <typename RandomIt, typename Proj>
+template <typename RandomIt, typename Proj = std::identity>
 void sort_blocks_using_word(RandomIt first, RandomIt last, int64_t block_size, Proj proj, int64_t word_bits) {
     using T = typename std::iterator_traits<RandomIt>::value_type;
     static_assert(std::is_invocable_v<Proj, T>);
@@ -194,7 +195,7 @@ void sort_blocks_using_word(RandomIt first, RandomIt last, int64_t block_size, P
     sort_blocks_impl(first, last, block_size, proj, storage);
 }
 
-template <typename RandomIt, typename Proj>
+template <typename RandomIt, typename Proj = std::identity>
 void sort_blocks_using_buffer(
     RandomIt first, RandomIt last, int64_t block_size, RandomIt buf0, RandomIt buf1, int64_t buffer_len, Proj proj) {
     using T = typename std::iterator_traits<RandomIt>::value_type;
@@ -211,7 +212,7 @@ void sort_blocks_using_buffer(
     sort_blocks_impl(first, last, block_size, proj, storage);
 }
 
-template <typename RandomIt, typename Proj>
+template <typename RandomIt, typename Proj = std::identity>
 void inplace_01_merge(RandomIt first, RandomIt last, Proj proj) {
     using T = typename std::iterator_traits<RandomIt>::value_type;
     static_assert(std::is_invocable_v<Proj, T>);
@@ -219,10 +220,10 @@ void inplace_01_merge(RandomIt first, RandomIt last, Proj proj) {
     RandomIt mid = std::find_if(split_left, last, [proj](T x) { return proj(x) == 0; });
     RandomIt split_right = std::find_if(mid, last, proj);
     std::rotate(split_left, mid, split_right);
-    assert_or_throw(std::is_sorted(first, last, [proj](T a, T b) { return proj(a) < proj(b); }));
+    assert_or_throw(std::ranges::is_sorted(first, last, {}, proj));
 }
 
-template <typename RandomIt, typename Proj>
+template <typename RandomIt, typename Proj = std::identity>
 void inplace_stable_01_partition(RandomIt first, RandomIt last, Proj proj) {
     using T = typename std::iterator_traits<RandomIt>::value_type;
     static_assert(std::is_invocable_v<Proj, T>);
