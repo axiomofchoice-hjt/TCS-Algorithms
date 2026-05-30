@@ -43,7 +43,7 @@ void check_partition_consistency(RandomIt first, RandomIt last, Proj proj, Place
     static_assert(std::is_invocable_v<Proj, T>);
     static_assert(std::is_invocable_v<Placement, RandomIt>);
     assert_or_throw(
-        std::count_if(first, last, proj) == count_if_placement_equals(first, last, 1, placement), "empty message", loc);
+        std::ranges::count_if(first, last, proj) == count_if_placement_equals(first, last, 1, placement), "empty message", loc);
 }
 
 template <typename RandomIt, typename Proj = std::identity, typename Placement>
@@ -55,9 +55,9 @@ void dehomogenize_blocks(RandomIt first, RandomIt last, int64_t block_size, Proj
         RandomIt left = first + (i * block_size);
         RandomIt mid = left + block_size;
         RandomIt right = mid + block_size;
-        RandomIt split01 = std::find_if(left, mid, proj);
+        RandomIt split01 = std::ranges::find_if(left, mid, proj);
         assert_or_throw(std::ranges::is_sorted(left, mid, {}, proj));
-        assert_or_throw(std::all_of(mid, right, [proj, mid](T x) { return proj(x) == proj(*mid); }));
+        assert_or_throw(std::ranges::all_of(mid, right, [proj, mid](T x) { return proj(x) == proj(*mid); }));
         int64_t cnt0_left = count_if_placement_equals(left, mid, 0, placement);
         if (split01 < left + cnt0_left) {
             assert_or_throw(proj(*mid) == 0);
@@ -145,7 +145,7 @@ struct BufferStorage {
 template <typename RandomIt, typename Proj = std::identity, typename Placement>
 void inplace_01_split(RandomIt first, RandomIt split, RandomIt last, Proj proj, Placement placement) {
     check_partition_consistency(first, last, proj, placement);
-    RandomIt mid = std::find_if(first, last, proj);
+    RandomIt mid = std::ranges::find_if(first, last, proj);
     RandomIt l = first + count_if_placement_equals(first, split, 0, placement);
     RandomIt r = split + count_if_placement_equals(split, last, 0, placement);
     assert_or_throw(l <= mid && mid <= r);
@@ -172,7 +172,7 @@ std::tuple<RandomIt, RandomIt, RandomIt, RandomIt> extract_buffer(
 
 template <typename RandomIt, typename Proj = std::identity, typename Placement>
 void unpartition_with_rotation(RandomIt first, RandomIt last, Proj proj, Placement placement) {
-    RandomIt mid = std::find_if(first, last, proj);
+    RandomIt mid = std::ranges::find_if(first, last, proj);
     if (mid - first < last - mid) {
         RandomIt zero_start = first;
         int64_t n_zeros = mid - first;
@@ -205,8 +205,8 @@ void merge_blocks_impl(
         return;
     }
     RandomIt homogenized = first + block_size;
-    RandomIt mid = std::find_if(homogenized, last, proj);
-    int64_t block0_cnt1 = std::count_if(first, homogenized, proj);
+    RandomIt mid = std::ranges::find_if(homogenized, last, proj);
+    auto block0_cnt1 = std::ranges::count_if(first, homogenized, proj);
     std::array<int64_t, 2> counters = {block_size - block0_cnt1, block0_cnt1};
     std::array<int64_t, 2> pointers = {1, (mid - first) / block_size};
     int64_t global_pos = 1;
@@ -310,7 +310,7 @@ void inplace_stable_01_unpartition(RandomIt first, RandomIt last, Proj proj, Pla
             int64_t end = std::min(start + merge_size, len);
             int64_t end_l2_aligned = end / block_size * block_size;
             inplace_01_split(first + start, first + end_l2_aligned, first + end, proj, placement);
-            int64_t mid = std::find_if(first + start, first + end_l2_aligned, proj) - first;
+            auto mid = std::ranges::find_if(first + start, first + end_l2_aligned, proj) - first;
             if (mid % block_size != 0) {
                 std::rotate(first + start + (mid % block_size), first + mid,
                     first + ((mid + block_size - 1) / block_size * block_size));
@@ -328,7 +328,7 @@ void inplace_stable_01_unpartition(RandomIt first, RandomIt last, Proj proj, Pla
             int64_t end = std::min(start + merge_size, len);
             int64_t end_l2_aligned = end / block_size * block_size;
             inplace_01_split(first + start, first + end_l2_aligned, first + end, proj, placement);
-            int64_t mid = std::find_if(first + start, first + end_l2_aligned, proj) - first;
+            auto mid = std::ranges::find_if(first + start, first + end_l2_aligned, proj) - first;
             if (mid % block_size != 0) {
                 std::rotate(first + start + (mid % block_size), first + mid,
                     first + ((mid + block_size - 1) / block_size * block_size));

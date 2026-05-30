@@ -123,7 +123,7 @@ template <typename RandomIt, typename Proj = std::identity>
 void move_largest_to_end(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
     int64_t right_size = last - mid;
     for (int64_t i = 0; i < right_size; i++) {
-        std::swap(*std::max_element(first, last - i, [proj](auto& a, auto& b) { return proj(a) < proj(b); }),
+        std::swap(*std::ranges::max_element(first, last - i, std::less{}, proj),
             *(last - i - 1));
     }
 }
@@ -177,7 +177,7 @@ void inplace_unstable_select(RandomIt first, RandomIt mid, RandomIt last, Proj p
                 RandomIt mid = std::partition(first, tail, [&](T x) { return proj(x) != proj(possible_majority); });
                 bubble_sort(first, mid, proj);
                 std::rotate(
-                    std::find_if(first, mid, [&](T x) { return proj(x) >= proj(possible_majority); }), mid, tail);
+                    std::ranges::find_if(first, mid, [&](T x) { return proj(x) >= proj(possible_majority); }), mid, tail);
                 continue;
             }
             // store (k, tail_size)

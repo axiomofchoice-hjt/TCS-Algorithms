@@ -53,8 +53,8 @@ void homogenize_blocks(RandomIt first, RandomIt last, int64_t block_size, Proj p
         RandomIt right = mid + block_size;
         assert_or_throw(std::ranges::is_sorted(left, mid, {}, proj));
         assert_or_throw(std::ranges::is_sorted(mid, right, {}, proj));
-        RandomIt split_left = std::find_if(left, mid, proj);
-        RandomIt split_right = std::find_if(mid, right, proj);
+        RandomIt split_left = std::ranges::find_if(left, mid, proj);
+        RandomIt split_right = std::ranges::find_if(mid, right, proj);
         int64_t n_zeros = (split_left - left) + (split_right - mid);
         if (n_zeros >= block_size) {
             std::rotate(split_left, mid, split_right);
@@ -216,9 +216,9 @@ template <typename RandomIt, typename Proj = std::identity>
 void inplace_01_merge(RandomIt first, RandomIt last, Proj proj) {
     using T = typename std::iterator_traits<RandomIt>::value_type;
     static_assert(std::is_invocable_v<Proj, T>);
-    RandomIt split_left = std::find_if(first, last, proj);
-    RandomIt mid = std::find_if(split_left, last, [proj](T x) { return proj(x) == 0; });
-    RandomIt split_right = std::find_if(mid, last, proj);
+    RandomIt split_left = std::ranges::find_if(first, last, proj);
+    RandomIt mid = std::ranges::find_if(split_left, last, [proj](T x) { return proj(x) == 0; });
+    RandomIt split_right = std::ranges::find_if(mid, last, proj);
     std::rotate(split_left, mid, split_right);
     assert_or_throw(std::ranges::is_sorted(first, last, {}, proj));
 }
