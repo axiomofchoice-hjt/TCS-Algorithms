@@ -1,20 +1,14 @@
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators_range.hpp>
-#include <compare>
 #include <random>
 #include <ranges>
 #include <vector>
 
+#include "common_test.hpp"
 #include "tcs/inplace_stable_merge.hpp"
 
 namespace {
-struct Element {
-    int64_t key;
-    int64_t index;
-    std::strong_ordering operator<=>(const Element& other) const { return key <=> other.key; }
-    bool operator==(const Element& other) const { return key == other.key; }
-};
 
 struct TestParam {
     int64_t total_size;
@@ -55,8 +49,8 @@ void random_test(const TestParam& param) {
 
     for ([[maybe_unused]] int64_t i : std::views::iota(0, param.repeat_count)) {
         auto arr = std::views::iota(0, param.total_size) |
-                   std::views::transform([&key_dist](int64_t i) { return Element{key_dist(gen), 0}; }) |
-                   std::ranges::to<std::vector<Element>>();
+                   std::views::transform([&key_dist](int64_t i) { return IndexedElement{key_dist(gen), 0}; }) |
+                   std::ranges::to<std::vector<IndexedElement>>();
 
         std::sort(arr.begin(), arr.begin() + param.left_size);
         std::sort(arr.begin() + param.left_size, arr.end());

@@ -5,14 +5,10 @@
 #include <ranges>
 #include <vector>
 
+#include "common_test.hpp"
 #include "tcs/inplace_stable_partition.hpp"
 
 namespace {
-struct Element {
-    int64_t key;
-    int64_t index;
-};
-
 struct TestParam {
     int64_t total_size;
     int64_t num_ones;
@@ -49,7 +45,7 @@ void random_test(const TestParam& param) {
     int64_t num_ones = param.num_ones;
 
     for (int64_t i = 0; i < param.repeat_count; i++) {
-        std::vector<Element> arr(n);
+        std::vector<IndexedElement> arr(n);
 
         for (int64_t i = 0; i < n; i++) {
             arr[i] = {i < num_ones ? 1 : 0, 0};
@@ -62,11 +58,11 @@ void random_test(const TestParam& param) {
         }
 
         auto expected = arr;
-        std::stable_partition(expected.begin(), expected.end(), [](Element e) { return e.key == 0; });
+        std::stable_partition(expected.begin(), expected.end(), [](IndexedElement e) { return e.key == 0; });
 
         try {
             tcs::inplace_stable_partition::inplace_stable_partition(
-                arr.data(), arr.data() + n, [](Element e) { return e.key == 0; });
+                arr.data(), arr.data() + n, [](IndexedElement e) { return e.key == 0; });
         } catch (std::exception& e) {
             INFO(std::format("{} [total_size={}, num_ones={}, repeat_count={}]", e.what(), param.total_size,
                 param.num_ones, param.repeat_count));

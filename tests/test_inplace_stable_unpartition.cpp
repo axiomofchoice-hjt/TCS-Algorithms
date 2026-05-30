@@ -5,14 +5,10 @@
 #include <ranges>
 #include <vector>
 
+#include "common_test.hpp"
 #include "tcs/inplace_stable_unpartition.hpp"
 
 namespace {
-struct Element {
-    int64_t key;
-    int64_t index;
-};
-
 struct TestParam {
     int64_t total_size;
     int64_t num_ones;
@@ -49,7 +45,7 @@ void random_test(const TestParam& param) {
     int64_t num_ones = param.num_ones;
 
     for ([[maybe_unused]] int64_t i : std::views::iota(0, param.repeat_count)) {
-        std::vector<Element> arr(n);
+        std::vector<IndexedElement> arr(n);
         std::vector<bool> placement(n);
 
         for (int64_t i = 0; i < n; i++) {
@@ -62,12 +58,12 @@ void random_test(const TestParam& param) {
         }
 
         auto expected = arr;
-        std::stable_sort(arr.begin(), arr.end(), [](Element a, Element b) { return a.key < b.key; });
+        std::stable_sort(arr.begin(), arr.end(), [](IndexedElement a, IndexedElement b) { return a.key < b.key; });
 
         try {
             tcs::inplace_stable_unpartition::inplace_stable_unpartition(
-                arr.data(), arr.data() + n, [](Element e) { return e.key == 0; },
-                [&arr, &placement](Element* p) { return !placement[p - arr.data()]; });
+                arr.data(), arr.data() + n, [](IndexedElement e) { return e.key == 0; },
+                [&arr, &placement](IndexedElement* p) { return !placement[p - arr.data()]; });
         } catch (std::exception& e) {
             INFO(std::format("{} [total_size={}, num_ones={}, repeat_count={}]", e.what(), param.total_size,
                 param.num_ones, param.repeat_count));
