@@ -178,7 +178,7 @@ void inplace_unstable_select(RandomIt first, RandomIt mid, RandomIt last, Proj p
                 RandomIt mid = std::partition(
                     first, tail, [&](T x) { return proj(x) != proj(possible_majority); });
                 bubble_sort(first, mid, proj);
-                std::rotate(std::ranges::find_if(first, mid,
+                std::ranges::rotate(std::ranges::find_if(first, mid,
                                 [&](T x) { return proj(x) >= proj(possible_majority); }),
                     mid, tail);
                 continue;

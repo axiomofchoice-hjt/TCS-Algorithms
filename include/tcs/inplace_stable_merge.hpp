@@ -53,7 +53,7 @@ void inplace_merge_with_rotation_scroll_right(
             split_right++;
         }
         if (mid != split_right) {
-            std::rotate(first, mid, split_right);
+            std::ranges::rotate(first, mid, split_right);
         }
         first += (split_right - mid);
         mid = split_right;
@@ -75,7 +75,7 @@ void inplace_merge_with_rotation_scroll_left(
             split_left--;
         }
         if (mid != split_left) {
-            std::rotate(split_left, mid, last);
+            std::ranges::rotate(split_left, mid, last);
         }
         last -= (mid - split_left);
         mid = split_left;
@@ -107,7 +107,7 @@ std::tuple<RandomIt, RandomIt> inplace_merge_with_rotation_indexed(
             split_right++;
         }
         if (mid != split_right) {
-            std::rotate(first, mid, split_right);
+            std::ranges::rotate(first, mid, split_right);
         }
         first += (split_right - mid);
         mid = split_right;
@@ -132,13 +132,13 @@ std::tuple<RandomIt, RandomIt, RandomIt> stable_unique_limit(
     int64_t len = 0;
     for (RandomIt iter = first; iter < last; iter++) {
         if (len < max && (left == right || proj(*(right - 1)) != proj(*iter))) {
-            std::rotate(left, right, iter);
+            std::ranges::rotate(left, right, iter);
             len++;
             right = iter + 1;
             left = right - len;
         }
     }
-    std::rotate(first, left, right);
+    std::ranges::rotate(first, left, right);
     return {first, first + len, last};
 }
 
@@ -199,7 +199,7 @@ void block_merge_pairwise(
         std::tie(buffer, std::ignore, std::ignore) = merge_with_swap(buffer, buffer + block_size,
             first + ((i + 2) * block_size), first + ((i + 3) * block_size), labels + i, proj);
     }
-    std::rotate(first, buffer, buffer + block_size);
+    std::ranges::rotate(first, buffer, buffer + block_size);
 }
 
 template <typename RandomIt, typename Proj = std::identity>

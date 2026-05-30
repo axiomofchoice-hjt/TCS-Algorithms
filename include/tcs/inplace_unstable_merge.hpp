@@ -43,7 +43,7 @@ void inplace_merge_with_rotation(RandomIt first, RandomIt mid, RandomIt last, Pr
             while (split_right < last && proj(*split_right) < proj(*first)) {
                 split_right++;
             }
-            std::rotate(first, mid, split_right);
+            std::ranges::rotate(first, mid, split_right);
             first += (split_right - mid) + 1;
             mid = split_right;
         }
@@ -53,7 +53,7 @@ void inplace_merge_with_rotation(RandomIt first, RandomIt mid, RandomIt last, Pr
             while (split_left > first && proj(*(split_left - 1)) > proj(*(last - 1))) {
                 split_left--;
             }
-            std::rotate(split_left, mid, last);
+            std::ranges::rotate(split_left, mid, last);
             last -= (mid - split_left) + 1;
             mid = split_left;
         }
@@ -117,7 +117,7 @@ void inplace_unstable_merge(RandomIt first, RandomIt mid, RandomIt last, Proj pr
     int64_t right_aligned_len = right_len / block_size * block_size;
     int64_t aligned_len = left_aligned_len + right_aligned_len;
 
-    std::rotate(first + left_aligned_len, mid, mid + right_aligned_len);
+    std::ranges::rotate(first + left_aligned_len, mid, mid + right_aligned_len);
     block_selection_sort(first, first + aligned_len, block_size, proj);
     block_merge_pairwise(first, first + aligned_len, block_size, proj);
     bubble_sort(first + aligned_len - block_size, last, proj);

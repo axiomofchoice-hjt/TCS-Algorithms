@@ -65,11 +65,11 @@ void dehomogenize_blocks(
         int64_t cnt0_left = count_if_placement_equals(left, mid, 0, placement);
         if (split01 < left + cnt0_left) {
             assert_or_throw(proj(*mid) == 0);
-            std::rotate(split01, mid, mid + (left + cnt0_left - split01));
-            std::rotate(mid, mid + (left + cnt0_left - split01), right);
+            std::ranges::rotate(split01, mid, mid + (left + cnt0_left - split01));
+            std::ranges::rotate(mid, mid + (left + cnt0_left - split01), right);
         } else if (split01 > left + cnt0_left) {
             assert_or_throw(proj(*mid) == 1);
-            std::rotate(left + cnt0_left, split01, mid + (split01 - left - cnt0_left));
+            std::ranges::rotate(left + cnt0_left, split01, mid + (split01 - left - cnt0_left));
         }
     }
 }
@@ -157,7 +157,7 @@ void inplace_01_split(
     RandomIt l = first + count_if_placement_equals(first, split, 0, placement);
     RandomIt r = split + count_if_placement_equals(split, last, 0, placement);
     assert_or_throw(l <= mid && mid <= r);
-    std::rotate(l, mid, r);
+    std::ranges::rotate(l, mid, r);
 }
 
 template <typename RandomIt, typename Proj = std::identity, typename Placement>
@@ -186,7 +186,7 @@ void unpartition_with_rotation(RandomIt first, RandomIt last, Proj proj, Placeme
         int64_t n_zeros = mid - first;
         for (RandomIt it = first; it < last; it++) {
             if (placement(it) == 0) {
-                std::rotate(zero_start, zero_start + n_zeros, it + n_zeros);
+                std::ranges::rotate(zero_start, zero_start + n_zeros, it + n_zeros);
                 zero_start = it + 1;
                 n_zeros--;
             }
@@ -196,7 +196,7 @@ void unpartition_with_rotation(RandomIt first, RandomIt last, Proj proj, Placeme
         int64_t n_ones = last - mid;
         for (RandomIt it = last; it > first; it--) {
             if (placement(it - 1) == 1) {
-                std::rotate(it - n_ones, one_end - n_ones, one_end);
+                std::ranges::rotate(it - n_ones, one_end - n_ones, one_end);
                 one_end = it - 1;
                 n_ones--;
             }
@@ -324,7 +324,7 @@ void inplace_stable_01_unpartition(RandomIt first, RandomIt last, Proj proj, Pla
             inplace_01_split(first + start, first + end_l2_aligned, first + end, proj, placement);
             auto mid = std::ranges::find_if(first + start, first + end_l2_aligned, proj) - first;
             if (mid % block_size != 0) {
-                std::rotate(first + start + (mid % block_size), first + mid,
+                std::ranges::rotate(first + start + (mid % block_size), first + mid,
                     first + ((mid + block_size - 1) / block_size * block_size));
             }
             merge_blocks_using_buffer(first + start, first + end_l2_aligned, block_size, buf0, buf1,
@@ -343,7 +343,7 @@ void inplace_stable_01_unpartition(RandomIt first, RandomIt last, Proj proj, Pla
             inplace_01_split(first + start, first + end_l2_aligned, first + end, proj, placement);
             auto mid = std::ranges::find_if(first + start, first + end_l2_aligned, proj) - first;
             if (mid % block_size != 0) {
-                std::rotate(first + start + (mid % block_size), first + mid,
+                std::ranges::rotate(first + start + (mid % block_size), first + mid,
                     first + ((mid + block_size - 1) / block_size * block_size));
             }
             merge_blocks_using_word(

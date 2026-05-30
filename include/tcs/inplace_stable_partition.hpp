@@ -34,12 +34,12 @@ std::tuple<RandomIt, RandomIt, RandomIt> stable_collect_first_n(
     int64_t count = 0;
     for (RandomIt iter = first; iter < last; iter++) {
         if (count < n && pred(*iter)) {
-            std::rotate(collect, collect + count, iter);
+            std::ranges::rotate(collect, collect + count, iter);
             collect = iter - count;
             count++;
         }
     }
-    std::rotate(first, collect, collect + count);
+    std::ranges::rotate(first, collect, collect + count);
     return {first, first + count, last};
 }
 
@@ -59,11 +59,11 @@ void homogenize_blocks(RandomIt first, RandomIt last, int64_t block_size, Proj p
         RandomIt split_right = std::ranges::find_if(mid, right, proj);
         int64_t n_zeros = (split_left - left) + (split_right - mid);
         if (n_zeros >= block_size) {
-            std::rotate(split_left, mid, split_right);
+            std::ranges::rotate(split_left, mid, split_right);
         } else {
-            std::rotate(left, split_left, mid);
+            std::ranges::rotate(left, split_left, mid);
             split_left = mid - split_left + left;
-            std::rotate(split_left, split_right, split_right + (mid - split_left));
+            std::ranges::rotate(split_left, split_right, split_right + (mid - split_left));
         }
     }
 }
@@ -230,7 +230,7 @@ void inplace_01_merge(RandomIt first, RandomIt last, Proj proj) {
     RandomIt split_left = std::ranges::find_if(first, last, proj);
     RandomIt mid = std::ranges::find_if(split_left, last, [proj](T x) { return proj(x) == 0; });
     RandomIt split_right = std::ranges::find_if(mid, last, proj);
-    std::rotate(split_left, mid, split_right);
+    std::ranges::rotate(split_left, mid, split_right);
     assert_or_throw(std::ranges::is_sorted(first, last, {}, proj));
 }
 
@@ -263,7 +263,7 @@ void inplace_stable_01_partition(RandomIt first, RandomIt last, Proj proj) {
     std::tie(buf1, first, last) =
         stable_collect_first_n(first, last, buffer_len, [proj](T x) { return proj(x) == 1; });
     if (first - buf1 < buffer_len) {
-        std::rotate(buf1, first, last);
+        std::ranges::rotate(buf1, first, last);
         return;
     }
     len = last - first;
