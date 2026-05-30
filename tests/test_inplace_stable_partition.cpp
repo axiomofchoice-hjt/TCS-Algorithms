@@ -2,7 +2,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators_range.hpp>
 #include <random>
-#include <ranges>
 #include <vector>
 
 #include "common_test.hpp"
@@ -51,28 +50,24 @@ void random_test(const TestParam& param) {
             arr[i] = {i < num_ones ? 1 : 0, 0};
         }
 
-        std::shuffle(arr.begin(), arr.end(), gen);
-
-        for (auto [i, el] : arr | std::views::enumerate) {
-            el.index = static_cast<int64_t>(i);
-        }
+        std::ranges::shuffle(arr, gen);
+        iota_index(arr);
 
         auto expected = arr;
-        std::stable_partition(expected.begin(), expected.end(), [](IndexedElement e) { return e.key == 0; });
+        std::stable_partition(
+            expected.begin(), expected.end(), [](IndexedElement e) { return IndexedElement::proj(e) == 0; });
 
         try {
             tcs::inplace_stable_partition::inplace_stable_partition(
-                arr.begin(), arr.end(), [](IndexedElement e) { return e.key == 0; });
+                arr.begin(), arr.end(), [](IndexedElement e) { return IndexedElement::proj(e) == 0; });
         } catch (std::exception& e) {
             INFO(std::format("{} [total_size={}, num_ones={}, repeat_count={}]", e.what(), param.total_size,
                 param.num_ones, param.repeat_count));
             FAIL();
         }
 
-        REQUIRE(std::ranges::all_of(std::ranges::views::zip(arr, expected), [](auto&& zip) {
-            auto [result, expected] = zip;
-            return std::pair{result.key, result.index} == std::pair{expected.key, expected.index};
-        }));
+        REQUIRE(is_stable(arr));
+        REQUIRE(std::ranges::equal(arr, expected, {}, IndexedElement::proj, IndexedElement::proj));
     }
 }
 }  // namespace

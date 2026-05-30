@@ -52,27 +52,26 @@ void random_test(const TestParam& param) {
                    std::views::transform([&key_dist](int64_t i) { return IndexedElement{key_dist(gen), 0}; }) |
                    std::ranges::to<std::vector<IndexedElement>>();
 
-        std::sort(arr.begin(), arr.begin() + param.left_size);
-        std::sort(arr.begin() + param.left_size, arr.end());
+        std::ranges::sort(arr.begin(), arr.begin() + param.left_size, {}, IndexedElement::proj);
+        std::ranges::sort(arr.begin() + param.left_size, arr.end(), {}, IndexedElement::proj);
 
         for (auto [i, el] : arr | std::views::enumerate) {
             el.index = static_cast<int64_t>(i);
         }
 
         auto expected = arr;
-        std::ranges::inplace_merge(expected, expected.begin() + param.left_size);
+        std::ranges::inplace_merge(expected, expected.begin() + param.left_size, {}, IndexedElement::proj);
 
         try {
-            tcs::inplace_stable_merge::inplace_stable_merge(arr.begin(), arr.begin() + param.left_size, arr.end());
+            tcs::inplace_stable_merge::inplace_stable_merge(
+                arr.begin(), arr.begin() + param.left_size, arr.end(), IndexedElement::proj);
         } catch (std::exception& e) {
             INFO(std::format("{} [total_size={}, left_size={}, max_key={}, repeat_count={}]", e.what(),
                 param.total_size, param.left_size, param.max_key, param.repeat_count));
             FAIL();
         }
-        REQUIRE(std::ranges::all_of(std::ranges::views::zip(arr, expected), [](auto&& zip) {
-            auto [result, expected] = zip;
-            return std::pair{result.key, result.index} == std::pair{expected.key, expected.index};
-        }));
+        REQUIRE(is_stable(arr));
+        REQUIRE(std::ranges::equal(arr, expected, {}, IndexedElement::proj, IndexedElement::proj));
     }
 }
 }  // namespace

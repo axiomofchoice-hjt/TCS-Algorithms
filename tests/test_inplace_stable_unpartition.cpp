@@ -51,18 +51,18 @@ void random_test(const TestParam& param) {
         for (int64_t i = 0; i < n; i++) {
             arr[i] = {i < num_ones ? 1 : 0, 0};
         }
-        std::shuffle(arr.begin(), arr.end(), gen);
+        std::ranges::shuffle(arr, gen);
+        iota_index(arr);
         for (auto [i, el] : arr | std::views::enumerate) {
-            el.index = static_cast<int64_t>(i);
             placement[i] = el.key != 0;
         }
 
         auto expected = arr;
-        std::stable_sort(arr.begin(), arr.end(), [](IndexedElement a, IndexedElement b) { return a.key < b.key; });
+        std::ranges::stable_sort(arr.begin(), arr.end(), {}, IndexedElement::proj);
 
         try {
             tcs::inplace_stable_unpartition::inplace_stable_unpartition(
-                arr.begin(), arr.end(), [](IndexedElement e) { return e.key == 0; },
+                arr.begin(), arr.end(), [](IndexedElement e) { return IndexedElement::proj(e) == 0; },
                 [&arr, &placement](auto p) { return !placement[p - arr.begin()]; });
         } catch (std::exception& e) {
             INFO(std::format("{} [total_size={}, num_ones={}, repeat_count={}]", e.what(), param.total_size,
@@ -70,10 +70,8 @@ void random_test(const TestParam& param) {
             FAIL();
         }
 
-        REQUIRE(std::ranges::all_of(std::ranges::views::zip(arr, expected), [](auto&& zip) {
-            auto [result, expected] = zip;
-            return std::pair{result.key, result.index} == std::pair{expected.key, expected.index};
-        }));
+        REQUIRE(is_stable(arr));
+        REQUIRE(std::ranges::equal(arr, expected, {}, IndexedElement::proj, IndexedElement::proj));
     }
 }
 }  // namespace

@@ -53,23 +53,21 @@ void random_test(const TestParam& param) {
                std::ranges::to<std::vector<IndexedElement>>();
 
     auto expected = arr;
-    std::ranges::stable_sort(expected);
+    std::ranges::stable_sort(expected, {}, IndexedElement::proj);
 
     try {
-        tcs::inplace_stable_select::inplace_stable_select(arr.begin(), arr.begin() + param.k, arr.end());
+        tcs::inplace_stable_select::inplace_stable_select(
+            arr.begin(), arr.begin() + param.k, arr.end(), IndexedElement::proj);
     } catch (std::exception& e) {
-        INFO(std::format("{} [total_size={}, k={}, max_key={}, repeat_count={}]", e.what(), param.total_size,
-            param.k, param.max_key, param.repeat_count));
+        INFO(std::format("{} [total_size={}, k={}, max_key={}, repeat_count={}]", e.what(), param.total_size, param.k,
+            param.max_key, param.repeat_count));
         FAIL();
     }
 
-    int64_t pivot = arr[param.k].key;
-    REQUIRE(pivot == expected[param.k].key);
-    REQUIRE(std::ranges::all_of(arr | std::views::take(param.k), [pivot](IndexedElement e) { return e.key <= pivot; }));
-    REQUIRE(
-        std::ranges::all_of(arr | std::views::drop(param.k + 1), [pivot](IndexedElement e) { return e.key >= pivot; }));
-    // verify stability: equal keys maintain original index order
-    REQUIRE(std::ranges::is_sorted(arr, std::less<>{}, [](IndexedElement e) { return std::pair{e.key, e.index}; }));
+    REQUIRE(IndexedElement::proj(arr[param.k]) == IndexedElement::proj(expected[param.k]));
+    REQUIRE(is_stable(arr));
+    std::ranges::sort(arr, {}, IndexedElement::proj);
+    REQUIRE(std::ranges::equal(arr, expected, {}, IndexedElement::proj, IndexedElement::proj));
 }
 
 }  // namespace

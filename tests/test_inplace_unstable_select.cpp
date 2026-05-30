@@ -5,6 +5,7 @@
 #include <ranges>
 #include <vector>
 
+#include "common_test.hpp"
 #include "tcs/inplace_unstable_select.hpp"
 
 namespace {
@@ -40,38 +41,30 @@ constexpr TestParam kCases[] = {
     {1000, 999, 1, 1},     // k = n-1, single key
 };
 
-void verify_select_result(std::pair<std::vector<int64_t>&, std::vector<int64_t>&> result, const TestParam& param) {
-    auto [arr, expected] = result;
-    int64_t pivot = arr[param.k];
-    REQUIRE(pivot == expected[param.k]);
-    REQUIRE(std::ranges::all_of(arr | std::views::take(param.k), [pivot](int64_t x) { return x <= pivot; }));
-    REQUIRE(std::ranges::all_of(arr | std::views::drop(param.k + 1), [pivot](int64_t x) { return x >= pivot; }));
-    auto sorted = arr;
-    std::ranges::sort(sorted);
-    REQUIRE(sorted == expected);
-}
-
 void random_test(const TestParam& param) {
     static std::mt19937 gen(kRandomSeed);
     std::uniform_int_distribution<int64_t> key_dist(1, param.max_key);
 
     for ([[maybe_unused]] int64_t i : std::views::iota(0, param.repeat_count)) {
         auto arr = std::views::iota(0, param.total_size) |
-                   std::views::transform([&](int64_t) { return key_dist(gen); }) |
-                   std::ranges::to<std::vector<int64_t>>();
+                   std::views::transform([&](int64_t) { return IndexedElement{key_dist(gen), 0}; }) |
+                   std::ranges::to<std::vector<IndexedElement>>();
 
         auto expected = arr;
-        std::ranges::sort(expected);
+        std::ranges::sort(expected, {}, IndexedElement::proj);
 
         try {
-            tcs::inplace_unstable_select::inplace_unstable_select(arr.begin(), arr.begin() + param.k, arr.end());
+            tcs::inplace_unstable_select::inplace_unstable_select(
+                arr.begin(), arr.begin() + param.k, arr.end(), IndexedElement::proj);
         } catch (std::exception& e) {
             INFO(std::format("{} [total_size={}, k={}, max_key={}, repeat_count={}]", e.what(), param.total_size,
                 param.k, param.max_key, param.repeat_count));
             FAIL();
         }
 
-        verify_select_result({arr, expected}, param);
+        REQUIRE(IndexedElement::proj(arr[param.k]) == IndexedElement::proj(expected[param.k]));
+        std::ranges::sort(arr, {}, IndexedElement::proj);
+        REQUIRE(std::ranges::equal(arr, expected, {}, IndexedElement::proj, IndexedElement::proj));
     }
 }
 }  // namespace

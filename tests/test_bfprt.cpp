@@ -6,6 +6,7 @@
 #include <ranges>
 #include <vector>
 
+#include "common_test.hpp"
 #include "tcs/bfprt.hpp"
 
 namespace {
@@ -48,26 +49,23 @@ void random_test(const TestParam& param) {
 
     for (int64_t i = 0; i < param.repeat_count; i++) {
         auto arr = std::views::iota(0, param.total_size) |
-                   std::views::transform([&](int64_t) { return key_dist(gen); }) |
-                   std::ranges::to<std::vector<int64_t>>();
+                   std::views::transform([&](int64_t) { return IndexedElement{key_dist(gen), 0}; }) |
+                   std::ranges::to<std::vector<IndexedElement>>();
 
         auto expected = arr;
-        std::ranges::sort(expected);
+        std::ranges::sort(expected, {}, IndexedElement::proj);
 
         try {
-            tcs::bfprt::bfprt(arr.begin(), arr.begin() + param.k, arr.end());
+            tcs::bfprt::bfprt(arr.begin(), arr.begin() + param.k, arr.end(), IndexedElement::proj);
         } catch (std::exception& e) {
             INFO(std::format("{} [total_size={}, k={}, max_key={}, repeat_count={}]", e.what(), param.total_size,
                 param.k, param.max_key, param.repeat_count));
             FAIL();
         }
 
-        int64_t pivot = arr[param.k];
-        REQUIRE(pivot == expected[param.k]);
-        REQUIRE(std::ranges::all_of(arr | std::views::take(param.k), [pivot](int64_t x) { return x <= pivot; }));
-        REQUIRE(std::ranges::all_of(arr | std::views::drop(param.k + 1), [pivot](int64_t x) { return x >= pivot; }));
-        std::ranges::sort(arr);
-        REQUIRE(arr == expected);
+        REQUIRE(IndexedElement::proj(arr[param.k]) == IndexedElement::proj(expected[param.k]));
+        std::ranges::sort(arr, {}, IndexedElement::proj);
+        REQUIRE(std::ranges::equal(arr, expected, {}, IndexedElement::proj, IndexedElement::proj));
     }
 }
 }  // namespace
