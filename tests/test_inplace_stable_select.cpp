@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators_range.hpp>
+#include <format>
 #include <random>
 #include <ranges>
 #include <vector>
@@ -54,7 +55,13 @@ void random_test(const TestParam& param) {
     auto expected = arr;
     std::ranges::stable_sort(expected);
 
-    tcs::inplace_stable_select::inplace_stable_select(arr.begin(), arr.begin() + param.k, arr.end());
+    try {
+        tcs::inplace_stable_select::inplace_stable_select(arr.begin(), arr.begin() + param.k, arr.end());
+    } catch (std::exception& e) {
+        INFO(std::format("{} [total_size={}, k={}, max_key={}, repeat_count={}]", e.what(), param.total_size,
+            param.k, param.max_key, param.repeat_count));
+        FAIL();
+    }
 
     int64_t pivot = arr[param.k].key;
     REQUIRE(pivot == expected[param.k].key);
