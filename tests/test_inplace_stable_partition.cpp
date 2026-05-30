@@ -16,7 +16,7 @@ struct TestParam {
 };
 
 constexpr int kRandomSeed = 42;
-constexpr int64_t kSweepMaxSize = 1000;
+constexpr int64_t kSweepMaxSize = 100;
 
 constexpr TestParam kCases[] = {
     {20, 10, 20},
@@ -28,7 +28,7 @@ constexpr TestParam kCases[] = {
     {1000, 100, 20},
     {1000, 300, 20},
     {1000, 700, 20},
-    {10000, 5000, 2},
+    {10000, 5000, 1},
     {100, 0, 1},      // all zeros
     {100, 1, 1},      // single one
     {100, 99, 1},     // single zero

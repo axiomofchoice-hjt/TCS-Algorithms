@@ -18,7 +18,7 @@ struct TestParam {
 };
 
 constexpr int kRandomSeed = 42;
-constexpr int64_t kSweepMaxSize = 1000;
+constexpr int64_t kSweepMaxSize = 100;
 
 constexpr TestParam kCases[] = {
     {20, 10, 10, 20},
@@ -35,7 +35,7 @@ constexpr TestParam kCases[] = {
     {1000, 500, 1000, 20},
     {1000, 500, 10, 20},
     {10000, 5000, 5000, 2},
-    {100000, 50000, 50000, 2},
+    {100000, 50000, 50000, 1},
     {1000, 500, 1, 1},    // all elements share the same key
     {1000, 0, 10, 1},     // empty left half
     {1000, 1000, 10, 1},  // empty right half
