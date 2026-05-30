@@ -7,77 +7,84 @@
 Currently most assertions use the default `"empty message"`, making failures hard to debug.
 Every call site in `include/tcs/` should provide a descriptive message indicating which
 invariant was violated.
-These currently produce opaque errors like
-`Assertion failed at inplace_stable_unpartition.hpp:137: empty message`.
 
-### 2. (By design) Duplicated utilities kept for self-contained headers
+### 2. Implement `inplace_stable_select`
 
-`bubble_sort`, `ceil_log2`, `WordStorage`, `BufferStorage` are intentionally duplicated per
-header so each file can be copied and used standalone without internal dependencies.
+Currently placeholder using `std::ranges::stable_sort`. Needs the real O(n) in-place
+stable selection algorithm as described.
+
+### 3. Debug `inplace_stable_unpartition` test failures
+
+~999 assertions fail in sweep test (line 137 / inplace_01_split boundary assertion).
+Algorithm logic needs investigation.
 
 ## Medium Priority
 
-### 3. Add missing assertions to internal helpers
+### 4. (By design) Duplicated utilities kept for self-contained headers
+
+`bubble_sort`, `ceil_log2`, `WordStorage`, `BufferStorage`, `BitStack`, `StorageAttributes`
+are intentionally duplicated per header so each file can be copied and used standalone
+without internal dependencies. Each resides in its own `tcs::<algorithm>` namespace to
+avoid ODR conflicts when multiple headers are included together.
+
+### 5. Add missing assertions to internal helpers
 
 Some internal functions lack precondition checks. Candidates:
+- `bubble_sort(first, last)` — assert `first <= last`
+- `block_selection_sort` — assert `first <= last` and alignment
+- `stable_collect_first_n` — assert `n >= 0`
+- `unpartition_with_rotation` — assert `first <= last`
 
-- `bubble_sort(first, last)` — should assert `first <= last` (all call sites)
-- `block_selection_sort(first, last, ...)` — should assert `first <= last` and alignment constraints
-- `stable_collect_first_n(first, last, n, ...)` — should assert `n >= 0`
-- `unpartition_with_rotation(first, last, ...)` — should assert `first <= last`
+### 6. Sweep test generates too many trivial cases
 
-### 4. Add boundary stress tests
+`GENERATE(Catch::Generators::range(1, kSweepMaxSize + 1))` includes very small `n` where
+algorithms degenerate to fallback. Consider logarithmic sweep or skipping `n < some_threshold`.
 
-- Tests for non-trivial element types (e.g., `std::string`)
-- Tests with very high ratio of duplicate values
-- 100k+ element tests beyond the few existing ones
+### 7. Improve variable naming in complex functions
 
-### 5. Sweep test generates too many trivial cases
+- `merge_blocks_impl`: `counters[0]`/`counters[1]` → `kZero`/`kOne`
+- `inplace_stable_01_unpartition`: step loop magic `3` and `2` → named constants
 
-`GENERATE(Catch::Generators::range(0, kSweepMaxSize + 1))` includes very small `n` where
-algorithms degenerate to bubble sort fallback. Consider logarithmic sweep or skipping
-`n < some_threshold`.
+### 8. Unify `Storage` factory pattern
 
-### 6. Improve variable naming in complex functions
+Mix of `static create()` and aggregate init `{.n_bits=..., .element_bits=...}`.
+Pick one style.
 
-- `merge_blocks_impl`: `counters[0]`/`counters[1]` and `pointers[0]`/`pointers[1]`
-  differentiate zero/one groups by index — use a named struct or at least
-  `constexpr int kZero = 0, kOne = 1`.
-- `inplace_stable_01_unpartition`: magic constants `3` and `2` for step loops should be
-  named constants.
+### 9. `std::partition` → `std::ranges::partition`
 
-### 7. Unify `Storage` factory pattern
-
-`WordStorage`/`BufferStorage` use `static create()` factory methods, but some call sites
-use aggregate initialization `{.n_bits=..., .element_bits=...}`. Pick one style and apply
-consistently.
+Skipped because ranges version returns `subrange`, not plain iterator. Call sites
+need `.begin()` adjustment.
 
 ## Low Priority
 
-### 8. Add Doxygen-style documentation to algorithm entry points
+### 10. Doxygen-style docs for algorithm entry points
 
-All public entry points lack documentation comments describing the algorithm, parameters,
-complexity guarantees, and invariants.
+### 11. `assert_or_throw` semantics
 
-### 9. `assert_or_throw` used for control flow vs. invariant checking
+Split into `ASSERT` (debug-only) vs `VERIFY` (always-active) for intent clarity.
 
-Some assertions guard normal branching logic (not just debug-only invariants). Consider
-splitting into `ASSERT` (debug-only) and `VERIFY` (always-active) macros to make intent
-clear.
+## Completed
+
+- [x] `T*` → `RandomIt` iterator refactoring (all headers)
+- [x] `Proj = std::identity` default template parameter (all headers)
+- [x] `std::is_sorted` → `std::ranges::is_sorted`
+- [x] `std::find_if/count_if/all_of/max_element` → `std::ranges::` versions
+- [x] `std::less{}` → `{}` in `std::ranges` calls
+- [x] `kStandardCases` + `kEdgeCases` → unified `kCases[]` with `repeat_count`
+- [x] `IndexedElement` extracted to `tests/common_test.hpp`
+- [x] `readability-function-cognitive-complexity` disabled (REQUIRE inflates metric)
+- [x] Sweep tests use `GENERATE(Catch::Generators::range(...))`
+- [x] All algorithm calls wrapped in try-catch with `INFO` on failure
+- [x] `int` → `int64_t` in all test files
+- [x] `assert.hpp` deleted; `assert_or_throw` inlined per header
+- [x] `#include <functional>` added to all headers using `std::identity`
 
 ## Future Algorithms
 
-- In-place Stable Selection
 - O(n) Moves In-place Stable Sort
 - In-place Burrows–Wheeler Transform
-- Rank-Pairing Heap
-- Hollow Heap
-- Soft Heap
-- Strict Fibonacci Heap
-- Brodal Queue
-- Fusion Tree
-- Cuckoo Hashing
-- Tango Tree
+- Rank-Pairing / Hollow / Soft / Strict Fibonacci / Brodal Heap
+- Fusion Tree, Cuckoo Hashing, Tango Tree
 - Deamortized Splay Tree
 - Succinct Bit Vector
 - Cache-Oblivious B-Tree
