@@ -85,17 +85,17 @@ void bubble_sort(RandomIt first, RandomIt last, Proj proj = {}) {
 
 template <typename RandomIt, typename Proj = std::identity>
 bool prepare_buffer(RandomIt first, RandomIt last, int64_t n_bits, Proj proj = {}) {
-    RandomIt majority_ptr = first;
+    RandomIt majority_it = first;
     for (RandomIt iter = first; iter < last; iter++) {
-        if (majority_ptr - first == n_bits * 2) {
+        if (majority_it - first == n_bits * 2) {
             break;
         }
-        if (majority_ptr < iter && proj(*majority_ptr) != proj(*iter)) {
-            std::swap(*majority_ptr, *iter);
-            majority_ptr += 2;
+        if (majority_it < iter && proj(*majority_it) != proj(*iter)) {
+            std::swap(*majority_it, *iter);
+            majority_it += 2;
         }
     }
-    return majority_ptr - first == n_bits * 2;
+    return majority_it - first == n_bits * 2;
 }
 
 template <typename RandomIt, typename Proj = std::identity>
@@ -179,7 +179,7 @@ void inplace_unstable_select(RandomIt first, RandomIt mid, RandomIt last, Proj p
                     first, tail, [&](T x) { return proj(x) != proj(possible_majority); });
                 bubble_sort(first, mid, proj);
                 std::ranges::rotate(std::ranges::find_if(first, mid,
-                                [&](T x) { return proj(x) >= proj(possible_majority); }),
+                                        [&](T x) { return proj(x) >= proj(possible_majority); }),
                     mid, tail);
                 continue;
             }

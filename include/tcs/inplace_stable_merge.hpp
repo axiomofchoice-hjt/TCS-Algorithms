@@ -21,27 +21,27 @@ inline void assert_or_throw(bool condition, std::string_view message = "empty me
 template <typename RandomIt, typename Proj = std::identity>
 std::tuple<RandomIt, RandomIt, RandomIt> merge_with_swap(
     RandomIt output, RandomIt first, RandomIt mid, RandomIt last, RandomIt labels, Proj proj = {}) {
-    RandomIt left_ptr = first;
-    RandomIt right_ptr = mid;
-    while (left_ptr < mid && right_ptr < last) {
-        if (std::pair{proj(*left_ptr), proj(labels[1])} <=
-            std::pair{proj(*right_ptr), proj(labels[2])}) {
-            std::swap(*output, *left_ptr);
+    RandomIt left_it = first;
+    RandomIt right_it = mid;
+    while (left_it < mid && right_it < last) {
+        if (std::pair{proj(*left_it), proj(labels[1])} <=
+            std::pair{proj(*right_it), proj(labels[2])}) {
+            std::swap(*output, *left_it);
             output++;
-            left_ptr++;
+            left_it++;
         } else {
-            std::swap(*output, *right_ptr);
+            std::swap(*output, *right_it);
             output++;
-            right_ptr++;
+            right_it++;
         }
     }
-    if (left_ptr < mid) {
-        int64_t remain = mid - left_ptr;
-        std::swap_ranges(left_ptr, mid, last - remain);
+    if (left_it < mid) {
+        int64_t remain = mid - left_it;
+        std::swap_ranges(left_it, mid, last - remain);
         std::swap(labels[1], labels[2]);
         return {output, last - remain, last};
     }
-    return {output, right_ptr, last};
+    return {output, right_it, last};
 }
 
 template <typename RandomIt, typename Proj = std::identity>

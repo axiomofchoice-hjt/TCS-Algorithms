@@ -72,9 +72,9 @@ bool extract_buffer(RandomIt first, RandomIt last, int64_t buffer_len, Proj proj
         return false;
     }
     std::stable_partition(first, last, [&](T x) { return proj(x) != proj(major); });
-    RandomIt major_ptr =
+    RandomIt major_it =
         std::ranges::find_if(first, last, [&](T x) { return proj(x) == proj(major); });
-    std::ranges::rotate(first + buffer_len, major_ptr, major_ptr + buffer_len);
+    std::ranges::rotate(first + buffer_len, major_it, major_it + buffer_len);
     return true;
 }
 
@@ -87,12 +87,12 @@ void inplace_stable_select(RandomIt first, RandomIt mid, RandomIt last, Proj pro
     if (!extract_buffer(first, last, buffer_len, proj)) {
         T major = probable_major(first, last, proj);
         std::stable_partition(first, last, [&](T x) { return proj(x) != proj(major); });
-        RandomIt major_ptr =
+        RandomIt major_it =
             std::ranges::find_if(first, last, [&](T x) { return proj(x) == proj(major); });
-        bubble_sort(first, major_ptr, proj);
+        bubble_sort(first, major_it, proj);
         std::ranges::rotate(
-            std::ranges::find_if(first, major_ptr, [&](T x) { return proj(x) >= proj(major); }),
-            major_ptr, last);
+            std::ranges::find_if(first, major_it, [&](T x) { return proj(x) >= proj(major); }),
+            major_it, last);
         return;
     }
     std::ranges::stable_sort(

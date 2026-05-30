@@ -20,17 +20,17 @@ inline void assert_or_throw(bool condition, std::string_view message = "empty me
 
 template <typename RandomIt, typename Proj = std::identity>
 void merge_with_swap(RandomIt output, RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
-    RandomIt left_ptr = first;
-    RandomIt right_ptr = mid;
-    while (left_ptr < mid || right_ptr < last) {
-        if (right_ptr == last || (left_ptr < mid && proj(*left_ptr) <= proj(*right_ptr))) {
-            std::swap(*output, *left_ptr);
+    RandomIt left_it = first;
+    RandomIt right_it = mid;
+    while (left_it < mid || right_it < last) {
+        if (right_it == last || (left_it < mid && proj(*left_it) <= proj(*right_it))) {
+            std::swap(*output, *left_it);
             output++;
-            left_ptr++;
+            left_it++;
         } else {
-            std::swap(*output, *right_ptr);
+            std::swap(*output, *right_it);
             output++;
-            right_ptr++;
+            right_it++;
         }
     }
 }
