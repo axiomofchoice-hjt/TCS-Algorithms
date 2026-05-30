@@ -53,7 +53,7 @@ void random_test(const TestParam& param) {
         auto expected = arr;
         std::ranges::sort(expected);
 
-        tcs::bfprt::bfprt(arr.data(), arr.data() + param.k, arr.data() + param.total_size);
+        tcs::bfprt::bfprt(arr.begin(), arr.begin() + param.k, arr.end());
 
         int64_t pivot = arr[param.k];
         REQUIRE(pivot == expected[param.k]);

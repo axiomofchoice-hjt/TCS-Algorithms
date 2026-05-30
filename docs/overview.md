@@ -55,7 +55,7 @@ void merge(T* first, T* mid, T* last) {
     std::vector<T> buffer(len);
     T* left_ptr = first;
     T* right_ptr = mid;
-    T* buffer_ptr = buffer.data();
+    T* buffer_ptr = buffer.begin();
     while (left_ptr < mid || right_ptr < last) {
         if (right_ptr == last || (left_ptr < mid && *left_ptr <= *right_ptr)) {
             std::swap(*buffer_ptr, *left_ptr);
@@ -67,7 +67,7 @@ void merge(T* first, T* mid, T* last) {
             buffer_ptr++;
         }
     }
-    std::swap_ranges(buffer.data(), buffer.data() + len, first);
+    std::swap_ranges(buffer.begin(), buffer.end(), first);
 }
 ```
 

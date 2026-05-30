@@ -16,8 +16,7 @@ int main() {
 
     print_arr(arr, "before");
 
-    tcs::inplace_unstable_merge::inplace_unstable_merge(
-        arr.data(), arr.data() + kLeftSize, arr.data() + arr.size());
+    tcs::inplace_unstable_merge::inplace_unstable_merge(arr.begin(), arr.begin() + kLeftSize, arr.end());
 
     print_arr(arr, "after ");
 }

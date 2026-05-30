@@ -13,7 +13,7 @@ int main() {
     print_arr(arr, "before");
 
     tcs::inplace_stable_partition::inplace_stable_partition(
-        arr.data(), arr.data() + arr.size(), [](int64_t x) { return x == 0; });
+        arr.begin(), arr.end(), [](int64_t x) { return x == 0; });
 
     print_arr(arr, "after ");
 }

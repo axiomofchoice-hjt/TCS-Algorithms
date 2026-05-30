@@ -63,8 +63,7 @@ void random_test(const TestParam& param) {
         std::ranges::inplace_merge(expected, expected.begin() + param.left_size);
 
         try {
-            tcs::inplace_stable_merge::inplace_stable_merge(
-                arr.data(), arr.data() + param.left_size, arr.data() + param.total_size);
+            tcs::inplace_stable_merge::inplace_stable_merge(arr.begin(), arr.begin() + param.left_size, arr.end());
         } catch (std::exception& e) {
             INFO(std::format("{} [total_size={}, left_size={}, max_key={}, repeat_count={}]", e.what(),
                 param.total_size, param.left_size, param.max_key, param.repeat_count));

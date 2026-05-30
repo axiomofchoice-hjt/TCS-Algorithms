@@ -65,8 +65,7 @@ void random_test(const TestParam& param) {
         std::ranges::sort(expected);
 
         try {
-            tcs::inplace_unstable_select::inplace_unstable_select(
-                arr.data(), arr.data() + param.k, arr.data() + param.total_size);
+            tcs::inplace_unstable_select::inplace_unstable_select(arr.begin(), arr.begin() + param.k, arr.end());
         } catch (std::exception& e) {
             INFO(std::format("{} [total_size={}, k={}, max_key={}, repeat_count={}]", e.what(), param.total_size,
                 param.k, param.max_key, param.repeat_count));

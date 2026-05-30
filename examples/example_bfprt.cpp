@@ -13,7 +13,7 @@ int main() {
 
     print_arr(arr, "before");
 
-    tcs::bfprt::bfprt(arr.data(), arr.data() + kTargetRank, arr.data() + arr.size());
+    tcs::bfprt::bfprt(arr.begin(), arr.begin() + kTargetRank, arr.end());
 
     print_arr(arr, "after ");
     std::println("{}-th smallest element: {}", kTargetRank, arr[kTargetRank]);

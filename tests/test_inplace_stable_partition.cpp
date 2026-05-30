@@ -62,7 +62,7 @@ void random_test(const TestParam& param) {
 
         try {
             tcs::inplace_stable_partition::inplace_stable_partition(
-                arr.data(), arr.data() + n, [](IndexedElement e) { return e.key == 0; });
+                arr.begin(), arr.end(), [](IndexedElement e) { return e.key == 0; });
         } catch (std::exception& e) {
             INFO(std::format("{} [total_size={}, num_ones={}, repeat_count={}]", e.what(), param.total_size,
                 param.num_ones, param.repeat_count));

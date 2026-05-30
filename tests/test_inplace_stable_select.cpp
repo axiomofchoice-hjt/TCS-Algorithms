@@ -54,16 +54,15 @@ void random_test(const TestParam& param) {
     auto expected = arr;
     std::ranges::stable_sort(expected);
 
-    tcs::inplace_stable_select::inplace_stable_select(
-        arr.data(), arr.data() + param.k, arr.data() + param.total_size);
+    tcs::inplace_stable_select::inplace_stable_select(arr.begin(), arr.begin() + param.k, arr.end());
 
     int64_t pivot = arr[param.k].key;
     REQUIRE(pivot == expected[param.k].key);
     REQUIRE(std::ranges::all_of(arr | std::views::take(param.k), [pivot](IndexedElement e) { return e.key <= pivot; }));
-    REQUIRE(std::ranges::all_of(arr | std::views::drop(param.k + 1), [pivot](IndexedElement e) { return e.key >= pivot; }));
+    REQUIRE(
+        std::ranges::all_of(arr | std::views::drop(param.k + 1), [pivot](IndexedElement e) { return e.key >= pivot; }));
     // verify stability: equal keys maintain original index order
-    REQUIRE(std::ranges::is_sorted(arr, std::less<>{},
-        [](IndexedElement e) { return std::pair{e.key, e.index}; }));
+    REQUIRE(std::ranges::is_sorted(arr, std::less<>{}, [](IndexedElement e) { return std::pair{e.key, e.index}; }));
 }
 
 }  // namespace

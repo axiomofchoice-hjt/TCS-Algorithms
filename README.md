@@ -86,7 +86,7 @@ Header-only — copy `include/tcs/` into your project, or integrate via xmake:
 
 std::vector<int> arr = {3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5};
 int k = 5;
-tcs::bfprt::bfprt(arr.data(), arr.data() + k, arr.data() + arr.size());
+tcs::bfprt::bfprt(arr.begin(), arr.begin() + k, arr.end());
 // arr[k] holds the k-th smallest element
 ```
 

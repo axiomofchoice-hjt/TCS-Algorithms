@@ -7,7 +7,6 @@
 int main() {
     std::println("=== tcs::inplace_stable_unpartition::inplace_stable_unpartition ===");
 
-    constexpr int64_t kN = 12;
     // partitioned: zeros first, ones last
     auto arr = std::vector<int64_t>{0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1};
     // placement: 0 = originally from left half, 1 = originally from right half
@@ -16,8 +15,8 @@ int main() {
     print_arr(arr, "before");
 
     tcs::inplace_stable_unpartition::inplace_stable_unpartition(
-        arr.data(), arr.data() + kN, [](int64_t x) { return x == 0; },
-        [&arr, &placement](int64_t* p) { return !placement[p - arr.data()]; });
+        arr.begin(), arr.end(), [](int64_t x) { return x == 0; },
+        [&arr, &placement](auto p) { return !placement[p - arr.begin()]; });
 
     print_arr(arr, "after ");
 }
