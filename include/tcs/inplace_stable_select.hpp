@@ -185,6 +185,7 @@ void inplace_stable_select(RandomIt first, RandomIt mid, RandomIt last, Proj pro
             major_it, last);
         return;
     }
+    assert_or_throw(std::ranges::is_sorted(first, first + (buffer_len * 2), {}, proj));
     RandomIt main = first + (buffer_len * 2);
     int64_t block_size = static_cast<int64_t>(std::floor(std::sqrt(len)));
     int64_t n_blocks = (last - main) / block_size;
