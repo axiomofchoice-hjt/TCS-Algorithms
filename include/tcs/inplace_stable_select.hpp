@@ -130,6 +130,30 @@ RandomIt strided_next_element(
 }
 
 template <typename RandomIt, typename Proj = std::identity>
+RandomIt strided_median(RandomIt first, RandomIt last, int64_t stride, Proj proj = {}) {
+    assert_or_throw((last - first) % stride == 0);
+    int64_t n_blocks = (last - first) / stride;
+    RandomIt median_it = strided_min_element(first, last, stride, proj);
+    for (int64_t i = 0; i < (n_blocks - 1) / 2; i++) {
+        median_it = strided_next_element(first, last, stride, median_it, proj);
+    }
+    return median_it;
+}
+
+template <typename RandomIt, typename Proj = std::identity>
+std::tuple<RandomIt, RandomIt> three_way_partition(
+    RandomIt first, RandomIt last, std::iter_value_t<RandomIt> pivot, Proj proj = {}) {
+    using T = std::iter_value_t<RandomIt>;
+    inplace_stable_partition_stub(first, last, [&](T x) { return proj(x) < proj(pivot); });
+    RandomIt pivot_start =
+        std::ranges::find_if(first, last, [&](T x) { return proj(x) >= proj(pivot); });
+    inplace_stable_partition_stub(pivot_start, last, [&](T x) { return proj(x) == proj(pivot); });
+    RandomIt pivot_end =
+        std::ranges::find_if(pivot_start, last, [&](T x) { return proj(x) != proj(pivot); });
+    return {pivot_start, pivot_end};
+}
+
+template <typename RandomIt, typename Proj = std::identity>
 void inplace_stable_select(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
     using T = typename std::iterator_traits<RandomIt>::value_type;
     assert_or_throw(first <= mid && mid < last);
@@ -168,17 +192,8 @@ void inplace_stable_select(RandomIt first, RandomIt mid, RandomIt last, Proj pro
     }
 
     RandomIt last_aligned = main + (n_blocks * block_size);
-    RandomIt median_it = strided_min_element(main, last_aligned, block_size, proj);
-    for (int64_t i = 0; i < (n_blocks - 1) / 2; i++) {
-        median_it = strided_next_element(main, last_aligned, block_size, median_it, proj);
-    }
-    T median = *median_it;
-    inplace_stable_partition_stub(first, last, [&](T x) { return proj(x) < proj(median); });
-    RandomIt median_start =
-        std::ranges::find_if(first, last, [&](T x) { return proj(x) >= proj(median); });
-    inplace_stable_partition_stub(median_start, last, [&](T x) { return proj(x) == proj(median); });
-    RandomIt median_end =
-        std::ranges::find_if(median_start, last, [&](T x) { return proj(x) != proj(median); });
+    T median = *strided_median(main, last_aligned, block_size, proj);
+    auto [median_start, median_end] = three_way_partition(first, last, median, proj);
     if (mid < median_start) {
         inplace_stable_select(first, mid, median_start, proj);
     }
