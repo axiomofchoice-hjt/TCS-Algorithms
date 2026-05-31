@@ -87,11 +87,19 @@ bool extract_buffer(RandomIt first, RandomIt last, int64_t buffer_len, Proj proj
         return false;
     }
     T major = probable_major(first, first + (buffer_len * 2), proj);
+    // Case 1: the majority element appears <= buffer_len times in the prefix 2*buffer_len.
+    // After sorting, major elements are scattered thin enough that each i < buffer_len has
+    // *(first + i) != *(first + i + buffer_len), giving us 2*buffer_len valid label pairs.
     if (std::ranges::count_if(first, first + (buffer_len * 2),
             [&](T x) { return proj(x) == proj(major); }) <= buffer_len) {
         bubble_sort(first, first + (buffer_len * 2), proj);
         return true;
     }
+    // Case 2: majority is not overwhelming (count <= len - buffer_len).
+    // Partition non-major to the left, then bubble-sort the buffer prefix [first, first+buffer_len)
+    // so buffer elements are ordered. Insert buffer_len major elements at their sorted position
+    // via rotation. This guarantees *(first + i) != *(first + i + buffer_len) because
+    // buffer holds non-major and the paired region holds major.
     if (std::ranges::count_if(first, last, [&](T x) { return proj(x) == proj(major); }) <=
         len - buffer_len) {
         inplace_stable_partition_stub(first, last, [&](T x) { return proj(x) != proj(major); });
