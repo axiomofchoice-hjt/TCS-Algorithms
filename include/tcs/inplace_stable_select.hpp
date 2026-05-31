@@ -104,10 +104,40 @@ bool extract_buffer(RandomIt first, RandomIt last, int64_t buffer_len, Proj proj
 }
 
 template <typename RandomIt, typename Proj = std::identity>
+RandomIt strided_min_element(RandomIt first, RandomIt last, int64_t stride, Proj proj = {}) {
+    assert_or_throw((last - first) % stride == 0);
+    RandomIt min_it = first;
+    for (RandomIt i = first; i < last; i += stride) {
+        if (proj(*i) < proj(*min_it)) {
+            min_it = i;
+        }
+    }
+    return min_it;
+}
+
+template <typename RandomIt, typename Proj = std::identity>
+RandomIt strided_next_element(
+    RandomIt first, RandomIt last, int64_t stride, RandomIt x, Proj proj = {}) {
+    assert_or_throw((last - first) % stride == 0);
+    RandomIt next_it = last;
+    for (RandomIt i = first; i < last; i += stride) {
+        if (std::pair{proj(*x), x} < std::pair{proj(*i), i} &&
+            (next_it == last || std::pair{proj(*i), i} < std::pair{proj(*next_it), next_it})) {
+            next_it = i;
+        }
+    }
+    return next_it;
+}
+
+template <typename RandomIt, typename Proj = std::identity>
 void inplace_stable_select(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
     using T = typename std::iterator_traits<RandomIt>::value_type;
     assert_or_throw(first <= mid && mid < last);
     int64_t len = last - first;
+    if (len < 4) {
+        bubble_sort(first, last, proj);
+        return;
+    }
     int64_t buffer_len = static_cast<int64_t>(std::floor(std::sqrt(len))) * 2;
     if (!extract_buffer(first, last, buffer_len, proj)) {
         T major = probable_major(first, last, proj);
@@ -120,8 +150,41 @@ void inplace_stable_select(RandomIt first, RandomIt mid, RandomIt last, Proj pro
             major_it, last);
         return;
     }
-    std::ranges::stable_sort(
-        first, last, {}, proj);  // TODO: implement proper inplace stable select
+    RandomIt main = first + (buffer_len * 2);
+    int64_t block_size = static_cast<int64_t>(std::floor(std::sqrt(len)));
+    int64_t n_blocks = (last - main) / block_size;
+    if (n_blocks == 0) {
+        bubble_sort(first, last, proj);
+        return;
+    }
+    for (int64_t i = 0; i < n_blocks; i++) {
+        RandomIt start = main + (i * block_size);
+        RandomIt end = main + ((i + 1) * block_size);
+        std::ranges::stable_sort(start, end, {}, proj);  // TODO: not implemented
+        T median = start[block_size / 2];
+        RandomIt median_it =
+            std::ranges::find_if(start, end, [&](T x) { return proj(x) == proj(median); });
+        std::ranges::rotate(start, median_it, median_it + 1);
+    }
+
+    RandomIt last_aligned = main + (n_blocks * block_size);
+    RandomIt median_it = strided_min_element(main, last_aligned, block_size, proj);
+    for (int64_t i = 0; i < (n_blocks / 2) - 1; i++) {
+        median_it = strided_next_element(main, last_aligned, block_size, median_it, proj);
+    }
+    T median = *median_it;
+    inplace_stable_partition_stub(first, last, [&](T x) { return proj(x) < proj(median); });
+    RandomIt median_start =
+        std::ranges::find_if(first, last, [&](T x) { return proj(x) >= proj(median); });
+    inplace_stable_partition_stub(median_start, last, [&](T x) { return proj(x) == proj(median); });
+    RandomIt median_end =
+        std::ranges::find_if(median_start, last, [&](T x) { return proj(x) != proj(median); });
+    if (mid < median_start) {
+        inplace_stable_select(first, mid, median_start, proj);
+    }
+    if (mid >= median_end) {
+        inplace_stable_select(median_end, mid, last, proj);
+    }
 }
 }  // namespace inplace_stable_select
 }  // namespace tcs
