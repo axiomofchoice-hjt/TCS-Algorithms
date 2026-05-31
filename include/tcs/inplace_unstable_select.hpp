@@ -175,11 +175,12 @@ void inplace_unstable_select(RandomIt first, RandomIt mid, RandomIt last, Proj p
             RandomIt buffer = first + (aligned_len / group_size);
             if (!prepare_buffer(buffer, tail, word_bits, proj)) {
                 T possible_majority = *(tail - 1);
-                RandomIt mid = std::partition(
-                    first, tail, [&](T x) { return proj(x) != proj(possible_majority); });
+                RandomIt mid = std::partition(first, tail,
+                    [possible_majority, proj](T x) { return proj(x) != proj(possible_majority); });
                 bubble_sort(first, mid, proj);
                 std::ranges::rotate(std::ranges::find_if(first, mid,
-                                        [&](T x) { return proj(x) >= proj(possible_majority); }),
+                                        [possible_majority, proj](
+                                            T x) { return proj(x) >= proj(possible_majority); }),
                     mid, tail);
                 continue;
             }
@@ -199,9 +200,9 @@ void inplace_unstable_select(RandomIt first, RandomIt mid, RandomIt last, Proj p
             len = last - first;
             // three-way partition
             RandomIt pivot_start =
-                std::partition(first, last, [&](T el) { return proj(el) < proj(pivot); });
-            RandomIt pivot_end =
-                std::partition(pivot_start, last, [&](T el) { return proj(el) == proj(pivot); });
+                std::partition(first, last, [pivot, proj](T el) { return proj(el) < proj(pivot); });
+            RandomIt pivot_end = std::partition(
+                pivot_start, last, [pivot, proj](T el) { return proj(el) == proj(pivot); });
             RandomIt kth = first + k;
             if (kth < pivot_start) {
                 // shrink right
