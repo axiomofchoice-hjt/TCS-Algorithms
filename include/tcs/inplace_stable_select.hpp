@@ -20,11 +20,15 @@ inline void assert_or_throw(bool condition, std::string_view message = "empty me
     }
 }
 
+// Stub: delegates to std::stable_partition (non-in-place, O(n) extra space).
+// Real in-place O(1) implementation: inplace_stable_partition.hpp
 template <typename RandomIt, typename Pred>
 void inplace_stable_partition_stub(RandomIt first, RandomIt last, Pred pred) {
     std::stable_partition(first, last, pred);
 }
 
+// Stub: rebuilds array using a vector buffer (non-in-place, O(n) extra space).
+// Real in-place O(1) implementation: inplace_stable_unpartition.hpp
 template <typename RandomIt, typename Pred, typename Placement>
 void inplace_stable_unpartition_stub(
     RandomIt first, RandomIt last, Pred pred, Placement placement) {
