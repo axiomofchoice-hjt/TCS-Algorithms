@@ -28,7 +28,7 @@ void inplace_stable_partition_stub(RandomIt first, RandomIt last, Pred pred) {
 template <typename RandomIt, typename Pred, typename Placement>
 void inplace_stable_unpartition_stub(
     RandomIt first, RandomIt last, Pred pred, Placement placement) {
-    using T = typename std::iterator_traits<RandomIt>::value_type;
+    using T = std::iter_value_t<RandomIt>;
     RandomIt left_it = first;
     RandomIt right_it = std::find_if(first, last, [pred](T x) { return !pred(x); });
     std::vector<T> buffer;
@@ -63,7 +63,7 @@ void bubble_sort(RandomIt first, RandomIt last, Proj proj = {}) {
 
 template <typename RandomIt, typename Proj = std::identity>
 auto probable_major(RandomIt first, RandomIt last, Proj proj = {}) {
-    using T = typename std::iterator_traits<RandomIt>::value_type;
+    using T = std::iter_value_t<RandomIt>;
     T major = *first;
     int64_t cnt = 1;
     for (RandomIt it = first + 1; it < last; it++) {
@@ -81,7 +81,7 @@ auto probable_major(RandomIt first, RandomIt last, Proj proj = {}) {
 
 template <typename RandomIt, typename Proj = std::identity>
 bool extract_buffer(RandomIt first, RandomIt last, int64_t buffer_len, Proj proj = {}) {
-    using T = typename std::iterator_traits<RandomIt>::value_type;
+    using T = std::iter_value_t<RandomIt>;
     int64_t len = last - first;
     if (len < buffer_len * 2) {
         return false;
@@ -166,7 +166,7 @@ std::tuple<RandomIt, RandomIt> three_way_partition(
 
 template <typename RandomIt, typename Proj = std::identity>
 void inplace_stable_select(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
-    using T = typename std::iterator_traits<RandomIt>::value_type;
+    using T = std::iter_value_t<RandomIt>;
     assert_or_throw(first <= mid && mid < last);
     int64_t len = last - first;
     if (len < 4) {

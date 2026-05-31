@@ -138,7 +138,7 @@ static constexpr uint64_t restore_left = 3;
 
 template <typename RandomIt, typename Proj = std::identity>
 void inplace_unstable_select(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
-    using T = typename std::iterator_traits<RandomIt>::value_type;
+    using T = std::iter_value_t<RandomIt>;
     constexpr int64_t group_size = 5;
     constexpr int64_t shrink_num = (group_size + 1) / 2;  // 3
     constexpr int64_t shrink_den = group_size * 2;        // 10

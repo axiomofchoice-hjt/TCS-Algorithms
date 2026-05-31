@@ -40,7 +40,7 @@ int64_t count_if_placement_equals(RandomIt first, RandomIt last, int key, Placem
 template <typename RandomIt, typename Proj = std::identity, typename Placement>
 void check_partition_consistency(RandomIt first, RandomIt last, Proj proj, Placement placement,
     const std::source_location& loc = std::source_location::current()) {
-    using T = typename std::iterator_traits<RandomIt>::value_type;
+    using T = std::iter_value_t<RandomIt>;
     static_assert(std::is_invocable_v<Proj, T>);
     static_assert(std::is_invocable_v<Placement, RandomIt>);
     assert_or_throw(std::ranges::count_if(first, last, proj) ==
@@ -51,7 +51,7 @@ void check_partition_consistency(RandomIt first, RandomIt last, Proj proj, Place
 template <typename RandomIt, typename Proj = std::identity, typename Placement>
 void dehomogenize_blocks(
     RandomIt first, RandomIt last, int64_t block_size, Proj proj, Placement placement) {
-    using T = typename std::iterator_traits<RandomIt>::value_type;
+    using T = std::iter_value_t<RandomIt>;
     assert_or_throw((last - first) % block_size == 0);
     int64_t n_blocks = (last - first) / block_size;
     for (int64_t i = 0; i + 2 <= n_blocks; i++) {
@@ -112,7 +112,7 @@ struct BufferStorage {
     int64_t element_bits;
     Proj proj;
 
-    using T = typename std::iterator_traits<RandomIt>::value_type;
+    using T = std::iter_value_t<RandomIt>;
     static_assert(std::is_invocable_v<Proj, T>);
 
     static BufferStorage create(StorageAttributes attr, RandomIt buf0, RandomIt buf1, Proj proj) {
@@ -271,7 +271,7 @@ void merge_blocks_using_word(RandomIt first, RandomIt last, int64_t block_size, 
 template <typename RandomIt, typename Proj = std::identity, typename Placement>
 void merge_blocks_using_buffer(RandomIt first, RandomIt last, int64_t block_size, RandomIt buf0,
     RandomIt buf1, int64_t buffer_len, Proj proj, Placement placement) {
-    using T = typename std::iterator_traits<RandomIt>::value_type;
+    using T = std::iter_value_t<RandomIt>;
     assert_or_throw((last - first) % block_size == 0);
     int64_t n_blocks = (last - first) / block_size;
     if (n_blocks <= 2) {
@@ -358,7 +358,7 @@ void inplace_stable_01_unpartition(RandomIt first, RandomIt last, Proj proj, Pla
 
 template <typename RandomIt, typename Pred, typename Placement>
 void inplace_stable_unpartition(RandomIt first, RandomIt last, Pred pred, Placement placement) {
-    using T = typename std::iterator_traits<RandomIt>::value_type;
+    using T = std::iter_value_t<RandomIt>;
     static_assert(std::is_invocable_r_v<bool, Pred, T>);
     static_assert(std::is_invocable_r_v<bool, Placement, RandomIt>);
     inplace_stable_01_unpartition(
