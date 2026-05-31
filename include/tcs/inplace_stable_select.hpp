@@ -92,15 +92,18 @@ bool extract_buffer(RandomIt first, RandomIt last, int64_t buffer_len, Proj proj
         bubble_sort(first, first + (buffer_len * 2), proj);
         return true;
     }
-    if (std::ranges::count_if(first, last, [&](T x) { return proj(x) == proj(major); }) >
+    if (std::ranges::count_if(first, last, [&](T x) { return proj(x) == proj(major); }) <=
         len - buffer_len) {
-        return false;
+        inplace_stable_partition_stub(first, last, [&](T x) { return proj(x) != proj(major); });
+        RandomIt major_it =
+            std::ranges::find_if(first, last, [&](T x) { return proj(x) == proj(major); });
+        bubble_sort(first, first + buffer_len, proj);
+        RandomIt major_insert_it = std::ranges::find_if(
+            first, first + buffer_len, [&](T x) { return proj(x) > proj(major); });
+        std::ranges::rotate(major_insert_it, major_it, major_it + buffer_len);
+        return true;
     }
-    inplace_stable_partition_stub(first, last, [&](T x) { return proj(x) != proj(major); });
-    RandomIt major_it =
-        std::ranges::find_if(first, last, [&](T x) { return proj(x) == proj(major); });
-    std::ranges::rotate(first + buffer_len, major_it, major_it + buffer_len);
-    return true;
+    return false;
 }
 
 template <typename RandomIt, typename Proj = std::identity>
