@@ -169,7 +169,7 @@ void inplace_stable_select(RandomIt first, RandomIt mid, RandomIt last, Proj pro
 
     RandomIt last_aligned = main + (n_blocks * block_size);
     RandomIt median_it = strided_min_element(main, last_aligned, block_size, proj);
-    for (int64_t i = 0; i < (n_blocks / 2) - 1; i++) {
+    for (int64_t i = 0; i < (n_blocks - 1) / 2; i++) {
         median_it = strided_next_element(main, last_aligned, block_size, median_it, proj);
     }
     T median = *median_it;
