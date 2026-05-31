@@ -66,7 +66,7 @@ void bubble_sort(RandomIt first, RandomIt last, Proj proj = {}) {
 }
 
 template <typename RandomIt, typename Proj = std::identity>
-auto probable_major(RandomIt first, RandomIt last, Proj proj = {}) {
+std::iter_value_t<RandomIt> probable_major(RandomIt first, RandomIt last, Proj proj = {}) {
     using T = std::iter_value_t<RandomIt>;
     T major = *first;
     int64_t cnt = 1;
@@ -130,10 +130,12 @@ RandomIt strided_min_element(RandomIt first, RandomIt last, int64_t stride, Proj
     return min_it;
 }
 
+// Returns the smallest strided element strictly greater than x. Breaks ties on key equality by
+// comparing raw iterator positions, giving a total order over identical keys.
 template <typename RandomIt, typename Proj = std::identity>
 RandomIt strided_next_element(
     RandomIt first, RandomIt last, int64_t stride, RandomIt x, Proj proj = {}) {
-    assert_or_throw((last - first) % stride == 0);
+    assert_or_throw((last - first) % stride == 0, "strided_next_element: range must be aligned to stride");
     RandomIt next_it = last;
     for (RandomIt i = first; i < last; i += stride) {
         if (std::pair{proj(*x), x} < std::pair{proj(*i), i} &&
