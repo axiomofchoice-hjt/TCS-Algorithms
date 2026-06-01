@@ -271,7 +271,6 @@ void merge_blocks_using_word(RandomIt first, RandomIt last, int64_t block_size, 
 template <typename RandomIt, typename Proj = std::identity, typename Placement>
 void merge_blocks_using_buffer(RandomIt first, RandomIt last, int64_t block_size, RandomIt buf0,
     RandomIt buf1, int64_t buffer_len, Proj proj, Placement placement) {
-    using T = std::iter_value_t<RandomIt>;
     assert_or_throw((last - first) % block_size == 0);
     int64_t n_blocks = (last - first) / block_size;
     if (n_blocks <= 2) {
