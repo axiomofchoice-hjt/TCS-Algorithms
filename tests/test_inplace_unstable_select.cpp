@@ -43,7 +43,7 @@ constexpr TestParam kCases[] = {
 };
 
 void random_test(const TestParam& param) {
-    static std::mt19937 gen(kRandomSeed);
+    std::mt19937 gen(kRandomSeed);
     std::uniform_int_distribution<int64_t> key_dist(1, param.max_key);
 
     for ([[maybe_unused]] int64_t i : std::views::iota(0, param.repeat_count)) {

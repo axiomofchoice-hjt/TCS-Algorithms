@@ -40,7 +40,7 @@ constexpr TestParam kCases[] = {
 };
 
 void random_test(const TestParam& param) {
-    static std::mt19937 gen(kRandomSeed);
+    std::mt19937 gen(kRandomSeed);
     int64_t n = param.total_size;
     int64_t num_ones = param.num_ones;
 

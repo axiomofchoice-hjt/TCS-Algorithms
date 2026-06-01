@@ -43,14 +43,13 @@ constexpr TestParam kCases[] = {
 };
 
 void random_test(const TestParam& param) {
-    static std::mt19937 gen(kRandomSeed);
+    std::mt19937 gen(kRandomSeed);
     std::uniform_int_distribution<int64_t> key_dist(1, param.max_key);
 
     for ([[maybe_unused]] int64_t i : std::views::iota(0, param.repeat_count)) {
-        auto arr = std::views::iota(0, param.total_size) |
-                   std::views::transform(
-                       [&key_dist](int64_t) { return IndexedElement{key_dist(gen), 0}; }) |
-                   std::ranges::to<std::vector<IndexedElement>>();
+        auto arr = std::views::iota(0, param.total_size) | std::views::transform([&](int64_t) {
+            return IndexedElement{key_dist(gen), 0};
+        }) | std::ranges::to<std::vector<IndexedElement>>();
 
         std::ranges::sort(arr.begin(), arr.begin() + param.left_size, {}, IndexedElement::proj);
         std::ranges::sort(arr.begin() + param.left_size, arr.end(), {}, IndexedElement::proj);
