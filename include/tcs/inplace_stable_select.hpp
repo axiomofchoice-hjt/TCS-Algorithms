@@ -21,6 +21,11 @@ inline void assert_or_throw(bool condition, std::string_view message = "empty me
     }
 }
 
+inline int64_t ceil_log2(int64_t x) {
+    assert_or_throw(x > 0);
+    return std::bit_width(static_cast<uint64_t>(x) - 1);
+}
+
 // Stub: delegates to std::stable_partition (non-in-place, O(n) extra space).
 // Real in-place O(1) implementation: inplace_stable_partition.hpp
 template <typename RandomIt, typename Pred>
@@ -183,6 +188,23 @@ struct Stack {
     }
     bool empty() const { return data.empty(); }
 };
+
+int64_t restoring_select_buffer_size(int64_t len) {
+    constexpr int64_t group_size = 5;
+    int64_t scalar_bits = ceil_log2(len);
+    int64_t buffer_size = 0;
+    buffer_size += 4 * scalar_bits;
+    while (true) {
+        if (len < group_size) {
+            break;
+        }
+        buffer_size += len * 2;
+        int64_t medians = len / group_size;
+        len -= (medians + 1) / 2 * 3;
+        buffer_size += 4 * scalar_bits;
+    }
+    return buffer_size;
+}
 
 template <typename RandomIt, typename Proj = std::identity>
 std::iter_value_t<RandomIt> restoring_select(RandomIt first, RandomIt mid, RandomIt last,
