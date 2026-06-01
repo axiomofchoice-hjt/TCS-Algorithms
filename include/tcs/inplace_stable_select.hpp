@@ -315,11 +315,12 @@ void inplace_stable_select(RandomIt first, RandomIt mid, RandomIt last, Proj pro
     while (true) {
         assert_or_throw(first <= mid && mid < last);
         int64_t len = last - first;
-        if (len < 4) {
+        int64_t block_size = static_cast<int64_t>(std::floor(std::sqrt(len))) / 4;
+        if (block_size <= 1) {
             bubble_sort(first, last, proj);
             return;
         }
-        int64_t buffer_len = static_cast<int64_t>(std::floor(std::sqrt(len))) * 2;
+        int64_t buffer_len = restoring_select_buffer_size(block_size);
         if (!extract_buffer(first, last, buffer_len, proj)) {
             T major = probable_major(first, last, proj);
             inplace_stable_partition_stub(first, last, [&](T x) { return proj(x) != proj(major); });
@@ -333,7 +334,6 @@ void inplace_stable_select(RandomIt first, RandomIt mid, RandomIt last, Proj pro
         }
         assert_or_throw(std::ranges::is_sorted(first, first + (buffer_len * 2), {}, proj));
         RandomIt main = first + (buffer_len * 2);
-        int64_t block_size = static_cast<int64_t>(std::floor(std::sqrt(len)));
         int64_t n_blocks = (last - main) / block_size;
         if (n_blocks == 0) {
             bubble_sort(first, last, proj);
