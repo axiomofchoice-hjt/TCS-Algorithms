@@ -50,7 +50,7 @@ void random_test(const TestParam& param) {
     for ([[maybe_unused]] int64_t i : std::views::iota(0, param.repeat_count)) {
         auto arr = std::views::iota(0, param.total_size) |
                    std::views::transform(
-                       [&key_dist](int64_t i) { return IndexedElement{key_dist(gen), 0}; }) |
+                       [&key_dist](int64_t) { return IndexedElement{key_dist(gen), 0}; }) |
                    std::ranges::to<std::vector<IndexedElement>>();
 
         std::ranges::sort(arr.begin(), arr.begin() + param.left_size, {}, IndexedElement::proj);

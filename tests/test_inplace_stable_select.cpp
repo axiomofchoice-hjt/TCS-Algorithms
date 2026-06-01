@@ -45,29 +45,31 @@ constexpr TestParam kCases[] = {
 };
 
 void random_test(const TestParam& param) {
-    static std::mt19937 gen(kRandomSeed);
+    std::mt19937 gen(kRandomSeed);
     std::uniform_int_distribution<int64_t> key_dist(1, param.max_key);
 
-    auto arr = std::views::iota(0, param.total_size) |
-               std::views::transform([&](int64_t i) { return IndexedElement{key_dist(gen), i}; }) |
-               std::ranges::to<std::vector<IndexedElement>>();
+    for ([[maybe_unused]] int64_t i : std::views::iota(0, param.repeat_count)) {
+        auto arr = std::views::iota(0, param.total_size) | std::views::transform([&](int64_t i) {
+            return IndexedElement{key_dist(gen), i};
+        }) | std::ranges::to<std::vector<IndexedElement>>();
 
-    auto expected = arr;
-    std::ranges::stable_sort(expected, {}, IndexedElement::proj);
+        auto expected = arr;
+        std::ranges::stable_sort(expected, {}, IndexedElement::proj);
 
-    try {
-        tcs::inplace_stable_select::inplace_stable_select(
-            arr.begin(), arr.begin() + param.k, arr.end(), IndexedElement::proj);
-    } catch (std::exception& e) {
-        INFO(std::format("{} [total_size={}, k={}, max_key={}, repeat_count={}]", e.what(),
-            param.total_size, param.k, param.max_key, param.repeat_count));
-        FAIL();
+        try {
+            tcs::inplace_stable_select::inplace_stable_select(
+                arr.begin(), arr.begin() + param.k, arr.end(), IndexedElement::proj);
+        } catch (std::exception& e) {
+            INFO(std::format("{} [total_size={}, k={}, max_key={}, repeat_count={}]", e.what(),
+                param.total_size, param.k, param.max_key, param.repeat_count));
+            FAIL();
+        }
+
+        REQUIRE(IndexedElement::proj(arr[param.k]) == IndexedElement::proj(expected[param.k]));
+        REQUIRE(is_stable(arr));
+        std::ranges::sort(arr, {}, IndexedElement::proj);
+        REQUIRE(std::ranges::equal(arr, expected, {}, IndexedElement::proj, IndexedElement::proj));
     }
-
-    REQUIRE(IndexedElement::proj(arr[param.k]) == IndexedElement::proj(expected[param.k]));
-    REQUIRE(is_stable(arr));
-    std::ranges::sort(arr, {}, IndexedElement::proj);
-    REQUIRE(std::ranges::equal(arr, expected, {}, IndexedElement::proj, IndexedElement::proj));
 }
 
 }  // namespace
