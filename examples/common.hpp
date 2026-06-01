@@ -8,7 +8,7 @@ inline void print_arr(const auto& arr, std::string_view label) {
     std::print("{}: [", label);
     for (auto [i, v] : arr | std::views::enumerate) {
         std::print("{}", v);
-        if (i + 1 < arr.size()) {
+        if (i + 1 < static_cast<int64_t>(arr.size())) {
             std::print(", ");
         }
     }
