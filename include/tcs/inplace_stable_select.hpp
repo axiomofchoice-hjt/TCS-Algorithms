@@ -1,9 +1,6 @@
 #pragma once
 
 #include <algorithm>
-#include <array>
-#include <bit>
-#include <climits>
 #include <cmath>
 #include <cstdint>
 #include <format>
@@ -50,11 +47,6 @@ void inplace_stable_unpartition_stub(
         }
     }
     std::ranges::copy(buffer, first);
-}
-
-inline int64_t ceil_log2(int64_t x) {
-    assert_or_throw(x > 0);
-    return std::bit_width(static_cast<uint64_t>(x) - 1);
 }
 
 template <typename RandomIt, typename Proj = std::identity>
@@ -174,50 +166,6 @@ std::tuple<RandomIt, RandomIt> three_way_partition(
     return {pivot_start, pivot_end};
 }
 
-struct BitStackAttributes {
-    int64_t word_bits;
-    int64_t element_bits;
-};
-
-template <int64_t N>
-struct BitStack {
-    int64_t word_bits;
-    int64_t element_bits;
-    int64_t size = 0;
-    std::array<uint64_t, N> storage = {};
-
-    static BitStack create(BitStackAttributes attr) {
-        assert_or_throw(
-            attr.word_bits > 0 && attr.word_bits <= int64_t{sizeof(uint64_t) * CHAR_BIT});
-        assert_or_throw(attr.element_bits > 0);
-        return BitStack{.word_bits = attr.word_bits, .element_bits = attr.element_bits};
-    }
-
-    bool empty() const { return size == 0; }
-
-    void push(uint64_t value) {
-        assert_or_throw((size + 1) * element_bits <= N * word_bits);
-        assert_or_throw(ceil_log2(static_cast<int64_t>(value + 1)) <= element_bits);
-        for (int64_t i = 0; i < element_bits; i++) {
-            int64_t bit_offset = (size * element_bits) + i;
-            storage[bit_offset / word_bits] &= ~(uint64_t{1} << (bit_offset % word_bits));
-            storage[bit_offset / word_bits] |= ((value >> i) & 1) << (bit_offset % word_bits);
-        }
-        size++;
-    }
-
-    uint64_t pop() {
-        assert_or_throw(size > 0);
-        size--;
-        uint64_t res = 0;
-        for (int64_t i = 0; i < element_bits; i++) {
-            int64_t bit_offset = (size * element_bits) + i;
-            res |= (storage[bit_offset / word_bits] >> (bit_offset % word_bits) & 1) << i;
-        }
-        return res;
-    }
-};
-
 namespace Stage {
 static constexpr uint64_t median_of_medians = 0;
 static constexpr uint64_t partition = 1;
@@ -233,28 +181,26 @@ struct Stack {
         data.pop_back();
         return res;
     }
+    bool empty() const { return data.empty(); }
 };
 
 template <typename RandomIt, typename Proj = std::identity>
 std::iter_value_t<RandomIt> restoring_select(RandomIt first, RandomIt mid, RandomIt last,
-    [[maybe_unused]] RandomIt buf, [[maybe_unused]] int64_t buffer_len, int64_t word_bits,
-    Proj proj = {}) {
+    [[maybe_unused]] RandomIt buf, [[maybe_unused]] int64_t buffer_len, Proj proj = {}) {
     using T = std::iter_value_t<RandomIt>;
     constexpr int64_t group_size = 5;
-    constexpr int64_t max_stage_size = 4;
-    BitStack<max_stage_size> stages{word_bits, 2};
     RandomIt original = first;
     Stack tmp;  // TODO: use buffer
-    stages.push(Stage::median_of_medians);
+    tmp.push(Stage::median_of_medians);
     tmp.push(mid - original);
     tmp.push(first - original);
     tmp.push(last - original);
     T result;
-    while (!stages.empty()) {
-        uint64_t stage = stages.pop();
+    while (!tmp.empty()) {
         RandomIt last = original + tmp.pop();
         RandomIt first = original + tmp.pop();
         int64_t k = tmp.pop();
+        uint64_t stage = tmp.pop();
         if (stage == Stage::median_of_medians) {
             int64_t len = last - first;
             int64_t aligned_len = len / group_size * group_size;
@@ -270,11 +216,11 @@ std::iter_value_t<RandomIt> restoring_select(RandomIt first, RandomIt mid, Rando
                 std::swap(first[i / group_size], *median_it);
             }
             // recursive
-            stages.push(Stage::partition);
+            tmp.push(Stage::partition);
             tmp.push(k);
             tmp.push(first - original);
             tmp.push(last - original);
-            stages.push(Stage::median_of_medians);
+            tmp.push(Stage::median_of_medians);
             tmp.push(aligned_len / group_size / 2);
             tmp.push(first - original);
             tmp.push(first + (aligned_len / group_size) - original);
@@ -299,19 +245,19 @@ std::iter_value_t<RandomIt> restoring_select(RandomIt first, RandomIt mid, Rando
                 std::ranges::find_if(pivot_start, last, [&](T x) { return proj(x) > proj(pivot); });
             RandomIt kth = first + k;
             // store (k, first, last)
-            stages.push(Stage::restore);
+            tmp.push(Stage::restore);
             tmp.push(k);
             tmp.push(first - original);
             tmp.push(last - original);
             if (kth < pivot_start) {
-                stages.push(Stage::median_of_medians);
+                tmp.push(Stage::median_of_medians);
                 tmp.push(k);
                 tmp.push(first - original);
                 tmp.push(pivot_start - original);
             } else if (kth >= pivot_end) {
                 first = pivot_end;
                 k = kth - pivot_end;
-                stages.push(Stage::median_of_medians);
+                tmp.push(Stage::median_of_medians);
                 tmp.push(kth - pivot_end);
                 tmp.push(pivot_end - original);
                 tmp.push(last - original);
@@ -344,7 +290,6 @@ std::iter_value_t<RandomIt> restoring_select(RandomIt first, RandomIt mid, Rando
 template <typename RandomIt, typename Proj = std::identity>
 void inplace_stable_select(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
     using T = std::iter_value_t<RandomIt>;
-    int64_t word_bits = ceil_log2(last - first);
     while (true) {
         assert_or_throw(first <= mid && mid < last);
         int64_t len = last - first;
@@ -375,8 +320,8 @@ void inplace_stable_select(RandomIt first, RandomIt mid, RandomIt last, Proj pro
         for (int64_t i = 0; i < n_blocks; i++) {
             RandomIt start = main + (i * block_size);
             RandomIt end = main + ((i + 1) * block_size);
-            T median = restoring_select(
-                start, start + (block_size / 2), end, first, buffer_len, word_bits, proj);
+            T median =
+                restoring_select(start, start + (block_size / 2), end, first, buffer_len, proj);
             RandomIt median_it =
                 std::ranges::find_if(start, end, [&](T x) { return proj(x) == proj(median); });
             std::ranges::rotate(start, median_it, median_it + 1);
