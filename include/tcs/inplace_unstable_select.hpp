@@ -160,7 +160,7 @@ void inplace_unstable_select(RandomIt first, RandomIt mid, RandomIt last, Proj p
         if (stage == Stage::median_of_medians) {
             int64_t len = last - first;
             // align to alignment
-            RandomIt tail = first + (len % alignment);
+            RandomIt tail = first + (len / alignment * alignment);
             int64_t aligned_len = tail - first;
             move_largest_to_end(first, tail, last, proj);
             if (k >= aligned_len) {
