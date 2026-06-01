@@ -7,6 +7,9 @@ set_version("0.1.0")
 -- C++23 standard
 set_languages("c++23")
 
+-- Warning flags
+add_cxflags("-Wall", "-Wextra")
+
 -- Add Catch2 dependency
 add_requires("catch2")
 
