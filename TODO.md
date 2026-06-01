@@ -13,21 +13,16 @@ invariant was violated.
 Currently placeholder using `std::ranges::stable_sort`. Needs the real O(n) in-place
 stable selection algorithm as described.
 
-### 3. Debug `inplace_stable_unpartition` test failures
-
-~999 assertions fail in sweep test (line 137 / inplace_01_split boundary assertion).
-Algorithm logic needs investigation.
-
 ## Medium Priority
 
-### 4. (By design) Duplicated utilities kept for self-contained headers
+### 3. (By design) Duplicated utilities kept for self-contained headers
 
 `bubble_sort`, `ceil_log2`, `WordStorage`, `BufferStorage`, `BitStack`, `StorageAttributes`
 are intentionally duplicated per header so each file can be copied and used standalone
 without internal dependencies. Each resides in its own `tcs::<algorithm>` namespace to
 avoid ODR conflicts when multiple headers are included together.
 
-### 5. Add missing assertions to internal helpers
+### 4. Add missing assertions to internal helpers
 
 Some internal functions lack precondition checks. Candidates:
 
@@ -36,31 +31,31 @@ Some internal functions lack precondition checks. Candidates:
 - `stable_collect_first_n` — assert `n >= 0`
 - `unpartition_with_rotation` — assert `first <= last`
 
-### 6. Sweep test generates too many trivial cases
+### 5. Sweep test generates too many trivial cases
 
 `GENERATE(Catch::Generators::range(1, kSweepMaxSize + 1))` includes very small `n` where
 algorithms degenerate to fallback. Consider logarithmic sweep or skipping `n < some_threshold`.
 
-### 7. Improve variable naming in complex functions
+### 6. Improve variable naming in complex functions
 
 - `merge_blocks_impl`: `counters[0]`/`counters[1]` → `kZero`/`kOne`
 - `inplace_stable_01_unpartition`: step loop magic `3` and `2` → named constants
 
-### 8. Unify `Storage` factory pattern
+### 7. Unify `Storage` factory pattern
 
 Mix of `static create()` and aggregate init `{.n_bits=..., .element_bits=...}`.
 Pick one style.
 
-### 9. `std::partition` → `std::ranges::partition`
+### 8. `std::partition` → `std::ranges::partition`
 
 Skipped because ranges version returns `subrange`, not plain iterator. Call sites
 need `.begin()` adjustment.
 
 ## Low Priority
 
-### 10. Doxygen-style docs for algorithm entry points
+### 9. Doxygen-style docs for algorithm entry points
 
-### 11. `assert_or_throw` semantics
+### 10. `assert_or_throw` semantics
 
 Split into `ASSERT` (debug-only) vs `VERIFY` (always-active) for intent clarity.
 
