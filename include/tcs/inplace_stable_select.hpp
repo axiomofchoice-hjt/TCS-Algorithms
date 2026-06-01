@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <climits>
 #include <cmath>
 #include <cstdint>
 #include <format>
@@ -177,21 +178,67 @@ static constexpr uint64_t partition = 1;
 static constexpr uint64_t restore = 2;
 }  // namespace Stage
 
+template <typename RandomIt, typename Proj = std::identity>
+struct StackAttributes {
+    RandomIt buffer;
+    int64_t buffer_len;
+    Proj proj;
+};
+
+template <typename RandomIt, typename Proj = std::identity>
 struct Stack {
-    std::vector<int64_t> data;
-    void push(int64_t value) { data.push_back(value); }
-    int64_t pop() {
-        assert_or_throw(!data.empty());
-        int64_t res = data.back();
-        data.pop_back();
+    RandomIt buf0_;
+    RandomIt buf1_;
+    int64_t buffer_len_;
+    int64_t size_;
+    Proj proj;
+
+    static Stack create(StackAttributes<RandomIt, Proj> attrs) {
+        return Stack{.buf0_ = attrs.buffer,
+            .buf1_ = attrs.buffer + attrs.buffer_len,
+            .buffer_len_ = attrs.buffer_len,
+            .size_ = 0,
+            .proj = attrs.proj};
+    }
+
+    void push(uint64_t value, int64_t value_bits) {
+        assert_or_throw(value_bits <= static_cast<int64_t>(sizeof(uint64_t) * CHAR_BIT));
+        assert_or_throw(size_ + value_bits <= buffer_len_);
+        assert_or_throw(std::bit_width(value) <= value_bits);
+        for (int64_t i = 0; i < value_bits; i++) {
+            size_++;
+            if ((value >> i & 1) == 1) {
+                std::swap(buf0_[size_ - 1], buf1_[size_ - 1]);
+            }
+        }
+    }
+
+    uint64_t pop(int64_t value_bits) {
+        assert_or_throw(value_bits <= static_cast<int64_t>(sizeof(uint64_t) * CHAR_BIT));
+        assert_or_throw(size_ >= value_bits);
+        uint64_t res = 0;
+        for (int64_t i = value_bits - 1; i >= 0; i--) {
+            if (proj(buf0_[size_ - 1]) > proj(buf1_[size_ - 1])) {
+                res |= uint64_t{1} << i;
+                std::swap(buf0_[size_ - 1], buf1_[size_ - 1]);
+            }
+            size_--;
+        }
         return res;
     }
-    bool empty() const { return data.empty(); }
+
+    bool empty() const { return size_ == 0; }
+
+    int64_t get(int64_t index, int64_t len) const {
+        assert_or_throw(0 <= index && index <= len);
+        assert_or_throw(len <= size_);
+        return proj(buf0_[size_ - len + index]) > proj(buf1_[size_ - len + index]) ? 1 : 0;
+    }
 };
 
 int64_t restoring_select_buffer_size(int64_t len) {
     constexpr int64_t group_size = 5;
-    int64_t scalar_bits = ceil_log2(len);
+    int64_t scalar_bits = ceil_log2(len + 1);
     int64_t buffer_size = 0;
     buffer_size += 4 * scalar_bits;
     while (true) {
@@ -212,17 +259,22 @@ std::iter_value_t<RandomIt> restoring_select(RandomIt first, RandomIt mid, Rando
     using T = std::iter_value_t<RandomIt>;
     constexpr int64_t group_size = 5;
     RandomIt original = first;
-    Stack tmp;  // TODO: use buffer
-    tmp.push(Stage::median_of_medians);
-    tmp.push(mid - original);
-    tmp.push(first - original);
-    tmp.push(last - original);
+    Stack stack =
+        Stack<RandomIt, Proj>::create({.buffer = buf, .buffer_len = buffer_len, .proj = proj});
+    int64_t scalar_bits = ceil_log2(last - first + 1);
+    if (scalar_bits <= 1) {
+        return *strided_topk(first, last, 1, mid - first, proj);
+    }
+    stack.push(Stage::median_of_medians, scalar_bits);
+    stack.push(mid - original, scalar_bits);
+    stack.push(first - original, scalar_bits);
+    stack.push(last - original, scalar_bits);
     T result;
-    while (!tmp.empty()) {
-        RandomIt last = original + tmp.pop();
-        RandomIt first = original + tmp.pop();
-        int64_t k = tmp.pop();
-        uint64_t stage = tmp.pop();
+    while (!stack.empty()) {
+        RandomIt last = original + stack.pop(scalar_bits);
+        RandomIt first = original + stack.pop(scalar_bits);
+        int64_t k = stack.pop(scalar_bits);
+        uint64_t stage = stack.pop(scalar_bits);
         if (stage == Stage::median_of_medians) {
             int64_t len = last - first;
             int64_t aligned_len = len / group_size * group_size;
@@ -234,31 +286,31 @@ std::iter_value_t<RandomIt> restoring_select(RandomIt first, RandomIt mid, Rando
             for (int64_t i = 0; i + group_size <= aligned_len; i += group_size) {
                 RandomIt median_it =
                     strided_topk(first + i, first + i + group_size, 1, group_size / 2, proj);
-                tmp.push(median_it - (first + i));
+                stack.push(median_it - (first + i), 3);
                 std::swap(first[i / group_size], *median_it);
             }
             // recursive
-            tmp.push(Stage::partition);
-            tmp.push(k);
-            tmp.push(first - original);
-            tmp.push(last - original);
-            tmp.push(Stage::median_of_medians);
-            tmp.push(aligned_len / group_size / 2);
-            tmp.push(first - original);
-            tmp.push(first + (aligned_len / group_size) - original);
+            stack.push(Stage::partition, scalar_bits);
+            stack.push(k, scalar_bits);
+            stack.push(first - original, scalar_bits);
+            stack.push(last - original, scalar_bits);
+            stack.push(Stage::median_of_medians, scalar_bits);
+            stack.push(aligned_len / group_size / 2, scalar_bits);
+            stack.push(first - original, scalar_bits);
+            stack.push(first + (aligned_len / group_size) - original, scalar_bits);
         } else if (stage == Stage::partition) {
             T pivot = result;
             int64_t len = last - first;
             int64_t aligned_len = len / group_size * group_size;
             for (int64_t i = aligned_len - group_size; i >= 0; i -= group_size) {
-                std::swap(first[i / group_size], first[i + tmp.pop()]);
+                std::swap(first[i / group_size], first[i + stack.pop(3)]);
             }
             for (RandomIt i = first; i < last; i++) {
-                tmp.push(proj(*i) < proj(pivot));
+                stack.push(proj(*i) < proj(pivot), 1);
             }
             inplace_stable_partition_stub(first, last, [&](T x) { return proj(x) < proj(pivot); });
             for (RandomIt i = first; i < last; i++) {
-                tmp.push(proj(*i) <= proj(pivot));
+                stack.push(proj(*i) <= proj(pivot), 1);
             }
             inplace_stable_partition_stub(first, last, [&](T x) { return proj(x) <= proj(pivot); });
             RandomIt pivot_start =
@@ -267,42 +319,38 @@ std::iter_value_t<RandomIt> restoring_select(RandomIt first, RandomIt mid, Rando
                 std::ranges::find_if(pivot_start, last, [&](T x) { return proj(x) > proj(pivot); });
             RandomIt kth = first + k;
             // store (k, first, last)
-            tmp.push(Stage::restore);
-            tmp.push(k);
-            tmp.push(first - original);
-            tmp.push(last - original);
+            stack.push(Stage::restore, scalar_bits);
+            stack.push(k, scalar_bits);
+            stack.push(first - original, scalar_bits);
+            stack.push(last - original, scalar_bits);
             if (kth < pivot_start) {
-                tmp.push(Stage::median_of_medians);
-                tmp.push(k);
-                tmp.push(first - original);
-                tmp.push(pivot_start - original);
+                stack.push(Stage::median_of_medians, scalar_bits);
+                stack.push(k, scalar_bits);
+                stack.push(first - original, scalar_bits);
+                stack.push(pivot_start - original, scalar_bits);
             } else if (kth >= pivot_end) {
                 first = pivot_end;
                 k = kth - pivot_end;
-                tmp.push(Stage::median_of_medians);
-                tmp.push(kth - pivot_end);
-                tmp.push(pivot_end - original);
-                tmp.push(last - original);
+                stack.push(Stage::median_of_medians, scalar_bits);
+                stack.push(kth - pivot_end, scalar_bits);
+                stack.push(pivot_end - original, scalar_bits);
+                stack.push(last - original, scalar_bits);
             } else {
                 result = *kth;
             }
         } else if (stage == Stage::restore) {
             int64_t len = last - first;
-            auto placement = tmp.data.end() - len;
-            T pivot =
-                first[std::count_if(placement, placement + len, [](bool x) { return x; }) - 1];
+            auto placement = [&](RandomIt i) { return stack.get(i - first, len); };
+            T pivot = first[std::ranges::count_if(std::views::iota(first, last), placement) - 1];
             inplace_stable_unpartition_stub(
-                first, last, [&](T x) { return proj(x) <= proj(pivot); },
-                [&](RandomIt i) { return placement[i - first]; });
+                first, last, [&](T x) { return proj(x) <= proj(pivot); }, placement);
             for (int64_t _ : std::views::iota(0, len)) {
-                tmp.pop();
+                stack.pop(1);
             }
-            placement = tmp.data.end() - len;
             inplace_stable_unpartition_stub(
-                first, last, [&](T x) { return proj(x) < proj(pivot); },
-                [&](RandomIt i) { return placement[i - first]; });
+                first, last, [&](T x) { return proj(x) < proj(pivot); }, placement);
             for (int64_t _ : std::views::iota(0, len)) {
-                tmp.pop();
+                stack.pop(1);
             }
         }
     }
