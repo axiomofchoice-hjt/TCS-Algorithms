@@ -1,3 +1,4 @@
+---
 BasedOnStyle: Google
 IndentWidth: 4
 ContinuationIndentWidth: 4
@@ -6,3 +7,4 @@ BinPackParameters: true
 BinPackArguments: true
 ColumnLimit: 100
 AllowShortFunctionsOnASingleLine: All
+---
