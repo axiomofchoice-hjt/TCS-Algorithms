@@ -16,10 +16,8 @@ bash scripts/code-quality.sh     # clang-format + clang-tidy (requires clang too
 
 ## Architecture
 
-- `include/tcs/` — 7 header files, 1 per algorithm. Fully self-contained: each has its own namespace and copies of shared utilities (`bubble_sort`, `assert_or_throw`, `WordStorage`, `BitStack`, etc.). Do NOT try to extract shared code into a common header — duplication is by design.
+- `include/tcs/` — 1 header per algorithm. Fully self-contained: each has its own namespace and copies of shared utilities (`bubble_sort`, `assert_or_throw`, `WordStorage`, `BitStack`, etc.). Do NOT try to extract shared code into a common header — duplication is by design.
 - `tests/` — Catch2 unit tests, one `.cpp` per algorithm. `test_main.cpp` is the entrypoint.
-- `docs/` — Algorithm explanations in Chinese, linked from README.
-- `examples/` — Usage demos.
 
 ## Key conventions
 
