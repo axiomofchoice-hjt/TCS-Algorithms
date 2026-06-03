@@ -34,3 +34,106 @@ bash scripts/code-quality.sh     # clang-format + clang-tidy (requires clang too
 - **`restoring_select` Stack:** buffer-backed bit stack using element pair swaps. Each bit occupies one pair (buf0[i], buf1[i]) — buf0 < buf1 by construction. Push swaps the pair if bit=1, pop swaps back and reads.
 - **`restoring_select_buffer_size`:** correctly accounts for framing (4*scalar_bits per level) plus 2*len per level for bit arrays.
 - **Tests use `IndexedElement`** (key + index) to verify stability via `common_test.hpp`.
+
+---
+
+## Code Style (Detailed)
+
+### File & Namespace Structure
+
+- One algorithm per header under `include/tcs/<algorithm>.hpp`.
+- Each header is fully self-contained: it repeats all shared helpers (`assert_or_throw`, `bubble_sort`, `ceil_log2`, `WordStorage`, `BufferStorage`, `BitStack`, `StorageAttributes`, etc.).
+- Namespace pattern: `namespace tcs { namespace <algorithm_name> { ... } }`.
+- No common internal headers; standalone copy-paste-ability is a design goal.
+
+### C++23 Idioms
+
+- Iterator typedef: `std::iter_value_t<RandomIt>` instead of `std::iterator_traits<RandomIt>::value_type`.
+- Projection parameter: `typename Proj = std::identity` on every public / helper template that needs ordering.
+- Ranges algorithms: prefer `std::ranges::rotate`, `std::ranges::is_sorted`, `std::ranges::find_if`, `std::ranges::max_element`, etc.
+- Pass `{}` as the comparator when using ranges calls with projections: `std::ranges::is_sorted(first, last, {}, proj)`.
+- CTAD: `std::pair{...}` instead of `std::pair<...>{...}`.
+- Designated initializers: `WordStorage{.n_bits = w, .element_bits = e, .word = 0}`.
+- Formatting: use `std::format` for assertion messages and test diagnostics.
+- Attributes: `[[unlikely]]` on assertion-failure branches.
+
+### Naming
+
+- Functions, local variables, parameters: `snake_case`.
+- Types / structs: `PascalCase` (e.g. `WordStorage`, `BufferStorage`, `BitStack`).
+- Template parameters: `RandomIt`, `Pred`, `Proj`, `Storage`, `T`.
+- Test constants: `kCamelCase` (e.g. `kRandomSeed`, `kSweepMaxSize`).
+- Internal helpers use short, math-oriented names: `first`, `last`, `mid`, `len`, `n_blocks`, `buf0`, `buf1`.
+
+### Types & Arithmetic
+
+- Indexes and lengths are `int64_t`, not `int` or `size_t`.
+- Literals in bitwise contexts: `uint64_t{1}` instead of `1ULL`.
+- `ceil_log2` helper is duplicated per header; it wraps `std::bit_width`.
+
+### Assertions
+
+- `assert_or_throw` is duplicated per header with `std::source_location` support.
+- Default message is `"empty message"` — actively discouraged; every call site should pass a descriptive invariant message.
+- `static_assert(std::is_invocable_v<Proj, T>)` or `std::is_invocable_r_v<bool, Pred, T>` on templates that accept callables.
+
+### Formatting
+
+- Enforced by `.clang-format` (Google base, 4-space indent, 100-column limit, `AllowShortFunctionsOnASingleLine: All`).
+- Run `bash scripts/code-quality.sh` before finishing touches.
+
+---
+
+## Article / docs Style (Detailed)
+
+### Language & Tone
+
+- Written in **Chinese**.
+- Tone is **conversational, personal, and slightly informal** — the author expresses frustration ("麻了"), self-deprecation ("看不懂喵"), and enthusiasm ("我觉得我又行了").
+- Balances **academic rigor** with **first-person narrative**: cites DOI links, explains proofs, but also admits when the original paper is too hard and the implementation is a simplification.
+
+### Structure
+
+- Every article follows a predictable progression:
+  1. **Hook / motivation** — why this algorithm is cool or hard.
+  2. **Problem definition** — formal statement with complexity requirements and the Word RAM model.
+  3. **Prerequisite algorithms** — small, self-contained sub-algorithms explained first (e.g. rotation, 0-1 merge, counting sort, cycle permutation, block selection sort).
+  4. **Main algorithm** — broken into named phases (e.g. "提取缓冲区", "块同质化", "块增长").
+  5. **Complexity analysis** — inline after each phase, often with short proofs or recurrence relations.
+  6. **Full code link** — a link to the GitHub implementation and test file.
+  7. **Closing / preview** — often teases the next article.
+
+### Code in Articles
+
+- Code blocks are **C++ pseudo-code or real code** interleaved with prose.
+- Variable names in docs match the implementation (`first`, `last`, `mid`, `proj`, `block_size`).
+- When presenting a simplified version first, the article may show a naïve / non-in-place version, then incrementally refine it.
+
+### Math & Notation
+
+- Complexity uses LaTeX-style inline math: `$O(n)$`, `$\lfloor \sqrt{n} \rfloor$`.
+- The Word RAM model is re-explained in every article (self-contained docs).
+- Proofs are concise; induction or simple counting arguments are preferred over heavy formalism.
+
+### Images
+
+- Articles include `.webp` diagrams under `docs/assets/` (e.g. `![img](./assets/xxxxxx-0.webp)`).
+- Do NOT create or modify image assets unless explicitly asked.
+
+### Referencing
+
+- Original papers are cited with title + DOI hyperlink.
+- Cross-references to previous articles in the series use relative markdown links (e.g. `[O(n) 原地归并的不稳定版本](./unstable-merge.md)`).
+- External implementations (e.g. WikiSort) are mentioned and linked.
+
+---
+
+## Test Style
+
+- **Framework:** Catch2 v3.
+- **Stability testing:** `IndexedElement` (`key` + `index`) in `tests/common_test.hpp`; `is_stable()` checks index monotonicity for equal keys.
+- **Parameterized cases:** a `struct TestParam` + `constexpr TestParam kCases[]` array. Edge cases (all zeros, single element, all same key, min / max k) are explicit entries.
+- **Sweep tests:** use `GENERATE(Catch::Generators::range(int64_t{0}, kSweepMaxSize + 1))` for exhaustive small-size coverage.
+- **Random seed:** fixed `std::mt19937 gen(kRandomSeed)` with `kRandomSeed = 42` for reproducibility.
+- **Failure diagnostics:** algorithm calls are wrapped in `try/catch`; on exception, `INFO(std::format(...))` dumps the test parameters before `FAIL()`.
+- **Anonymous namespaces:** all test helpers live in an unnamed namespace.
