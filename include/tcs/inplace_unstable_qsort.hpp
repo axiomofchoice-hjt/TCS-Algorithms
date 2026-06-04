@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <format>
-#include <random>
 #include <source_location>
 #include <stdexcept>
 #include <string_view>
@@ -18,6 +17,11 @@ inline void assert_or_throw(bool condition, std::string_view message = "empty me
 }
 
 template <typename RandomIt, typename Proj = std::identity>
+void inplace_unstable_select_stub(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
+    std::ranges::nth_element(first, mid, last, {}, proj);
+}
+
+template <typename RandomIt, typename Proj = std::identity>
 std::tuple<RandomIt, RandomIt> three_way_partition(
     RandomIt first, RandomIt last, std::iter_value_t<RandomIt> pivot, Proj proj = {}) {
     using T = std::iter_value_t<RandomIt>;
@@ -27,13 +31,9 @@ std::tuple<RandomIt, RandomIt> three_way_partition(
     return {pivot_start, pivot_end};
 }
 
-constexpr int64_t kDefaultRandomSeed = 42;
-
 template <typename RandomIt, typename Proj = std::identity>
-void unstable_quick_sort(
-    RandomIt first, RandomIt last, Proj proj = {}, int64_t random_seed = kDefaultRandomSeed) {
+void unstable_quick_sort(RandomIt first, RandomIt last, Proj proj = {}) {
     using T = std::iter_value_t<RandomIt>;
-    std::mt19937 gen(random_seed);
     RandomIt tail_it = last;
     while (last - tail_it < 2) {
         if (tail_it == first) {
@@ -61,7 +61,8 @@ void unstable_quick_sort(
             left = it1;
             right = it2 - 1;
         } else {
-            T pivot = left[std::uniform_int_distribution<int64_t>(0, right - left - 1)(gen)];
+            inplace_unstable_select_stub(left, right, left + ((right - left) / 2), proj);
+            T pivot = left[(right - left) / 2];
             auto [pivot_start, pivot_end] = three_way_partition(left, right, pivot, proj);
             std::swap(*pivot_end, *right);
             right = pivot_start;
