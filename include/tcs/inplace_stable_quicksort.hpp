@@ -5,9 +5,10 @@
 #include <source_location>
 #include <stdexcept>
 #include <string_view>
+#include <vector>
 
 namespace tcs {
-namespace inplace_unstable_qsort {
+namespace inplace_stable_qsort {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
@@ -16,23 +17,38 @@ inline void assert_or_throw(bool condition, std::string_view message = "empty me
     }
 }
 
+template <typename RandomIt, typename Pred>
+RandomIt inplace_stable_partition_stub(RandomIt first, RandomIt last, Pred pred) {
+    return std::stable_partition(first, last, pred);
+}
+
 template <typename RandomIt, typename Proj = std::identity>
-void inplace_unstable_select_stub(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
-    std::ranges::nth_element(first, mid, last, {}, proj);
+void inplace_stable_select_stub(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
+    using T = std::iter_value_t<RandomIt>;
+    auto buffer = std::vector<T>(first, last);
+    std::ranges::nth_element(
+        buffer.begin(), buffer.begin() + (mid - first), buffer.end(), {}, proj);
+    T pivot = buffer[mid - first];
+    RandomIt pivot_it =
+        std::stable_partition(first, last, [&](T x) { return proj(x) != proj(pivot); });
+    if (pivot_it > mid) {
+        std::ranges::rotate(mid, pivot_it, pivot_it + 1);
+    }
 }
 
 template <typename RandomIt, typename Proj = std::identity>
 std::tuple<RandomIt, RandomIt> three_way_partition(
     RandomIt first, RandomIt last, std::iter_value_t<RandomIt> pivot, Proj proj = {}) {
     using T = std::iter_value_t<RandomIt>;
-    RandomIt pivot_start = std::partition(first, last, [&](T x) { return proj(x) < proj(pivot); });
-    RandomIt pivot_end =
-        std::partition(pivot_start, last, [&](T x) { return proj(x) == proj(pivot); });
+    RandomIt pivot_start =
+        inplace_stable_partition_stub(first, last, [&](T x) { return proj(x) < proj(pivot); });
+    RandomIt pivot_end = inplace_stable_partition_stub(
+        pivot_start, last, [&](T x) { return proj(x) == proj(pivot); });
     return {pivot_start, pivot_end};
 }
 
 template <typename RandomIt, typename Proj = std::identity>
-void unstable_quick_sort(RandomIt first, RandomIt last, Proj proj = {}) {
+void inplace_stable_quicksort(RandomIt first, RandomIt last, Proj proj = {}) {
     using T = std::iter_value_t<RandomIt>;
     RandomIt tail_it = last;
     while (last - tail_it < 2) {
@@ -40,12 +56,19 @@ void unstable_quick_sort(RandomIt first, RandomIt last, Proj proj = {}) {
             return;
         }
         T max = *std::ranges::max_element(first, tail_it, {}, proj);
-        tail_it = std::partition(first, tail_it, [&](T x) { return proj(x) < proj(max); });
+        tail_it =
+            inplace_stable_partition_stub(first, tail_it, [&](T x) { return proj(x) < proj(max); });
     }
     RandomIt left = first;
     RandomIt right = tail_it;
     while (true) {
-        if (right - left <= 1) {
+        if (right - left > 1) {
+            inplace_stable_select_stub(left, left + ((right - left) / 2), right, proj);
+            T pivot = left[(right - left) / 2];
+            auto [pivot_start, pivot_end] = three_way_partition(left, right, pivot, proj);
+            std::swap(*pivot_end, *right);
+            right = pivot_start;
+        } else {
             if (right >= tail_it) {
                 return;
             }
@@ -60,14 +83,8 @@ void unstable_quick_sort(RandomIt first, RandomIt last, Proj proj = {}) {
             std::swap(*it1, *(it2 - 1));
             left = it1;
             right = it2 - 1;
-        } else {
-            inplace_unstable_select_stub(left, right, left + ((right - left) / 2), proj);
-            T pivot = left[(right - left) / 2];
-            auto [pivot_start, pivot_end] = three_way_partition(left, right, pivot, proj);
-            std::swap(*pivot_end, *right);
-            right = pivot_start;
         }
     }
 }
-}  // namespace inplace_unstable_qsort
+}  // namespace inplace_stable_qsort
 }  // namespace tcs

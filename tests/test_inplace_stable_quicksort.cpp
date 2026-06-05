@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "common_test.hpp"
-#include "tcs/inplace_unstable_qsort.hpp"
+#include "tcs/inplace_stable_quicksort.hpp"
 
 namespace {
 struct TestParam {
@@ -35,15 +35,15 @@ void random_test(const TestParam& param) {
     std::uniform_int_distribution<int64_t> key_dist(1, param.max_key);
 
     for ([[maybe_unused]] int64_t i : std::views::iota(0, param.repeat_count)) {
-        auto arr = std::views::iota(0, param.total_size) | std::views::transform([&](int64_t) {
-            return IndexedElement{key_dist(gen), 0};
+        auto arr = std::views::iota(0, param.total_size) | std::views::transform([&](int64_t i) {
+            return IndexedElement{key_dist(gen), i};
         }) | std::ranges::to<std::vector<IndexedElement>>();
 
         auto expected = arr;
-        std::ranges::sort(expected, {}, IndexedElement::proj);
+        std::ranges::stable_sort(expected, {}, IndexedElement::proj);
 
         try {
-            tcs::inplace_unstable_qsort::unstable_quick_sort(
+            tcs::inplace_stable_qsort::inplace_stable_quicksort(
                 arr.begin(), arr.end(), IndexedElement::proj);
         } catch (std::exception& e) {
             INFO(std::format("{} [total_size={}, max_key={}, repeat_count={}]", e.what(),
@@ -51,18 +51,19 @@ void random_test(const TestParam& param) {
             FAIL();
         }
 
-        std::ranges::sort(arr, {}, IndexedElement::proj);
-        REQUIRE(std::ranges::equal(arr, expected, {}, IndexedElement::proj, IndexedElement::proj));
+        REQUIRE(is_stable(arr));
+        REQUIRE(std::ranges::equal(
+            arr, expected, {}, IndexedElement::proj, IndexedElement::proj));
     }
 }
 }  // namespace
 
-TEST_CASE("inplace_unstable_qsort size sweep", "[inplace_unstable_qsort]") {
+TEST_CASE("inplace_stable_quicksort size sweep", "[inplace_stable_quicksort]") {
     auto n = GENERATE(Catch::Generators::range(int64_t{0}, kSweepMaxSize + 1));
     random_test({.total_size = n, .max_key = kSweepMaxSize, .repeat_count = 2});
 }
 
-TEST_CASE("inplace_unstable_qsort random tests", "[inplace_unstable_qsort]") {
+TEST_CASE("inplace_stable_quicksort random tests", "[inplace_stable_quicksort]") {
     for (const auto& param : kCases) {
         random_test(param);
     }
