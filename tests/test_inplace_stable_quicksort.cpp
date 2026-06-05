@@ -52,8 +52,7 @@ void random_test(const TestParam& param) {
         }
 
         REQUIRE(is_stable(arr));
-        REQUIRE(std::ranges::equal(
-            arr, expected, {}, IndexedElement::proj, IndexedElement::proj));
+        REQUIRE(std::ranges::equal(arr, expected, {}, IndexedElement::proj, IndexedElement::proj));
     }
 }
 }  // namespace
