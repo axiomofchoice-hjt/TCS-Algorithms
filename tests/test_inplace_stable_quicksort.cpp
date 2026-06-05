@@ -43,7 +43,7 @@ void random_test(const TestParam& param) {
         std::ranges::stable_sort(expected, {}, IndexedElement::proj);
 
         try {
-            tcs::inplace_stable_qsort::inplace_stable_quicksort(
+            tcs::inplace_stable_quicksort::inplace_stable_quicksort(
                 arr.begin(), arr.end(), IndexedElement::proj);
         } catch (std::exception& e) {
             INFO(std::format("{} [total_size={}, max_key={}, repeat_count={}]", e.what(),

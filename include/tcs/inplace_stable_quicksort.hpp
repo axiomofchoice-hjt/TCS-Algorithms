@@ -8,7 +8,7 @@
 #include <vector>
 
 namespace tcs {
-namespace inplace_stable_qsort {
+namespace inplace_stable_quicksort {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
@@ -82,5 +82,5 @@ void inplace_stable_quicksort(RandomIt first, RandomIt last, Proj proj = {}) {
         }
     }
 }
-}  // namespace inplace_stable_qsort
+}  // namespace inplace_stable_quicksort
 }  // namespace tcs

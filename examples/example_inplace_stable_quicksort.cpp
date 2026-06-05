@@ -13,7 +13,7 @@ int main() {
 
     print_arr(arr, "before");
 
-    tcs::inplace_stable_qsort::inplace_stable_quicksort(arr.begin(), arr.end());
+    tcs::inplace_stable_quicksort::inplace_stable_quicksort(arr.begin(), arr.end());
 
     print_arr(arr, "after ");
 }
