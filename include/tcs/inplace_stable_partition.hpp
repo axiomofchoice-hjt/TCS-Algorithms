@@ -235,11 +235,11 @@ void inplace_01_merge(RandomIt first, RandomIt last, Proj proj) {
 }
 
 template <typename RandomIt, typename Proj = std::identity>
-void inplace_stable_01_partition(RandomIt first, RandomIt last, Proj proj) {
+RandomIt inplace_stable_01_partition(RandomIt first, RandomIt last, Proj proj) {
     using T = std::iter_value_t<RandomIt>;
     static_assert(std::is_invocable_v<Proj, T>);
     if (last - first <= 1) {
-        return;
+        return std::ranges::find_if(first, last, proj);
     }
     int64_t len = last - first;
     int64_t max_word_bits = ceil_log2(len);
@@ -257,14 +257,14 @@ void inplace_stable_01_partition(RandomIt first, RandomIt last, Proj proj) {
     std::tie(buf0, first, last) =
         stable_collect_first_n(first, last, buffer_len, [proj](T x) { return proj(x) == 0; });
     if (first - buf0 < buffer_len) {
-        return;
+        return std::ranges::find_if(buf0, last, proj);
     }
     RandomIt buf1;
     std::tie(buf1, first, last) =
         stable_collect_first_n(first, last, buffer_len, [proj](T x) { return proj(x) == 1; });
     if (first - buf1 < buffer_len) {
         std::ranges::rotate(buf1, first, last);
-        return;
+        return std::ranges::find_if(buf0, last, proj);
     }
     len = last - first;
     int64_t block_size = 1;
@@ -300,13 +300,14 @@ void inplace_stable_01_partition(RandomIt first, RandomIt last, Proj proj) {
     assert_or_throw(block_size >= len);
 
     inplace_01_merge(buf0, last, proj);
+    return std::ranges::find_if(buf0, last, proj);
 }
 
 template <typename RandomIt, typename Pred>
-void inplace_stable_partition(RandomIt first, RandomIt last, Pred pred) {
+RandomIt inplace_stable_partition(RandomIt first, RandomIt last, Pred pred) {
     using T = std::iter_value_t<RandomIt>;
     static_assert(std::is_invocable_r_v<bool, Pred, T>);
-    inplace_stable_01_partition(first, last, [pred](T x) { return pred(x) ? 0 : 1; });
+    return inplace_stable_01_partition(first, last, [pred](T x) { return pred(x) ? 0 : 1; });
 }
 }  // namespace inplace_stable_partition
 }  // namespace tcs
