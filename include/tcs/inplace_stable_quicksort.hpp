@@ -69,20 +69,16 @@ void inplace_stable_quicksort(RandomIt first, RandomIt last, Proj proj = {}) {
             std::swap(*pivot_end, *right);
             right = pivot_start;
         } else {
-            if (right >= tail_it) {
-                return;
+            assert_or_throw(right <= tail_it);
+            if (right == tail_it) {
+                break;
             }
-            RandomIt it1 = right + 1;
-            while (proj(*it1) == proj(*right)) {
-                it1++;
-            }
-            RandomIt it2 = it1 + 1;
-            while (proj(*it2) < proj(*it1)) {
-                it2++;
-            }
-            std::swap(*it1, *(it2 - 1));
-            left = it1;
-            right = it2 - 1;
+            left =
+                std::ranges::find_if(right + 1, last, [&](T x) { return proj(x) != proj(*right); });
+            right = std::ranges::find_if(left + 1, last, [&](T x) {
+                return proj(x) >= proj(*left);
+            }) - 1;
+            std::swap(*left, *right);
         }
     }
 }
