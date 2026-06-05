@@ -30,10 +30,8 @@ void inplace_stable_select_stub(RandomIt first, RandomIt mid, RandomIt last, Pro
         buffer.begin(), buffer.begin() + (mid - first), buffer.end(), {}, proj);
     T pivot = buffer[mid - first];
     RandomIt pivot_it =
-        std::stable_partition(first, last, [&](T x) { return proj(x) != proj(pivot); });
-    if (pivot_it > mid) {
-        std::ranges::rotate(mid, pivot_it, pivot_it + 1);
-    }
+        std::stable_partition(first, last, [&](T x) { return proj(x) < proj(pivot); });
+    std::stable_partition(pivot_it, last, [&](T x) { return proj(x) == proj(pivot); });
 }
 
 template <typename RandomIt, typename Proj = std::identity>
