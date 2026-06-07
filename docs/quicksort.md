@@ -207,7 +207,11 @@ void inplace_stable_quicksort(RandomIt first, RandomIt last, Proj proj = {}) {
 }
 ```
 
-## 6. 结尾
+## 6. 完整代码
+
+[完整实现](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/include/tcs/inplace_stable_quicksort.hpp)和[测试](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/tests/test_inplace_stable_quicksort.cpp)。
+
+## 7. 结尾
 
 这一期讲了快速排序的很多东西，并给出了最终的理论算法。虽然这个最终算法只是一个壳，原地稳定选择才是真正的核心，但是不妨碍我们感受哨兵的优雅机制。
 
