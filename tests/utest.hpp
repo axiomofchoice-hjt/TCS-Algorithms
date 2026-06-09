@@ -5,6 +5,7 @@
 #include <cstring>
 #include <format>
 #include <functional>
+#include <limits>
 #include <print>
 #include <ranges>
 #include <source_location>
@@ -65,10 +66,11 @@ inline std::vector<Interval> parse_param_spec(std::string_view spec) {
             auto lo_sv = sv.substr(0, dash);
             auto hi_sv = sv.substr(dash + 1);
             if (lo_sv.empty() && hi_sv.empty()) {
-                intervals.emplace_back(INT64_MIN, INT64_MAX);
+                intervals.emplace_back(
+                    std::numeric_limits<int64_t>::min(), std::numeric_limits<int64_t>::max());
             } else {
-                int64_t lo = INT64_MIN;
-                int64_t hi = INT64_MAX;
+                int64_t lo = std::numeric_limits<int64_t>::min();
+                int64_t hi = std::numeric_limits<int64_t>::max();
                 if (!lo_sv.empty()) {
                     std::from_chars(lo_sv.data(), lo_sv.data() + lo_sv.size(), lo);
                 }
