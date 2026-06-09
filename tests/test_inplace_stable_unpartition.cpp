@@ -9,9 +9,9 @@
 
 namespace {
 struct TestParam {
-    int64_t total_size;
+    int64_t size;
     int64_t num_ones;
-    int64_t repeat_count;
+    int64_t repeat;
 };
 
 constexpr int kRandomSeed = 42;
@@ -40,10 +40,10 @@ constexpr TestParam kCases[] = {
 
 void random_test(const TestParam& param) {
     std::mt19937 gen(kRandomSeed);
-    int64_t n = param.total_size;
+    int64_t n = param.size;
     int64_t num_ones = param.num_ones;
 
-    for ([[maybe_unused]] int64_t i : std::views::iota(0, param.repeat_count)) {
+    for ([[maybe_unused]] int64_t i : std::views::iota(0, param.repeat)) {
         std::vector<IndexedElement> arr(n);
         std::vector<bool> placement(n);
 
@@ -70,14 +70,14 @@ void random_test(const TestParam& param) {
 }
 
 auto sweep =
-    utest::test("inplace_stable_unpartition size sweep", "[inplace_stable_unpartition]", [] {
+    utest::test("inplace_stable_unpartition", "[inplace_stable_unpartition]", [] {
         for (int64_t n = 0; n <= kSweepMaxSize; n++) {
-            random_test({.total_size = n, .num_ones = n / 2, .repeat_count = 2});
+            random_test({.size = n, .num_ones = n / 2, .repeat = 2});
         }
     });
 
 auto random =
-    utest::test("inplace_stable_unpartition random tests", "[inplace_stable_unpartition]", [] {
+    utest::test("inplace_stable_unpartition", "[inplace_stable_unpartition]", [] {
         for (const auto& param : kCases) {
             random_test(param);
         }

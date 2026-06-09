@@ -67,7 +67,7 @@ Split into `ASSERT` (debug-only) vs `VERIFY` (always-active) for intent clarity.
 - [x] `std::is_sorted` → `std::ranges::is_sorted`
 - [x] `std::find_if/count_if/all_of/max_element` → `std::ranges::` versions
 - [x] `std::less{}` → `{}` in `std::ranges` calls
-- [x] `kStandardCases` + `kEdgeCases` → unified `kCases[]` with `repeat_count`
+- [x] `kStandardCases` + `kEdgeCases` → unified `kCases[]` with `repeat`
 - [x] `IndexedElement` extracted to `tests/common_test.hpp`
 - [x] `readability-function-cognitive-complexity` disabled (REQUIRE inflates metric)
 - [x] Sweep tests converted from GENERATE to manual for loops (utest migration)

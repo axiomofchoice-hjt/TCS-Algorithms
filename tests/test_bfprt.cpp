@@ -9,10 +9,10 @@
 
 namespace {
 struct TestParam {
-    int64_t total_size;
+    int64_t size;
     int64_t k;
     int64_t max_key;
-    int64_t repeat_count;
+    int64_t repeat;
 };
 
 constexpr int kRandomSeed = 42;
@@ -45,8 +45,8 @@ void random_test(const TestParam& param) {
     std::mt19937 gen(kRandomSeed);
     std::uniform_int_distribution<int64_t> key_dist(1, param.max_key);
 
-    for (int64_t i = 0; i < param.repeat_count; i++) {
-        auto arr = std::views::iota(0, param.total_size) | std::views::transform([&](int64_t) {
+    for (int64_t i = 0; i < param.repeat; i++) {
+        auto arr = std::views::iota(0, param.size) | std::views::transform([&](int64_t) {
             return IndexedElement{key_dist(gen), 0};
         }) | std::ranges::to<std::vector<IndexedElement>>();
 
@@ -63,15 +63,15 @@ void random_test(const TestParam& param) {
     }
 }
 
-auto sweep = utest::test("bfprt size sweep", "[bfprt]", [] {
+auto sweep = utest::test("bfprt", "[bfprt]", [] {
     for (int64_t n = 1; n <= kSweepMaxSize; n++) {
-        random_test({.total_size = n, .k = n / 2, .max_key = kSweepMaxSize, .repeat_count = 2});
-        random_test({.total_size = n, .k = 0, .max_key = kSweepMaxSize, .repeat_count = 2});
-        random_test({.total_size = n, .k = n - 1, .max_key = kSweepMaxSize, .repeat_count = 2});
+        random_test({.size = n, .k = n / 2, .max_key = kSweepMaxSize, .repeat = 2});
+        random_test({.size = n, .k = 0, .max_key = kSweepMaxSize, .repeat = 2});
+        random_test({.size = n, .k = n - 1, .max_key = kSweepMaxSize, .repeat = 2});
     }
 });
 
-auto random = utest::test("bfprt random tests", "[bfprt]", [] {
+auto random = utest::test("bfprt", "[bfprt]", [] {
     for (const auto& param : kCases) {
         random_test(param);
     }
