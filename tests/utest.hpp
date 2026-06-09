@@ -146,7 +146,11 @@ inline int run(int argc, char* argv[]) {
         try {
             tc.func();
         } catch (const std::exception& e) {
-            std::println("Test {}.{} failed: {}", tc.suite, tc.name, e.what());
+            std::string params_str;
+            for (int64_t i = 0; i < static_cast<int64_t>(tc.params.size()); i++) {
+                params_str += (i > 0 ? ", " : "") + std::to_string(tc.params[i]);
+            }
+            std::println("Test {}.{} [{}] failed: {}", tc.suite, tc.name, params_str, e.what());
             failed++;
         }
     }
