@@ -9,7 +9,7 @@ Header-only C++23 library of in-place algorithms with optimal theoretical bounds
 ```sh
 ./run.sh                         # Build everything and run all tests
 xmake build test                 # Build test binary only
-xmake run test "[tag]"           # Run a single test suite (Catch2 filter)
+xmake run test                    # Run all tests (no built-in filtering)
 xmake f --mode=debug && xmake    # Debug build
 bash scripts/code-quality.sh     # clang-format + clang-tidy (requires clang toolchain)
 ```
@@ -17,7 +17,7 @@ bash scripts/code-quality.sh     # clang-format + clang-tidy (requires clang too
 ## Architecture
 
 - `include/tcs/` — 1 header per algorithm. Fully self-contained: each has its own namespace and copies of shared utilities (`bubble_sort`, `assert_or_throw`, `WordStorage`, `BitStack`, etc.). Do NOT try to extract shared code into a common header — duplication is by design.
-- `tests/` — Catch2 unit tests, one `.cpp` per algorithm. `test_main.cpp` is the entrypoint.
+- `tests/` — Unit tests, one `.cpp` per algorithm. `utest.hpp` is the lightweight test runner; `test_main.cpp` is the entrypoint.
 
 ## Key conventions
 
@@ -86,10 +86,11 @@ bash scripts/code-quality.sh     # clang-format + clang-tidy (requires clang too
 
 ## Test Style
 
-- **Framework:** Catch2 v3.
+- **Framework:** `utest.hpp` — minimal auto-registration runner, no macros, no external dependencies.
+- **Test registration:** `utest::test("suite", "name", [] { ... })` at file scope.
+- **Assertions:** `utest::assert_or_throw(condition, message)` — throws on failure.
 - **Stability testing:** `IndexedElement` (`key` + `index`) in `tests/common_test.hpp`; `is_stable()` checks index monotonicity for equal keys.
 - **Parameterized cases:** a `struct TestParam` + `constexpr TestParam kCases[]` array. Edge cases (all zeros, single element, all same key, min / max k) are explicit entries.
-- **Sweep tests:** use `GENERATE(Catch::Generators::range(int64_t{0}, kSweepMaxSize + 1))` for exhaustive small-size coverage.
+- **Sweep tests:** manual `for (int64_t n = 0; n <= kSweepMaxSize; n++)` loops for exhaustive small-size coverage.
 - **Random seed:** fixed `std::mt19937 gen(kRandomSeed)` with `kRandomSeed = 42` for reproducibility.
-- **Failure diagnostics:** algorithm calls are wrapped in `try/catch`; on exception, `INFO(std::format(...))` dumps the test parameters before `FAIL()`.
 - **Anonymous namespaces:** all test helpers live in an unnamed namespace.
