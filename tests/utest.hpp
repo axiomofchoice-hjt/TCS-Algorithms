@@ -119,9 +119,14 @@ struct CliOptions {
         if (!filter.empty() && !full_name.contains(filter)) {
             return false;
         }
+        if (!param_specs.empty() &&
+            static_cast<int64_t>(param_specs.size()) != static_cast<int64_t>(tc.params.size())) {
+            std::println("Warning: {} param count mismatch (expected {}, got {})", full_name,
+                tc.params.size(), param_specs.size());
+            return false;
+        }
         for (int64_t j = 0; j < static_cast<int64_t>(param_specs.size()); j++) {
-            if (j >= static_cast<int64_t>(tc.params.size()) ||
-                !interval_matches(tc.params[j], param_specs[j])) {
+            if (!interval_matches(tc.params[j], param_specs[j])) {
                 return false;
             }
         }
