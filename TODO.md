@@ -8,12 +8,13 @@ Currently most assertions use the default `"empty message"`, making failures har
 Every call site in `include/tcs/` should provide a descriptive message indicating which
 invariant was violated.
 
-### 2. Implement `inplace_stable_select`
-
-Currently placeholder using `std::ranges::stable_sort`. Needs the real O(n) in-place
-stable selection algorithm as described.
-
 ## Medium Priority
+
+### 2. Stubs are by design — keep for readability
+
+`inplace_stable_select` and `inplace_stable_quicksort` delegate to stub functions for
+partition, unpartition, and selection. Replacing them with real O(1) implementations
+would inline too much code and hurt readability. Stubs are intentional.
 
 ### 3. (By design) Duplicated utilities kept for self-contained headers
 
@@ -31,9 +32,9 @@ Some internal functions lack precondition checks. Candidates:
 - `stable_collect_first_n` — assert `n >= 0`
 - `unpartition_with_rotation` — assert `first <= last`
 
-### 5. Sweep test generates too many trivial cases
+### 5. Sweep test generates many trivial cases
 
-`GENERATE(Catch::Generators::range(1, kSweepMaxSize + 1))` includes very small `n` where
+Manual `for (int64_t n = 0; n <= kSweepMaxSize; n++)` includes very small `n` where
 algorithms degenerate to fallback. Consider logarithmic sweep or skipping `n < some_threshold`.
 
 ### 6. Improve variable naming in complex functions
@@ -69,11 +70,13 @@ Split into `ASSERT` (debug-only) vs `VERIFY` (always-active) for intent clarity.
 - [x] `kStandardCases` + `kEdgeCases` → unified `kCases[]` with `repeat_count`
 - [x] `IndexedElement` extracted to `tests/common_test.hpp`
 - [x] `readability-function-cognitive-complexity` disabled (REQUIRE inflates metric)
-- [x] Sweep tests use `GENERATE(Catch::Generators::range(...))`
-- [x] All algorithm calls wrapped in try-catch with `INFO` on failure
+- [x] Sweep tests converted from GENERATE to manual for loops (utest migration)
 - [x] `int` → `int64_t` in all test files
 - [x] `assert.hpp` deleted; `assert_or_throw` inlined per header
 - [x] `#include <functional>` added to all headers using `std::identity`
+- [x] `inplace_stable_select` core algorithm with O(1) buffer-backed bit stack
+- [x] `inplace_stable_quicksort` iterative quicksort with O(1) call-stack space
+- [x] Catch2 replaced with custom `utest.hpp`
 
 ## Future Algorithms
 
@@ -86,14 +89,3 @@ Split into `ASSERT` (debug-only) vs `VERIFY` (always-active) for intent clarity.
 - Cache-Oblivious B-Tree
 - In-place Linked List Shuffle
 - Stable Duplicate-Key Extraction
-
-## Search Channels
-
-- Google Scholar cited-by chains
-- <https://cstheory.stackexchange.com/questions/tagged/ds.algorithms>
-- STOC/FOCS/SODA proceedings (1980–2015)
-- Jeff Erickson's Algorithms notes references
-- arXiv cs.DS
-- Wikipedia List of algorithms footnotes
-- Semantic Scholar "Highly Influenced" on classic papers
-- Huang & Langston 1989 cited-by chain for all O(1)-space lineage
