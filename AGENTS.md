@@ -9,7 +9,7 @@ Header-only C++23 library of in-place algorithms with optimal theoretical bounds
 ```sh
 ./run.sh                         # Build everything and run all tests
 xmake build test                 # Build test binary only
-xmake run test                    # Run all tests (no built-in filtering)
+xmake run test [-- args...]       # Run all tests, with optional CLI filtering
 xmake f --mode=debug && xmake    # Debug build
 bash scripts/code-quality.sh     # clang-format + clang-tidy (requires clang toolchain)
 ```
@@ -88,7 +88,9 @@ bash scripts/code-quality.sh     # clang-format + clang-tidy (requires clang too
 
 - **Framework:** `utest.hpp` — minimal auto-registration runner, no macros, no external dependencies.
 - **Test registration:** `utest::test("suite", "name", [] { ... })` at file scope.
+- **Parameterized registration:** `utest::register_test([] { for (...) { utest::test("suite", "name", func, TestParam{...}); } })`. `func` receives `TestParam` by value; the framework serializes params via `memcpy`.
 - **Assertions:** `utest::assert_or_throw(condition, message)` — throws on failure.
+- **CLI filtering:** `--filter <substr>` matches "suite.name"; `--params <spec>...` matches TestCase params by interval (e.g. `0-2,5 1- -`).
 - **Stability testing:** `IndexedElement` (`key` + `index`) in `tests/common_test.hpp`; `is_stable()` checks index monotonicity for equal keys.
 - **Parameterized cases:** a `struct TestParam` + `constexpr TestParam kCases[]` array. Edge cases (all zeros, single element, all same key, min / max k) are explicit entries.
 - **Sweep tests:** manual `for (int64_t n = 0; n <= kSweepMaxSize; n++)` loops for exhaustive small-size coverage.

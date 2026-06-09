@@ -77,6 +77,8 @@ Split into `ASSERT` (debug-only) vs `VERIFY` (always-active) for intent clarity.
 - [x] `inplace_stable_select` core algorithm with O(1) buffer-backed bit stack
 - [x] `inplace_stable_quicksort` iterative quicksort with O(1) call-stack space
 - [x] Catch2 replaced with custom `utest.hpp`
+- [x] `utest.hpp` CLI filtering: `--filter` and `--params` with interval notation
+- [x] `readability-use-anyofallof` clang-tidy check disabled
 
 ## Future Algorithms
 
