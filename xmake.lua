@@ -1,5 +1,5 @@
 -- TCS-Algorithms xmake build configuration
--- C++23 / Catch2 / Header-only
+-- C++23 / Header-only
 
 set_project("TCS-Algorithms")
 set_version("0.1.0")
@@ -10,21 +10,16 @@ set_languages("c++23")
 -- Warning flags
 add_cxflags("-Wall", "-Wextra")
 
--- Add Catch2 dependency
-add_requires("catch2")
-
 -- Header-only library target
 target("tcs")
     set_kind("headeronly")
     add_includedirs("include", {public = true})
-    add_packages("catch2")
 
 -- Test target
 target("test")
     set_kind("binary")
     add_files("tests/*.cpp")
     add_deps("tcs")
-    add_packages("catch2")
     set_targetdir("$(builddir)/tests")
 
 -- Example targets (each file compiled as a standalone executable)

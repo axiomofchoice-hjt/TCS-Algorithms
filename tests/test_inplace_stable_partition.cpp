@@ -1,11 +1,10 @@
 #include <algorithm>
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators_range.hpp>
 #include <random>
 #include <vector>
 
 #include "common_test.hpp"
 #include "tcs/inplace_stable_partition.hpp"
+#include "utest.hpp"
 
 namespace {
 struct TestParam {
@@ -57,28 +56,25 @@ void random_test(const TestParam& param) {
         std::stable_partition(expected.begin(), expected.end(),
             [](IndexedElement e) { return IndexedElement::proj(e) == 0; });
 
-        try {
-            tcs::inplace_stable_partition::inplace_stable_partition(arr.begin(), arr.end(),
-                [](IndexedElement e) { return IndexedElement::proj(e) == 0; });
-        } catch (std::exception& e) {
-            INFO(std::format("{} [total_size={}, num_ones={}, repeat_count={}]", e.what(),
-                param.total_size, param.num_ones, param.repeat_count));
-            FAIL();
+        tcs::inplace_stable_partition::inplace_stable_partition(
+            arr.begin(), arr.end(), [](IndexedElement e) { return IndexedElement::proj(e) == 0; });
+
+        utest::assert_or_throw(is_stable(arr));
+        utest::assert_or_throw(
+            std::ranges::equal(arr, expected, {}, IndexedElement::proj, IndexedElement::proj));
+    }
+}
+
+auto sweep = utest::test("inplace_stable_partition size sweep", "[inplace_stable_partition]", [] {
+    for (int64_t n = 0; n <= kSweepMaxSize; n++) {
+        random_test({.total_size = n, .num_ones = n / 2, .repeat_count = 2});
+    }
+});
+
+auto random =
+    utest::test("inplace_stable_partition random tests", "[inplace_stable_partition]", [] {
+        for (const auto& param : kCases) {
+            random_test(param);
         }
-
-        REQUIRE(is_stable(arr));
-        REQUIRE(std::ranges::equal(arr, expected, {}, IndexedElement::proj, IndexedElement::proj));
-    }
-}
+    });
 }  // namespace
-
-TEST_CASE("inplace_stable_partition size sweep", "[inplace_stable_partition]") {
-    auto n = GENERATE(Catch::Generators::range(int64_t{0}, kSweepMaxSize + 1));
-    random_test({.total_size = n, .num_ones = n / 2, .repeat_count = 2});
-}
-
-TEST_CASE("inplace_stable_partition random tests", "[inplace_stable_partition]") {
-    for (const auto& param : kCases) {
-        random_test(param);
-    }
-}

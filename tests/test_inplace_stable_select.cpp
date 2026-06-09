@@ -1,13 +1,11 @@
 #include <algorithm>
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators_range.hpp>
-#include <format>
 #include <random>
 #include <ranges>
 #include <vector>
 
 #include "common_test.hpp"
 #include "tcs/inplace_stable_select.hpp"
+#include "utest.hpp"
 
 namespace {
 
@@ -56,34 +54,29 @@ void random_test(const TestParam& param) {
         auto expected = arr;
         std::ranges::stable_sort(expected, {}, IndexedElement::proj);
 
-        try {
-            tcs::inplace_stable_select::inplace_stable_select(
-                arr.begin(), arr.begin() + param.k, arr.end(), IndexedElement::proj);
-        } catch (std::exception& e) {
-            INFO(std::format("{} [total_size={}, k={}, max_key={}, repeat_count={}]", e.what(),
-                param.total_size, param.k, param.max_key, param.repeat_count));
-            FAIL();
-        }
+        tcs::inplace_stable_select::inplace_stable_select(
+            arr.begin(), arr.begin() + param.k, arr.end(), IndexedElement::proj);
 
-        REQUIRE(IndexedElement::proj(arr[param.k]) == IndexedElement::proj(expected[param.k]));
-        REQUIRE(is_stable(arr));
+        utest::assert_or_throw(
+            IndexedElement::proj(arr[param.k]) == IndexedElement::proj(expected[param.k]));
+        utest::assert_or_throw(is_stable(arr));
         std::ranges::sort(arr, {}, IndexedElement::proj);
-        REQUIRE(std::ranges::equal(arr, expected, {}, IndexedElement::proj, IndexedElement::proj));
+        utest::assert_or_throw(
+            std::ranges::equal(arr, expected, {}, IndexedElement::proj, IndexedElement::proj));
     }
 }
 
-}  // namespace
+auto sweep = utest::test("inplace_stable_select size sweep", "[inplace_stable_select]", [] {
+    for (int64_t n = 1; n <= kSweepMaxSize; n++) {
+        random_test({.total_size = n, .k = n / 2, .max_key = kSweepMaxSize, .repeat_count = 2});
+        random_test({.total_size = n, .k = 0, .max_key = kSweepMaxSize, .repeat_count = 2});
+        random_test({.total_size = n, .k = n - 1, .max_key = kSweepMaxSize, .repeat_count = 2});
+    }
+});
 
-TEST_CASE("inplace_stable_select size sweep", "[inplace_stable_select]") {
-    auto n = GENERATE(Catch::Generators::range(int64_t{1}, kSweepMaxSize + 1));
-    random_test({.total_size = n, .k = n / 2, .max_key = kSweepMaxSize, .repeat_count = 2});
-    random_test({.total_size = n, .k = 0, .max_key = kSweepMaxSize, .repeat_count = 2});
-    random_test({.total_size = n, .k = n - 1, .max_key = kSweepMaxSize, .repeat_count = 2});
-}
-
-TEST_CASE("inplace_stable_select random tests", "[inplace_stable_select]") {
+auto random = utest::test("inplace_stable_select random tests", "[inplace_stable_select]", [] {
     for (const auto& param : kCases) {
-        INFO("total_size=" << param.total_size << " k=" << param.k << " max_key=" << param.max_key);
         random_test(param);
     }
-}
+});
+}  // namespace

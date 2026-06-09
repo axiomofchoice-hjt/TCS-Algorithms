@@ -2,7 +2,7 @@
 
 In-place algorithms in modern C++ — with more to come.
 
-Built with **C++23**, **xmake**, and **Catch2**.
+Built with **C++23** and **xmake**.
 
 ## 1. Motivation
 
@@ -63,7 +63,7 @@ curl -fsSL https://xmake.io/shget.text | bash
 ```text
 TCS-Algorithms/
 ├── include/tcs/           # Header-only library
-├── tests/                 # Catch2 unit tests
+├── tests/                 # Unit tests
 ├── docs/                  # Algorithm articles (Chinese)
 ├── examples/              # Usage examples
 ├── scripts/               # Code quality checks
@@ -74,7 +74,6 @@ TCS-Algorithms/
 
 - **Compiler**: GCC 14+ / Clang 18+ (C++23 support required)
 - **Build tool**: [xmake](https://xmake.io/)
-- **Test framework**: [Catch2](https://github.com/catchorg/Catch2) (auto-fetched by xmake)
 
 ## 6. Usage
 

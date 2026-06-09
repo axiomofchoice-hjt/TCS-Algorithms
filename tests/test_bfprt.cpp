@@ -1,13 +1,11 @@
 #include <algorithm>
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators_range.hpp>
-#include <format>
 #include <random>
 #include <ranges>
 #include <vector>
 
 #include "common_test.hpp"
 #include "tcs/bfprt.hpp"
+#include "utest.hpp"
 
 namespace {
 struct TestParam {
@@ -55,31 +53,27 @@ void random_test(const TestParam& param) {
         auto expected = arr;
         std::ranges::sort(expected, {}, IndexedElement::proj);
 
-        try {
-            tcs::bfprt::bfprt(arr.begin(), arr.begin() + param.k, arr.end(), IndexedElement::proj);
-        } catch (std::exception& e) {
-            INFO(std::format("{} [total_size={}, k={}, max_key={}, repeat_count={}]", e.what(),
-                param.total_size, param.k, param.max_key, param.repeat_count));
-            FAIL();
-        }
+        tcs::bfprt::bfprt(arr.begin(), arr.begin() + param.k, arr.end(), IndexedElement::proj);
 
-        REQUIRE(IndexedElement::proj(arr[param.k]) == IndexedElement::proj(expected[param.k]));
+        utest::assert_or_throw(
+            IndexedElement::proj(arr[param.k]) == IndexedElement::proj(expected[param.k]));
         std::ranges::sort(arr, {}, IndexedElement::proj);
-        REQUIRE(std::ranges::equal(arr, expected, {}, IndexedElement::proj, IndexedElement::proj));
+        utest::assert_or_throw(
+            std::ranges::equal(arr, expected, {}, IndexedElement::proj, IndexedElement::proj));
     }
 }
-}  // namespace
 
-TEST_CASE("bfprt size sweep", "[bfprt]") {
-    auto n = GENERATE(Catch::Generators::range(int64_t{1}, kSweepMaxSize + 1));
-    random_test({.total_size = n, .k = n / 2, .max_key = kSweepMaxSize, .repeat_count = 2});
-    random_test({.total_size = n, .k = 0, .max_key = kSweepMaxSize, .repeat_count = 2});
-    random_test({.total_size = n, .k = n - 1, .max_key = kSweepMaxSize, .repeat_count = 2});
-}
+auto sweep = utest::test("bfprt size sweep", "[bfprt]", [] {
+    for (int64_t n = 1; n <= kSweepMaxSize; n++) {
+        random_test({.total_size = n, .k = n / 2, .max_key = kSweepMaxSize, .repeat_count = 2});
+        random_test({.total_size = n, .k = 0, .max_key = kSweepMaxSize, .repeat_count = 2});
+        random_test({.total_size = n, .k = n - 1, .max_key = kSweepMaxSize, .repeat_count = 2});
+    }
+});
 
-TEST_CASE("bfprt random tests", "[bfprt]") {
+auto random = utest::test("bfprt random tests", "[bfprt]", [] {
     for (const auto& param : kCases) {
-        INFO("total_size=" << param.total_size << " k=" << param.k << " max_key=" << param.max_key);
         random_test(param);
     }
-}
+});
+}  // namespace
