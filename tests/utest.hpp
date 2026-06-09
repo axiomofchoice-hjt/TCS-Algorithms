@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstring>
 #include <format>
 #include <functional>
 #include <print>
@@ -19,6 +20,7 @@ inline void assert_or_throw(bool condition, std::string_view message = "empty me
 struct TestCase {
     std::string suite;
     std::string name;
+    std::vector<int64_t> params;
     std::function<void()> func;
 };
 
@@ -39,14 +41,28 @@ struct Registrar {
     Registrar(TestCase tc) { TestRegistry::instance().add_test(std::move(tc)); }
 };
 
-inline Registrar test(std::string suite, std::string name, std::function<void()> func) {
-    return Registrar(TestCase{std::move(suite), std::move(name), std::move(func)});
+template <typename Func, typename T>
+inline void test(std::string suite, std::string name, Func func, T params) {
+    std::vector<int64_t> params_(sizeof(T) / sizeof(int64_t), 0);
+    std::memcpy(params_.data(), &params, sizeof(T));
+    TestRegistry::instance().add_test(
+        {std::move(suite), std::move(name), params_, [=] { func(params); }});
 }
+
+template <typename Func>
+inline int register_test(Func func) {
+    func();
+    return 0;
+};
 
 inline int run([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
     for (const auto& tc : TestRegistry::instance().tests()) {
-        std::println("Running {}::{}", tc.suite, tc.name);
-        tc.func();
+        try {
+            tc.func();
+        } catch (const std::exception& e) {
+            std::println("Test {}.{} failed: {}", tc.suite, tc.name, e.what());
+            return 1;
+        }
     }
     return 0;
 }
