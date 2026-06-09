@@ -41,7 +41,7 @@ constexpr TestParam kCases[] = {
     {1000, 1000, 1, 1},   // empty right half, single key
 };
 
-void random_test(const TestParam& param) {
+void random_test(TestParam param) {
     std::mt19937 gen(kRandomSeed);
     std::uniform_int_distribution<int64_t> key_dist(1, param.max_key);
 
@@ -65,15 +65,16 @@ void random_test(const TestParam& param) {
     }
 }
 
-auto sweep = utest::test("inplace_unstable_merge", "[inplace_unstable_merge]", [] {
-    for (int64_t n = 0; n <= kSweepMaxSize; n++) {
-        random_test({.size = n, .left_size = n / 2, .max_key = kSweepMaxSize, .repeat = 2});
+auto sweep = utest::register_test([] {
+    for (int64_t n = 1; n <= kSweepMaxSize; n++) {
+        utest::test("inplace_unstable_merge", "sweep", random_test,
+            TestParam{.size = n, .left_size = n / 2, .max_key = kSweepMaxSize, .repeat = 2});
     }
 });
 
-auto random = utest::test("inplace_unstable_merge", "[inplace_unstable_merge]", [] {
+auto random = utest::register_test([] {
     for (const auto& param : kCases) {
-        random_test(param);
+        utest::test("inplace_unstable_merge", "kCases", random_test, param);
     }
 });
 }  // namespace

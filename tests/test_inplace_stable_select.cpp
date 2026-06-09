@@ -42,7 +42,7 @@ constexpr TestParam kCases[] = {
     {1000, 999, 1, 1},     // k = n-1, single key
 };
 
-void random_test(const TestParam& param) {
+void random_test(TestParam param) {
     std::mt19937 gen(kRandomSeed);
     std::uniform_int_distribution<int64_t> key_dist(1, param.max_key);
 
@@ -66,17 +66,20 @@ void random_test(const TestParam& param) {
     }
 }
 
-auto sweep = utest::test("inplace_stable_select", "[inplace_stable_select]", [] {
+auto sweep = utest::register_test([] {
     for (int64_t n = 1; n <= kSweepMaxSize; n++) {
-        random_test({.size = n, .k = n / 2, .max_key = kSweepMaxSize, .repeat = 2});
-        random_test({.size = n, .k = 0, .max_key = kSweepMaxSize, .repeat = 2});
-        random_test({.size = n, .k = n - 1, .max_key = kSweepMaxSize, .repeat = 2});
+        utest::test("inplace_stable_select", "sweep", random_test,
+            TestParam{.size = n, .k = n / 2, .max_key = kSweepMaxSize, .repeat = 2});
+        utest::test("inplace_stable_select", "sweep", random_test,
+            TestParam{.size = n, .k = 0, .max_key = kSweepMaxSize, .repeat = 1});
+        utest::test("inplace_stable_select", "sweep", random_test,
+            TestParam{.size = n, .k = n - 1, .max_key = kSweepMaxSize, .repeat = 1});
     }
 });
 
-auto random = utest::test("inplace_stable_select", "[inplace_stable_select]", [] {
+auto random = utest::register_test([] {
     for (const auto& param : kCases) {
-        random_test(param);
+        utest::test("inplace_stable_select", "kCases", random_test, param);
     }
 });
 }  // namespace

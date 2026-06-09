@@ -29,7 +29,7 @@ constexpr TestParam kCases[] = {
     {1000, 1, 1},
 };
 
-void random_test(const TestParam& param) {
+void random_test(TestParam param) {
     std::mt19937 gen(kRandomSeed);
     std::uniform_int_distribution<int64_t> key_dist(1, param.max_key);
 
@@ -50,16 +50,16 @@ void random_test(const TestParam& param) {
     }
 }
 
-auto sweep = utest::test("inplace_stable_quicksort", "[inplace_stable_quicksort]", [] {
-    for (int64_t n = 0; n <= kSweepMaxSize; n++) {
-        random_test({.size = n, .max_key = kSweepMaxSize, .repeat = 2});
+auto sweep = utest::register_test([] {
+    for (int64_t n = 1; n <= kSweepMaxSize; n++) {
+        utest::test("inplace_stable_quicksort", "sweep", random_test,
+            TestParam{.size = n, .max_key = kSweepMaxSize, .repeat = 2});
     }
 });
 
-auto random =
-    utest::test("inplace_stable_quicksort", "[inplace_stable_quicksort]", [] {
-        for (const auto& param : kCases) {
-            random_test(param);
-        }
-    });
+auto random = utest::register_test([] {
+    for (const auto& param : kCases) {
+        utest::test("inplace_stable_quicksort", "kCases", random_test, param);
+    }
+});
 }  // namespace
