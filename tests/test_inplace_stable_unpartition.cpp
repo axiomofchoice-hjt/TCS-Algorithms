@@ -69,7 +69,7 @@ void random_test(TestParam param) {
 }
 
 auto sweep = utest::register_test([] {
-    for (int64_t n = 1; n <= kSweepMaxSize; n++) {
+    for (int64_t n = 0; n <= kSweepMaxSize; n++) {
         utest::test("inplace_stable_unpartition", "sweep", random_test,
             TestParam{.size = n, .num_ones = n / 2, .repeat = 2});
     }
