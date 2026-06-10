@@ -1,7 +1,6 @@
 #include <algorithm>
 #include <random>
 #include <ranges>
-#include <vector>
 
 #include "common_test.hpp"
 #include "tcs/bfprt.hpp"
@@ -48,7 +47,7 @@ void random_test(TestParam param) {
     for (int64_t i = 0; i < param.repeat; i++) {
         auto arr = std::views::iota(0, param.size) | std::views::transform([&](int64_t) {
             return IndexedElement{key_dist(gen), 0};
-        }) | std::ranges::to<std::vector<IndexedElement>>();
+        }) | std::ranges::to<TestArray>();
 
         auto expected = arr;
         std::ranges::sort(expected, {}, IndexedElement::proj);

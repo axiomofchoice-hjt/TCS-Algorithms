@@ -1,7 +1,6 @@
 #include <algorithm>
 #include <random>
 #include <ranges>
-#include <vector>
 
 #include "common_test.hpp"
 #include "tcs/inplace_stable_unpartition.hpp"
@@ -44,14 +43,14 @@ void random_test(TestParam param) {
     int64_t num_ones = param.num_ones;
 
     for ([[maybe_unused]] int64_t i : std::views::iota(0, param.repeat)) {
-        std::vector<IndexedElement> arr(n);
+        TestArray arr(n);
         std::vector<bool> placement(n);
 
         for (int64_t i = 0; i < n; i++) {
             arr[i] = {i < num_ones ? 1 : 0, 0};
         }
         std::ranges::shuffle(arr, gen);
-        iota_index(arr);
+        arr.iota_index();
         for (auto [i, el] : arr | std::views::enumerate) {
             placement[i] = el.key != 0;
         }
@@ -63,7 +62,7 @@ void random_test(TestParam param) {
             arr.begin(), arr.end(), [](IndexedElement e) { return IndexedElement::proj(e) == 0; },
             [&arr, &placement](auto p) { return !placement[p - arr.begin()]; });
 
-        utest::assert_or_throw(is_stable(arr));
+        utest::assert_or_throw(arr.is_stable());
         utest::assert_or_throw(
             std::ranges::equal(arr, expected, {}, IndexedElement::proj, IndexedElement::proj));
     }

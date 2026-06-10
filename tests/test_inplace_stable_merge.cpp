@@ -1,7 +1,6 @@
 #include <algorithm>
 #include <random>
 #include <ranges>
-#include <vector>
 
 #include "common_test.hpp"
 #include "tcs/inplace_stable_merge.hpp"
@@ -49,7 +48,7 @@ void random_test(TestParam param) {
     for ([[maybe_unused]] int64_t i : std::views::iota(0, param.repeat)) {
         auto arr = std::views::iota(0, param.size) | std::views::transform([&](int64_t) {
             return IndexedElement{key_dist(gen), 0};
-        }) | std::ranges::to<std::vector<IndexedElement>>();
+        }) | std::ranges::to<TestArray>();
 
         std::ranges::sort(arr.begin(), arr.begin() + param.left_size, {}, IndexedElement::proj);
         std::ranges::sort(arr.begin() + param.left_size, arr.end(), {}, IndexedElement::proj);
@@ -65,7 +64,7 @@ void random_test(TestParam param) {
         tcs::inplace_stable_merge::inplace_stable_merge(
             arr.begin(), arr.begin() + param.left_size, arr.end(), IndexedElement::proj);
 
-        utest::assert_or_throw(is_stable(arr));
+        utest::assert_or_throw(arr.is_stable());
         utest::assert_or_throw(
             std::ranges::equal(arr, expected, {}, IndexedElement::proj, IndexedElement::proj));
     }

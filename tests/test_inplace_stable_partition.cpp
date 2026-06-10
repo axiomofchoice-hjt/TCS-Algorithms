@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <random>
-#include <vector>
 
 #include "common_test.hpp"
 #include "tcs/inplace_stable_partition.hpp"
@@ -43,14 +42,14 @@ void random_test(TestParam param) {
     int64_t num_ones = param.num_ones;
 
     for (int64_t i = 0; i < param.repeat; i++) {
-        std::vector<IndexedElement> arr(n);
+        TestArray arr(n);
 
         for (int64_t i = 0; i < n; i++) {
             arr[i] = {i < num_ones ? 1 : 0, 0};
         }
 
         std::ranges::shuffle(arr, gen);
-        iota_index(arr);
+        arr.iota_index();
 
         auto expected = arr;
         std::stable_partition(expected.begin(), expected.end(),
@@ -59,7 +58,7 @@ void random_test(TestParam param) {
         tcs::inplace_stable_partition::inplace_stable_partition(
             arr.begin(), arr.end(), [](IndexedElement e) { return IndexedElement::proj(e) == 0; });
 
-        utest::assert_or_throw(is_stable(arr));
+        utest::assert_or_throw(arr.is_stable());
         utest::assert_or_throw(
             std::ranges::equal(arr, expected, {}, IndexedElement::proj, IndexedElement::proj));
     }

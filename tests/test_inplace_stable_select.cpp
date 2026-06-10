@@ -1,7 +1,6 @@
 #include <algorithm>
 #include <random>
 #include <ranges>
-#include <vector>
 
 #include "common_test.hpp"
 #include "tcs/inplace_stable_select.hpp"
@@ -49,7 +48,7 @@ void random_test(TestParam param) {
     for ([[maybe_unused]] int64_t i : std::views::iota(0, param.repeat)) {
         auto arr = std::views::iota(0, param.size) | std::views::transform([&](int64_t i) {
             return IndexedElement{key_dist(gen), i};
-        }) | std::ranges::to<std::vector<IndexedElement>>();
+        }) | std::ranges::to<TestArray>();
 
         auto expected = arr;
         std::ranges::stable_sort(expected, {}, IndexedElement::proj);
@@ -59,7 +58,7 @@ void random_test(TestParam param) {
 
         utest::assert_or_throw(
             IndexedElement::proj(arr[param.k]) == IndexedElement::proj(expected[param.k]));
-        utest::assert_or_throw(is_stable(arr));
+        utest::assert_or_throw(arr.is_stable());
         std::ranges::sort(arr, {}, IndexedElement::proj);
         utest::assert_or_throw(
             std::ranges::equal(arr, expected, {}, IndexedElement::proj, IndexedElement::proj));
