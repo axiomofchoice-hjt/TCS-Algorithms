@@ -15,17 +15,17 @@ struct IndexedElement {
 
 template <typename Range>
 void iota_index(Range range) {
-    for (auto [i, el] : range | std::views::enumerate) {
-        el.index = static_cast<int64_t>(i);
+    for (int64_t i : std::views::iota(0, static_cast<int64_t>(range.size()))) {
+        range[i].index = i;
     }
 }
 
 template <typename Range>
 bool is_stable(Range range) {
     auto sorted = range | std::ranges::to<std::vector<IndexedElement>>();
-    std::ranges::sort(sorted, {}, IndexedElement::proj);
-    for (auto [a, b] : range | std::views::pairwise) {
-        if (a.key == b.key && a.index > b.index) {
+    std::ranges::stable_sort(sorted, {}, IndexedElement::proj);
+    for (int64_t i : std::views::iota(0, static_cast<int64_t>(sorted.size()) - 1)) {
+        if (sorted[i].key == sorted[i + 1].key && sorted[i].index > sorted[i + 1].index) {
             return false;
         }
     }
