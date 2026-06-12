@@ -1,7 +1,5 @@
 # 原地三路快速排序
 
-![img](./assets/74ae0e-0.webp)
-
 今天讲一点简单的算法，算法参考 [Sorting multisets stably in minimum space](https://doi.org/10.1007/BF01178508)。
 
 为了让文章看起来更全面，就先聊一聊我对快速排序的一些分析。

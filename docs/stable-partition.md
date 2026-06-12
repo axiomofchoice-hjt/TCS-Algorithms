@@ -1,7 +1,5 @@
 # O(n) 原地稳定划分
 
-![img](./assets/0d69d8-0.webp)
-
 这是一个非常复杂的学术算法，研究过程非常曲折。原论文有点难懂，我只好自己构造算法框架，也算是对原论文做了一些简化。
 
 主要参考的论文是 [Stable Minimum Space Partitioning in Linear Time](https://doi.org/10.1007/BF01994842)。

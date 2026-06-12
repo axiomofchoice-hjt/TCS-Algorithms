@@ -1,7 +1,5 @@
 # O(n) 原地选择的不稳定版本
 
-![img](./assets/63a6df-0.webp)
-
 选择问题就是 topk 问题。众所周知 BFPRT（又叫 Median of Medians）已经能做到 $O(n)$ 选择，但是不算原地，多了 $O(\log n)$ 的递归栈。本文的重点就是如何消除递归栈。
 
 这次参考的论文是 [Implicit Selection (1988)](https://doi.org/10.1007/3-540-19487-8_2)，它基于 BFPRT，将递归栈编码到数组和常数额外空间里。

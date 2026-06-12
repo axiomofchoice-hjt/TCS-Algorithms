@@ -1,7 +1,5 @@
 # O(n) 原地选择的稳定版本
 
-![img](./assets/8da648-0.webp)
-
 这次的算法主要参考 [Sorting multisets stably in minimum space](https://doi.org/10.1007/BF01178508)。论文包含 3 个算法，反划分、稳定选择、原地快速排序，这期讲稳定选择。
 
 这次我写代码的最折磨环节（就是 debug）交给了 AI，效果还挺好，AI 仅靠分析代码就找到所有问题。
