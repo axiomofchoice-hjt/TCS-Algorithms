@@ -7,7 +7,7 @@
 #include <string_view>
 
 namespace tcs {
-namespace inplace_stable_mrssort {
+namespace inplace_stable_cyclesort {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
@@ -71,7 +71,7 @@ std::optional<std::iter_value_t<RandomIt>> unordered_upper_bound(
 }
 
 template <typename RandomIt, typename Proj>
-void inplace_stable_mrssort(RandomIt first, RandomIt last, Proj proj) {
+void inplace_stable_cyclesort(RandomIt first, RandomIt last, Proj proj) {
     using T = std::iter_value_t<RandomIt>;
     if (last - first <= 1) {
         return;
@@ -95,5 +95,5 @@ void inplace_stable_mrssort(RandomIt first, RandomIt last, Proj proj) {
         }
     }
 }
-}  // namespace inplace_stable_mrssort
+}  // namespace inplace_stable_cyclesort
 }  // namespace tcs

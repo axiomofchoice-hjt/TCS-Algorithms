@@ -3,7 +3,7 @@
 #include <ranges>
 
 #include "common_test.hpp"
-#include "tcs/inplace_stable_mrssort.hpp"
+#include "tcs/inplace_stable_cyclesort.hpp"
 #include "utest.hpp"
 
 namespace {
@@ -39,7 +39,7 @@ void random_test(TestParam param) {
         auto expected = arr;
         std::ranges::stable_sort(expected, {}, IndexedElement::proj);
 
-        tcs::inplace_stable_mrssort::inplace_stable_mrssort(
+        tcs::inplace_stable_cyclesort::inplace_stable_cyclesort(
             arr.begin(), arr.end(), IndexedElement::proj);
 
         utest::assert_or_throw(arr.is_stable());
@@ -50,14 +50,14 @@ void random_test(TestParam param) {
 
 auto sweep = utest::register_test([] {
     for (int64_t n = 0; n <= kSweepMaxSize; n++) {
-        utest::test("inplace_stable_mrssort", "sweep", random_test,
+        utest::test("inplace_stable_cyclesort", "sweep", random_test,
             TestParam{.size = n, .max_key = kSweepMaxSize, .repeat = 2});
     }
 });
 
 auto random = utest::register_test([] {
     for (const auto& param : kCases) {
-        utest::test("inplace_stable_mrssort", "kCases", random_test, param);
+        utest::test("inplace_stable_cyclesort", "kCases", random_test, param);
     }
 });
 }  // namespace
