@@ -68,16 +68,16 @@ void counting_sort(std::vector<int>& arr) {
 }
 ```
 
-如果计数排序有原地要求，只能先存 n 个数的目标位置（怎么存后面讲），然后进行循环置换。
+如果计数排序有原地要求，只能先存 n 个数的目标位置（怎么存后面讲），然后进行原地置换。
 
-### 2.4. 循环置换
+### 2.4. 原地置换
 
-什么是循环置换算法 (cycle permutation)？学过置换或图论的都知道，把 n 个位置看成点，从其初始位置向目标位置连一条有向边，就会形成若干个不相交的环。
+什么是原地置换算法 (in-place permutation)？置换或者排列有一个性质，把 n 个位置看成点，从其初始位置向目标位置连一条有向边，就会形成若干个不相交的环。
 
 算法会依次处理每个环，沿着环的方向绕一圈，通过交换操作将每个元素移动到正确位置。每当一个位置被正确处理，就将目标数组中该位置的值修改为当前索引，表示该位置已处理过，从而避免重复移动。
 
 ```cpp
-void cycle_permutation(std::vector<int>& arr, std::vector<int>& dests) {
+void inplace_permutation(std::vector<int>& arr, std::vector<int>& dests) {
     for (int64_t i = 0; i < int64_t(arr.size()); i++) {
         for (int64_t j = dests[i]; j != i;) {
             std::swap(arr[i], arr[j]);
@@ -193,7 +193,7 @@ struct BufferStorage {
 
 ### 3.4. 块间排序
 
-基于上面计数排序、循环置换和存储器，我们可以完成多个块的排序（要求每个块是纯 0 或纯 1）。这里代码是对算法的一些整合。
+基于上面计数排序、原地置换和存储器，我们可以完成多个块的排序（要求每个块是纯 0 或纯 1）。这里代码是对算法的一些整合。
 
 复杂度 $O(B(S+T))$，B 是块数量，S 是块大小，T 是存储器 get / set 的复杂度。对于 word-base 存储器，T 是 $O(1)$ 不用担心复杂度。对于 buffer-base 存储器，T 是 $O(\log B)$ 约等于 $O(\log n)$，因此 buffer-base 块排序有个门槛 $S \ge T = O(\log n)$，来保证不会超过 $O(n)$。（这个结论不好讲明白，先记住）
 

@@ -42,7 +42,7 @@ void stable_inplace_unpartition(T* first, T* last, Pred pred, Placement placemen
 ### 2.1. 划分文章里提到的算法
 
 1. 区间旋转（`std::rotate`）。
-2. 循环置换。
+2. 原地置换。
 3. word-base 存储器。
 4. buffer-base 存储器。
 
@@ -229,7 +229,7 @@ void dehomogenize_blocks(T* first, T* last, int64_t block_size, Proj proj, Place
 
 ### 3.6. 块归并
 
-上面已经提到块归并的作用。理解作用后，就很容易搞懂块归并该怎么做，其实就是模拟块反同质化的 0 / 1 个数变化，然后记录每个纯块该放到哪里（用 word-base / buffer-base 存储器记录）。最后就是一个循环置换的事情。
+上面已经提到块归并的作用。理解作用后，就很容易搞懂块归并该怎么做，其实就是模拟块反同质化的 0 / 1 个数变化，然后记录每个纯块该放到哪里（用 word-base / buffer-base 存储器记录）。最后就是一个原地置换的事情。
 
 虽然介绍很少，代码看着还挺吓人。复杂度 $O(n)$。
 
