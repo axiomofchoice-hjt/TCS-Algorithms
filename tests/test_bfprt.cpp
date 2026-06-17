@@ -2,7 +2,7 @@
 #include <random>
 #include <ranges>
 
-#include "common_test.hpp"
+#include "common/test_array.hpp"
 #include "tcs/bfprt.hpp"
 #include "utest.hpp"
 

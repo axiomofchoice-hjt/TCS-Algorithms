@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <random>
 
-#include "common_test.hpp"
+#include "common/test_array.hpp"
 #include "tcs/inplace_stable_partition.hpp"
 #include "utest.hpp"
 

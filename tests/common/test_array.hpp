@@ -5,13 +5,7 @@
 #include <ranges>
 #include <vector>
 
-/// Element with a key for ordering and an index for stability verification.
-struct IndexedElement {
-    int64_t key;
-    int64_t index;
-
-    static int64_t proj(const IndexedElement& el) { return el.key; }
-};
+#include "indexed_element.hpp"
 
 class TestArray {
    public:
