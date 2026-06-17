@@ -13,7 +13,8 @@ int main() {
 
     print_arr(arr, "before");
 
-    tcs::inplace_stable_cyclesort::inplace_stable_cyclesort(arr.begin(), arr.end(), std::identity{});
+    tcs::inplace_stable_cyclesort::inplace_stable_cyclesort(
+        arr.begin(), arr.end(), std::identity{});
 
     print_arr(arr, "after ");
 }

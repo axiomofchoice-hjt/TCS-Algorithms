@@ -46,6 +46,9 @@ class TestArray {
         return true;
     }
 
-   private:
+    bool operator==(const TestArray& other) const {
+        return std::ranges::equal(
+            data_, other.data_, {}, IndexedElement::proj, IndexedElement::proj);
+    }
     std::vector<IndexedElement> data_;
 };

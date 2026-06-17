@@ -59,8 +59,7 @@ void random_test(TestParam param) {
             arr.begin(), arr.end(), [](IndexedElement e) { return IndexedElement::proj(e) == 0; });
 
         utest::assert_or_throw(arr.is_stable());
-        utest::assert_or_throw(
-            std::ranges::equal(arr, expected, {}, IndexedElement::proj, IndexedElement::proj));
+        utest::assert_or_throw(arr == expected);
     }
 }
 

@@ -60,8 +60,7 @@ void random_test(TestParam param) {
             IndexedElement::proj(arr[param.k]) == IndexedElement::proj(expected[param.k]));
         utest::assert_or_throw(arr.is_stable());
         std::ranges::sort(arr, {}, IndexedElement::proj);
-        utest::assert_or_throw(
-            std::ranges::equal(arr, expected, {}, IndexedElement::proj, IndexedElement::proj));
+        utest::assert_or_throw(arr == expected);
     }
 }
 

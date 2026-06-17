@@ -59,8 +59,7 @@ void random_test(TestParam param) {
         tcs::inplace_unstable_merge::inplace_unstable_merge(
             arr.begin(), arr.begin() + param.left_size, arr.end(), IndexedElement::proj);
 
-        utest::assert_or_throw(
-            std::ranges::equal(arr, expected, {}, IndexedElement::proj, IndexedElement::proj));
+        utest::assert_or_throw(arr == expected);
     }
 }
 
