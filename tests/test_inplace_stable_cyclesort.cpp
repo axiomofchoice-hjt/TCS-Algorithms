@@ -1,22 +1,13 @@
-#include <algorithm>
-#include <random>
-#include <ranges>
-
 #include "common/test_array.hpp"
+#include "common/test_sort.hpp"
+#include "common/utest.hpp"
 #include "tcs/inplace_stable_cyclesort.hpp"
-#include "utest.hpp"
 
 namespace {
-struct TestParam {
-    int64_t size;
-    int64_t max_key;
-    int64_t repeat;
-};
-
 constexpr int kRandomSeed = 42;
 constexpr int64_t kSweepMaxSize = 100;
 
-constexpr TestParam kCases[] = {
+constexpr TestSortParam kCases[] = {
     {20, 10, 10},
     {50, 20, 10},
     {100, 10, 10},
@@ -27,34 +18,24 @@ constexpr TestParam kCases[] = {
     {1000, 1, 1},
 };
 
-void random_test(TestParam param) {
-    std::mt19937 gen(kRandomSeed);
-    std::uniform_int_distribution<int64_t> key_dist(1, param.max_key);
-
-    for ([[maybe_unused]] int64_t i : std::views::iota(0, param.repeat)) {
-        auto arr = std::views::iota(0, param.size) | std::views::transform([&](int64_t i) {
-            return IndexedElement{key_dist(gen), i};
-        }) | std::ranges::to<TestArray>();
-
-        auto expected = arr;
-        std::ranges::stable_sort(expected, {}, IndexedElement::proj);
-
+auto random_test = gen_random_sort_test(
+    [](TestArray& arr) {
         tcs::inplace_stable_cyclesort::inplace_stable_cyclesort(
             arr.begin(), arr.end(), IndexedElement::proj);
-
-        utest::assert_or_throw(arr.is_stable());
-        utest::assert_or_throw(arr == expected);
-    }
-}
+    },
+    true, kRandomSeed);
 
 auto sweep = utest::register_test([] {
+    std::vector<TestSortParam> cases;
     for (int64_t n = 0; n <= kSweepMaxSize; n++) {
-        utest::test("inplace_stable_cyclesort", "sweep", random_test,
-            TestParam{.size = n, .max_key = kSweepMaxSize, .repeat = 2});
+        cases.push_back(TestSortParam{.size = n, .max_key = kSweepMaxSize, .repeat = 2});
+    }
+    for (const auto& param : cases) {
+        utest::test("inplace_stable_cyclesort", "sweep", random_test, param);
     }
 });
 
-auto random = utest::register_test([] {
+auto random_cases = utest::register_test([] {
     for (const auto& param : kCases) {
         utest::test("inplace_stable_cyclesort", "kCases", random_test, param);
     }

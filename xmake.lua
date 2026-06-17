@@ -19,6 +19,7 @@ target("tcs")
 target("test")
     set_kind("binary")
     add_files("tests/*.cpp")
+    add_includedirs("tests")
     add_deps("tcs")
     set_targetdir("$(builddir)/tests")
 

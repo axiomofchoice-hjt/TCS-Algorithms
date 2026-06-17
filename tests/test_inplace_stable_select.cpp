@@ -1,10 +1,11 @@
 #include <algorithm>
 #include <random>
 #include <ranges>
+#include <vector>
 
 #include "common/test_array.hpp"
+#include "common/utest.hpp"
 #include "tcs/inplace_stable_select.hpp"
-#include "utest.hpp"
 
 namespace {
 
@@ -65,13 +66,14 @@ void random_test(TestParam param) {
 }
 
 auto sweep = utest::register_test([] {
+    std::vector<TestParam> cases;
     for (int64_t n = 1; n <= kSweepMaxSize; n++) {
-        utest::test("inplace_stable_select", "sweep", random_test,
-            TestParam{.size = n, .k = n / 2, .max_key = kSweepMaxSize, .repeat = 2});
-        utest::test("inplace_stable_select", "sweep", random_test,
-            TestParam{.size = n, .k = 0, .max_key = kSweepMaxSize, .repeat = 1});
-        utest::test("inplace_stable_select", "sweep", random_test,
-            TestParam{.size = n, .k = n - 1, .max_key = kSweepMaxSize, .repeat = 1});
+        cases.push_back({.size = n, .k = n / 2, .max_key = kSweepMaxSize, .repeat = 2});
+        cases.push_back({.size = n, .k = 0, .max_key = kSweepMaxSize, .repeat = 1});
+        cases.push_back({.size = n, .k = n - 1, .max_key = kSweepMaxSize, .repeat = 1});
+    }
+    for (const auto& param : cases) {
+        utest::test("inplace_stable_select", "sweep", random_test, param);
     }
 });
 

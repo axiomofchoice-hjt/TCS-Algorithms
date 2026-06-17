@@ -1,10 +1,11 @@
 #include <algorithm>
 #include <random>
 #include <ranges>
+#include <vector>
 
 #include "common/test_array.hpp"
+#include "common/utest.hpp"
 #include "tcs/inplace_unstable_merge.hpp"
-#include "utest.hpp"
 
 namespace {
 struct TestParam {
@@ -64,9 +65,12 @@ void random_test(TestParam param) {
 }
 
 auto sweep = utest::register_test([] {
+    std::vector<TestParam> cases;
     for (int64_t n = 0; n <= kSweepMaxSize; n++) {
-        utest::test("inplace_unstable_merge", "sweep", random_test,
-            TestParam{.size = n, .left_size = n / 2, .max_key = kSweepMaxSize, .repeat = 2});
+        cases.push_back({.size = n, .left_size = n / 2, .max_key = kSweepMaxSize, .repeat = 2});
+    }
+    for (const auto& param : cases) {
+        utest::test("inplace_unstable_merge", "sweep", random_test, param);
     }
 });
 

@@ -1,10 +1,11 @@
 #include <algorithm>
 #include <random>
 #include <ranges>
+#include <vector>
 
 #include "common/test_array.hpp"
+#include "common/utest.hpp"
 #include "tcs/inplace_stable_unpartition.hpp"
-#include "utest.hpp"
 
 namespace {
 struct TestParam {
@@ -68,9 +69,12 @@ void random_test(TestParam param) {
 }
 
 auto sweep = utest::register_test([] {
+    std::vector<TestParam> cases;
     for (int64_t n = 0; n <= kSweepMaxSize; n++) {
-        utest::test("inplace_stable_unpartition", "sweep", random_test,
-            TestParam{.size = n, .num_ones = n / 2, .repeat = 2});
+        cases.push_back({.size = n, .num_ones = n / 2, .repeat = 2});
+    }
+    for (const auto& param : cases) {
+        utest::test("inplace_stable_unpartition", "sweep", random_test, param);
     }
 });
 
