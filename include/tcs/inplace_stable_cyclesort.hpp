@@ -76,13 +76,13 @@ void inplace_stable_cyclesort(RandomIt first, RandomIt last, Proj proj) {
     if (last - first <= 1) {
         return;
     }
-    for (std::optional<T> i = *std::ranges::min_element(first, last, {}, proj); i;
-        i = unordered_upper_bound(first, last, *i, proj)) {
-        auto [left, right] = destination_range(first, last, *i, proj);
+    for (std::optional<T> key = *std::ranges::min_element(first, last, {}, proj); key;
+        key = unordered_upper_bound(first, last, *key, proj)) {
+        auto [left, right] = destination_range(first, last, *key, proj);
         int64_t inner_sames = inplace_stable_partition_stub(left, right, [&](T x) {
-            return proj(x) == proj(*i);
+            return proj(x) == proj(*key);
         }) - left;
-        int64_t left_sames = std::count_if(first, left, [&](T x) { return proj(x) == proj(*i); });
+        int64_t left_sames = std::count_if(first, left, [&](T x) { return proj(x) == proj(*key); });
         std::rotate(left, left + inner_sames, left + inner_sames + left_sames);
     }
 
