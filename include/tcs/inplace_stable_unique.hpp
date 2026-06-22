@@ -35,52 +35,40 @@ RandomIt stable_unique_limit(RandomIt first, RandomIt last, int64_t max, Proj pr
 }
 
 template <typename RandomIt, typename Proj = std::identity>
-void bubble_sort(RandomIt first, RandomIt last, Proj proj = {}) {
-    int64_t len = last - first;
-    for (int64_t i = 0; i + 1 < len; i++) {
-        for (RandomIt j = first; j < last - i - 1; j++) {
-            if (proj(*j) > proj(*(j + 1))) {
-                std::swap(*j, *(j + 1));
-            }
-        }
-    }
-}
-
-template <typename RandomIt, typename Proj = std::identity>
-std::tuple<RandomIt, RandomIt> homogenize_blocks(
+std::tuple<RandomIt, RandomIt> build_blocks(
     RandomIt first, RandomIt last, int64_t block_size, Proj proj = {}) {
     using T = std::iter_value_t<RandomIt>;
-    RandomIt l1 = first;
-    RandomIt l1_end = first;
-    RandomIt l2 = first + block_size;
-    RandomIt l2_end = first + block_size;
-    std::optional<T> pre;
+    RandomIt uniq_start = first;
+    RandomIt uniq_end = first;
+    RandomIt dup_start = first + block_size;
+    RandomIt dup_end = first + block_size;
+    std::optional<T> prev_key;
     for (RandomIt it = first + block_size; it < last; it++) {
-        if (l1_end - l1 == block_size) {
-            std::swap(l1[0], l1[1]);
-            l1 = l1_end;
-            std::ranges::rotate(l2, l2_end, it);
-            l2 += block_size;
-            l2_end += block_size;
+        if (uniq_end - uniq_start == block_size) {
+            std::swap(uniq_start[0], uniq_start[1]);
+            uniq_start = uniq_end;
+            std::ranges::rotate(dup_start, dup_end, it);
+            dup_start += block_size;
+            dup_end += block_size;
         }
-        if (l2_end - l2 == block_size) {
-            std::ranges::rotate(l1, l2, l2_end);
-            l1 += block_size;
-            l1_end += block_size;
-            l2 = l2_end;
+        if (dup_end - dup_start == block_size) {
+            std::ranges::rotate(uniq_start, dup_start, dup_end);
+            uniq_start += block_size;
+            uniq_end += block_size;
+            dup_start = dup_end;
         }
-        if (!pre || proj(*pre) != proj(*it)) {
-            pre = *it;
-            std::swap(*l1_end, *it);
-            l1_end++;
+        if (!prev_key || proj(*prev_key) != proj(*it)) {
+            prev_key = *it;
+            std::swap(*uniq_end, *it);
+            uniq_end++;
         } else {
-            std::swap(*l2_end, *it);
-            l2_end++;
+            std::swap(*dup_end, *it);
+            dup_end++;
         }
     }
-    std::ranges::rotate(l1_end, l2, l2_end);
+    std::ranges::rotate(uniq_end, dup_start, dup_end);
     std::ranges::rotate(first, last - block_size, last);
-    return {l1 + block_size, l1_end + block_size};
+    return {uniq_start + block_size, uniq_end + block_size};
 }
 
 template <typename RandomIt, typename Proj = std::identity>
@@ -103,7 +91,7 @@ RandomIt partition_blocks(RandomIt first, RandomIt last, int64_t block_size, Pro
 }
 
 template <typename RandomIt, typename Proj = std::identity>
-void block_selection_sort(RandomIt first, RandomIt last, int64_t block_size, Proj proj = {}) {
+void sort_blocks(RandomIt first, RandomIt last, int64_t block_size, Proj proj = {}) {
     assert_or_throw((last - first) % block_size == 0);
     for (RandomIt cur = first; cur < last; cur += block_size) {
         RandomIt min = cur;
@@ -127,6 +115,7 @@ RandomIt inplace_stable_unique(RandomIt first, RandomIt last, Proj proj = {}) {
         return stable_unique_limit(first, last, len, proj);
     }
     RandomIt original_first = first;
+    // extract buffer
     first = stable_unique_limit(first, last, block_size, proj);
     if (first - original_first < block_size) {
         return first;
@@ -134,12 +123,48 @@ RandomIt inplace_stable_unique(RandomIt first, RandomIt last, Proj proj = {}) {
     first = std::ranges::upper_bound(first, last, proj(original_first[block_size - 1]), {}, proj);
     std::ranges::rotate(original_first, original_first + block_size, first);
     first -= block_size;
-    auto [tail_l1, tail_l2] = homogenize_blocks(first, last, block_size, proj);
-    RandomIt mid = partition_blocks(first + block_size, tail_l1, block_size, proj);
-    bubble_sort(first, first + block_size, proj);
-    block_selection_sort(first + block_size, mid, block_size, proj);
-    std::ranges::rotate(mid, tail_l1, tail_l2);
-    mid += tail_l2 - tail_l1;
+    /**
+     * [original_first..first] -> duplicates of buffer
+     * [first..first + block_size] -> buffer
+     * [first + block_size..last] -> mains
+     */
+    auto [tail_uniqs, tail_dups] = build_blocks(first, last, block_size, proj);
+    /**
+     * [original_first..first] -> duplicates of buffer
+     * [first..first + block_size] -> buffer
+     * [first + block_size..tail_uniqs] -> mains
+     * [tail_uniqs..tail_dups] -> uniques in tail
+     * [tail_dups..last] -> duplicates in tail
+     */
+    RandomIt mid = partition_blocks(first + block_size, tail_uniqs, block_size, proj);
+    /**
+     * [original_first..first] -> duplicates of buffer
+     * [first..first + block_size] -> buffer
+     * [first + block_size..mid] -> uniques in main
+     * [mid..tail_uniqs] -> duplicates in main
+     * [tail_uniqs..tail_dups] -> uniques in tail
+     * [tail_dups..last] -> duplicates in tail
+     */
+    // sort buffer
+    sort_blocks(first, first + block_size, 1, proj);
+    // sort unique blocks
+    sort_blocks(first + block_size, mid, block_size, proj);
+    /**
+     * [original_first..first] -> duplicates of buffer
+     * [first..mid] -> uniques in main
+     * [mid..tail_uniqs] -> duplicates in main
+     * [tail_uniqs..tail_dups] -> uniques in tail
+     * [tail_dups..last] -> duplicates in tail
+     */
+    // merge uniques in tail to uniques in main
+    std::ranges::rotate(mid, tail_uniqs, tail_dups);
+    mid += tail_dups - tail_uniqs;
+    /**
+     * [original_first..first] -> duplicates of buffer
+     * [first..mid] -> uniques in main
+     * [mid..last] -> duplicates in main
+     */
+    // merge duplicates of buffer to duplicates in main
     std::ranges::rotate(original_first, first, mid);
     mid -= first - original_first;
     return mid;
