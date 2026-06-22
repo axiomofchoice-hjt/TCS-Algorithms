@@ -53,12 +53,13 @@ void random_test(TestParam param) {
         arr.iota_index();
 
         auto expected = arr;
-        std::stable_partition(expected.begin(), expected.end(),
-            [](IndexedElement e) { return IndexedElement::proj(e) == 0; });
+        TestArray::iterator expected_result = std::stable_partition(expected.begin(),
+            expected.end(), [](IndexedElement e) { return IndexedElement::proj(e) == 0; });
 
-        tcs::inplace_stable_partition::inplace_stable_partition(
+        TestArray::iterator result = tcs::inplace_stable_partition::inplace_stable_partition(
             arr.begin(), arr.end(), [](IndexedElement e) { return IndexedElement::proj(e) == 0; });
 
+        utest::assert_or_throw(result - arr.begin() == expected_result - expected.begin());
         utest::assert_or_throw(arr.is_stable());
         utest::assert_or_throw(arr == expected);
     }

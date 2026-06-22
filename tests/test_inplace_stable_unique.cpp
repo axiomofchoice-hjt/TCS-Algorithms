@@ -43,19 +43,20 @@ void random_test(TestParam param) {
 
         auto expected = arr;
         std::optional<IndexedElement> pre;
-        TestArray::iterator mid = expected.begin();
-        for (TestArray::iterator it = expected.begin(); it < expected.end(); it++) {
-            if (!pre || IndexedElement::proj(*pre) != IndexedElement::proj(*it)) {
-                pre = *it;
-                std::swap(*mid, *it);
-                mid++;
+        TestArray::iterator expected_result = expected.begin();
+        for (IndexedElement& i : expected) {
+            if (!pre || IndexedElement::proj(*pre) != IndexedElement::proj(i)) {
+                pre = i;
+                std::swap(*expected_result, i);
+                expected_result++;
             }
         }
-        std::ranges::sort(mid, expected.end(), {}, IndexedElement::proj);
+        std::ranges::sort(expected_result, expected.end(), {}, IndexedElement::proj);
 
-        tcs::inplace_stable_unique::inplace_stable_unique(
+        TestArray::iterator result = tcs::inplace_stable_unique::inplace_stable_unique(
             arr.begin(), arr.end(), IndexedElement::proj);
 
+        utest::assert_or_throw(result - arr.begin() == expected_result - expected.begin());
         utest::assert_or_throw(arr.is_stable());
         utest::assert_or_throw(arr == expected);
     }
