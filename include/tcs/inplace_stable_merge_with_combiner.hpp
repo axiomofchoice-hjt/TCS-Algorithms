@@ -47,9 +47,8 @@ RandomIt rotate_partition_with_combiner(RandomIt first, RandomIt last, RandomIt 
     return last;
 }
 
-template <typename RandomIt, typename Combiner, typename Proj = std::identity>
-RandomIt inplace_stable_partition_with_combiner(RandomIt first, RandomIt last, RandomIt other_first,
-    RandomIt other_last, Combiner combiner, Proj proj = {}) {
+template <typename RandomIt, typename Combiner, typename Pred, typename Proj = std::identity>
+RandomIt inplace_stable_filter(RandomIt first, RandomIt last, Pred pred, Proj proj = {}) {
     int64_t len = last - first;
     int64_t block_size = std::floor(std::sqrt(len));
     // extract buffer
