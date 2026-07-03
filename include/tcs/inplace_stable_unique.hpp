@@ -44,10 +44,18 @@ std::tuple<RandomIt, RandomIt> build_blocks(
     RandomIt dup_end = first + block_size;
     std::optional<T> prev_key;
     for (RandomIt it = first + block_size; it < last; it++) {
+        if (!prev_key || proj(*prev_key) != proj(*it)) {
+            prev_key = *it;
+            std::swap(*uniq_end, *it);
+            uniq_end++;
+        } else {
+            std::swap(*dup_end, *it);
+            dup_end++;
+        }
         if (uniq_end - uniq_start == block_size) {
             std::swap(uniq_start[0], uniq_start[1]);
             uniq_start = uniq_end;
-            std::ranges::rotate(dup_start, dup_end, it);
+            std::ranges::rotate(dup_start, dup_end, it + 1);
             dup_start += block_size;
             dup_end += block_size;
         }
@@ -56,14 +64,6 @@ std::tuple<RandomIt, RandomIt> build_blocks(
             uniq_start += block_size;
             uniq_end += block_size;
             dup_start = dup_end;
-        }
-        if (!prev_key || proj(*prev_key) != proj(*it)) {
-            prev_key = *it;
-            std::swap(*uniq_end, *it);
-            uniq_end++;
-        } else {
-            std::swap(*dup_end, *it);
-            dup_end++;
         }
     }
     std::ranges::rotate(uniq_end, dup_start, dup_end);
