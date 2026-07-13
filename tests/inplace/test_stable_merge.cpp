@@ -5,7 +5,7 @@
 
 #include "common/test_array.hpp"
 #include "common/utest.hpp"
-#include "tcs/inplace_stable_merge.hpp"
+#include "tcs/inplace/stable_merge.hpp"
 
 namespace {
 
@@ -62,7 +62,7 @@ void random_test(TestParam param) {
         std::ranges::inplace_merge(
             expected, expected.begin() + param.left_size, {}, IndexedElement::proj);
 
-        tcs::inplace_stable_merge::inplace_stable_merge(
+        tcs::inplace::stable_merge::inplace_stable_merge(
             arr.begin(), arr.begin() + param.left_size, arr.end(), IndexedElement::proj);
 
         utest::assert_or_throw(arr.is_stable());

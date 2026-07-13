@@ -18,13 +18,13 @@ target("tcs")
 -- Test target
 target("test")
     set_kind("binary")
-    add_files("tests/*.cpp")
+    add_files("tests/**.cpp")
     add_includedirs("tests")
     add_deps("tcs")
     set_targetdir("$(builddir)/tests")
 
 -- Example targets (each file compiled as a standalone executable)
-for _, file in ipairs(os.files("examples/*.cpp")) do
+for _, file in ipairs(os.files("examples/**.cpp")) do
     local basename = path.basename(file)
     target(basename)
         set_kind("binary")

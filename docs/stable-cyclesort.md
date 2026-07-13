@@ -154,7 +154,7 @@ RandomIt destination(RandomIt first, RandomIt last, RandomIt key, Proj proj) {
 
 循环排序 [完整实现](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/include/tcs/cyclesort.hpp)和[测试](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/tests/test_cyclesort.cpp)。
 
-原地稳定循环排序 [完整实现](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/include/tcs/inplace_stable_cyclesort.hpp)和[测试](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/tests/test_inplace_stable_cyclesort.cpp)。
+原地稳定循环排序 [完整实现](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/include/tcs/inplace/stable_cyclesort.hpp)和[测试](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/tests/inplace/test_stable_cyclesort.cpp)。
 
 ## 5. 结尾
 

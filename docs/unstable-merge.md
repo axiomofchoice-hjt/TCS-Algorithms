@@ -234,7 +234,7 @@ void unstable_inplace_merge(T* first, T* mid, T* last) {
 
 ## 4. 补个代码
 
-[完整实现](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/include/tcs/inplace_unstable_merge.hpp)和[测试](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/tests/test_inplace_unstable_merge.cpp)。
+[完整实现](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/include/tcs/inplace/unstable_merge.hpp)和[测试](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/tests/inplace/test_unstable_merge.cpp)。
 
 ## 5. 稳定原地归并预告
 

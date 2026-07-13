@@ -1,11 +1,11 @@
 #include <print>
 #include <vector>
 
-#include "common.hpp"
-#include "tcs/inplace_unstable_merge.hpp"
+#include "../common.hpp"
+#include "tcs/inplace/stable_merge.hpp"
 
 int main() {
-    std::println("=== tcs::inplace_unstable_merge::inplace_unstable_merge ===");
+    std::println("=== tcs::inplace::stable_merge::inplace_stable_merge ===");
 
     constexpr int64_t kLeftSize = 5;
     constexpr auto kSortedOdds = std::array{1, 3, 5, 7, 9};
@@ -16,7 +16,7 @@ int main() {
 
     print_arr(arr, "before");
 
-    tcs::inplace_unstable_merge::inplace_unstable_merge(
+    tcs::inplace::stable_merge::inplace_stable_merge(
         arr.begin(), arr.begin() + kLeftSize, arr.end());
 
     print_arr(arr, "after ");

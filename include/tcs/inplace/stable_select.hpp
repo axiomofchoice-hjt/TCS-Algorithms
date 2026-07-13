@@ -13,7 +13,8 @@
 #include <utility>
 
 namespace tcs {
-namespace inplace_stable_select {
+namespace inplace {
+namespace stable_select {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
@@ -28,14 +29,14 @@ inline int64_t ceil_log2(int64_t x) {
 }
 
 // Stub: delegates to std::stable_partition (non-in-place, O(n) extra space).
-// Real in-place O(1) implementation: inplace_stable_partition.hpp
+// Real in-place O(1) implementation: inplace/stable_partition.hpp
 template <typename RandomIt, typename Pred>
 void inplace_stable_partition_stub(RandomIt first, RandomIt last, Pred pred) {
     std::stable_partition(first, last, pred);
 }
 
 // Stub: rebuilds array using a vector buffer (non-in-place, O(n) extra space).
-// Real in-place O(1) implementation: inplace_stable_unpartition.hpp
+// Real in-place O(1) implementation: inplace/stable_unpartition.hpp
 template <typename RandomIt, typename Pred, typename Placement>
 void inplace_stable_unpartition_stub(
     RandomIt first, RandomIt last, Pred pred, Placement placement) {
@@ -409,5 +410,6 @@ void inplace_stable_select(RandomIt first, RandomIt mid, RandomIt last, Proj pro
         }
     }
 }
-}  // namespace inplace_stable_select
+}  // namespace stable_select
+}  // namespace inplace
 }  // namespace tcs

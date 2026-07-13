@@ -9,7 +9,8 @@
 #include <string_view>
 
 namespace tcs {
-namespace inplace_stable_merge {
+namespace inplace {
+namespace stable_merge {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
@@ -270,5 +271,6 @@ void inplace_stable_merge(RandomIt first, RandomIt mid, RandomIt last, Proj proj
         inplace_merge_with_rotation(first, last, original_last, proj);
     }
 }
-}  // namespace inplace_stable_merge
+}  // namespace stable_merge
+}  // namespace inplace
 }  // namespace tcs

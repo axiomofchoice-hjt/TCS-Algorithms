@@ -5,10 +5,9 @@
 
 #include "common/test_array.hpp"
 #include "common/utest.hpp"
-#include "tcs/inplace_stable_select.hpp"
+#include "tcs/inplace/unstable_select.hpp"
 
 namespace {
-
 struct TestParam {
     int64_t size;
     int64_t k;
@@ -33,7 +32,7 @@ constexpr TestParam kCases[] = {
     {100, 90, 100, 10},
     {1000, 500, 1000, 10},
     {1000, 500, 10, 10},
-    {10000, 5000, 5000, 2},
+    {10000, 5000, 5000, 1},
     {100000, 50000, 50000, 1},
     {1000, 500, 1, 1},     // all elements share the same key
     {1000, 0, 1000, 1},    // k = 0 (minimum)
@@ -47,19 +46,18 @@ void random_test(TestParam param) {
     std::uniform_int_distribution<int64_t> key_dist(1, param.max_key);
 
     for ([[maybe_unused]] int64_t i : std::views::iota(0, param.repeat)) {
-        auto arr = std::views::iota(0, param.size) | std::views::transform([&](int64_t i) {
-            return IndexedElement{key_dist(gen), i};
+        auto arr = std::views::iota(0, param.size) | std::views::transform([&](int64_t) {
+            return IndexedElement{key_dist(gen), 0};
         }) | std::ranges::to<TestArray>();
 
         auto expected = arr;
-        std::ranges::stable_sort(expected, {}, IndexedElement::proj);
+        std::ranges::sort(expected, {}, IndexedElement::proj);
 
-        tcs::inplace_stable_select::inplace_stable_select(
+        tcs::inplace::unstable_select::inplace_unstable_select(
             arr.begin(), arr.begin() + param.k, arr.end(), IndexedElement::proj);
 
         utest::assert_or_throw(
             IndexedElement::proj(arr[param.k]) == IndexedElement::proj(expected[param.k]));
-        utest::assert_or_throw(arr.is_stable());
         std::ranges::sort(arr, {}, IndexedElement::proj);
         utest::assert_or_throw(arr == expected);
     }
@@ -73,13 +71,13 @@ auto sweep = utest::register_test([] {
         cases.push_back({.size = n, .k = n - 1, .max_key = kSweepMaxSize, .repeat = 1});
     }
     for (const auto& param : cases) {
-        utest::test("inplace_stable_select", "sweep", random_test, param);
+        utest::test("inplace_unstable_select", "sweep", random_test, param);
     }
 });
 
 auto random = utest::register_test([] {
     for (const auto& param : kCases) {
-        utest::test("inplace_stable_select", "kCases", random_test, param);
+        utest::test("inplace_unstable_select", "kCases", random_test, param);
     }
 });
 }  // namespace

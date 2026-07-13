@@ -2,11 +2,11 @@
 #include <print>
 #include <vector>
 
-#include "common.hpp"
-#include "tcs/inplace_unstable_select.hpp"
+#include "../common.hpp"
+#include "tcs/inplace/stable_select.hpp"
 
 int main() {
-    std::println("=== tcs::inplace_unstable_select::inplace_unstable_select ===");
+    std::println("=== tcs::inplace::stable_select::inplace_stable_select ===");
 
     constexpr auto kShuffledOneToTen = std::array{2, 5, 9, 6, 3, 10, 1, 7, 4, 8};
     auto arr = std::vector<int64_t>(kShuffledOneToTen.begin(), kShuffledOneToTen.end());
@@ -14,7 +14,7 @@ int main() {
 
     print_arr(arr, "before");
 
-    tcs::inplace_unstable_select::inplace_unstable_select(
+    tcs::inplace::stable_select::inplace_stable_select(
         arr.begin(), arr.begin() + kTargetRank, arr.end());
 
     print_arr(arr, "after ");

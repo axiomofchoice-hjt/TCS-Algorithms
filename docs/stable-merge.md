@@ -327,7 +327,7 @@ void block_merge_pairwise(T* first, T* last, T* labels, int64_t block_size) {
 
 ## 5. 补个代码
 
-[完整实现](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/include/tcs/inplace_stable_merge.hpp)和[测试](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/tests/test_inplace_stable_merge.cpp)。
+[完整实现](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/include/tcs/inplace/stable_merge.hpp)和[测试](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/tests/inplace/test_stable_merge.cpp)。
 
 ## 6. 结尾
 

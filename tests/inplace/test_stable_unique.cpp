@@ -5,7 +5,7 @@
 
 #include "common/test_array.hpp"
 #include "common/utest.hpp"
-#include "tcs/inplace_stable_unique.hpp"
+#include "tcs/inplace/stable_unique.hpp"
 
 namespace {
 struct TestParam {
@@ -53,7 +53,7 @@ void random_test(TestParam param) {
         }
         std::ranges::sort(expected_result, expected.end(), {}, IndexedElement::proj);
 
-        TestArray::iterator result = tcs::inplace_stable_unique::inplace_stable_unique(
+        TestArray::iterator result = tcs::inplace::stable_unique::inplace_stable_unique(
             arr.begin(), arr.end(), IndexedElement::proj);
 
         utest::assert_or_throw(result - arr.begin() == expected_result - expected.begin());

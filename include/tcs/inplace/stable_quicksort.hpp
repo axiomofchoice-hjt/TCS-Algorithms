@@ -8,7 +8,8 @@
 #include <vector>
 
 namespace tcs {
-namespace inplace_stable_quicksort {
+namespace inplace {
+namespace stable_quicksort {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
@@ -18,14 +19,14 @@ inline void assert_or_throw(bool condition, std::string_view message = "empty me
 }
 
 // Stub: delegates to std::stable_partition (non-in-place, O(n) extra space).
-// Real in-place O(1) implementation: inplace_stable_partition.hpp
+// Real in-place O(1) implementation: inplace/stable_partition.hpp
 template <typename RandomIt, typename Pred>
 RandomIt inplace_stable_partition_stub(RandomIt first, RandomIt last, Pred pred) {
     return std::stable_partition(first, last, pred);
 }
 
 // Stub: copies to vector and uses std::ranges::nth_element (non-in-place, O(n) extra space).
-// Real in-place O(1) implementation: inplace_stable_select.hpp
+// Real in-place O(1) implementation: inplace/stable_select.hpp
 template <typename RandomIt, typename Proj = std::identity>
 void inplace_stable_select_stub(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
     using T = std::iter_value_t<RandomIt>;
@@ -84,5 +85,6 @@ void inplace_stable_quicksort(RandomIt first, RandomIt last, Proj proj = {}) {
         }
     }
 }
-}  // namespace inplace_stable_quicksort
+}  // namespace stable_quicksort
+}  // namespace inplace
 }  // namespace tcs

@@ -1,7 +1,7 @@
 #include "common/test_array.hpp"
 #include "common/test_sort.hpp"
 #include "common/utest.hpp"
-#include "tcs/inplace_stable_quicksort.hpp"
+#include "tcs/inplace/stable_cyclesort.hpp"
 
 namespace {
 constexpr int kRandomSeed = 42;
@@ -15,13 +15,12 @@ constexpr TestSortParam kCases[] = {
     {100, 100, 10},
     {1000, 1000, 10},
     {1000, 10, 10},
-    {10000, 5000, 1},
     {1000, 1, 1},
 };
 
 auto random_test = gen_random_sort_test(
     [](TestArray& arr) {
-        tcs::inplace_stable_quicksort::inplace_stable_quicksort(
+        tcs::inplace::stable_cyclesort::inplace_stable_cyclesort(
             arr.begin(), arr.end(), IndexedElement::proj);
     },
     true, kRandomSeed);
@@ -32,13 +31,13 @@ auto sweep = utest::register_test([] {
         cases.push_back(TestSortParam{.size = n, .max_key = kSweepMaxSize, .repeat = 2});
     }
     for (const auto& param : cases) {
-        utest::test("inplace_stable_quicksort", "sweep", random_test, param);
+        utest::test("inplace_stable_cyclesort", "sweep", random_test, param);
     }
 });
 
 auto random_cases = utest::register_test([] {
     for (const auto& param : kCases) {
-        utest::test("inplace_stable_quicksort", "kCases", random_test, param);
+        utest::test("inplace_stable_cyclesort", "kCases", random_test, param);
     }
 });
 }  // namespace

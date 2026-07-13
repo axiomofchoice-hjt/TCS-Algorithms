@@ -7,7 +7,8 @@
 #include <string_view>
 
 namespace tcs {
-namespace inplace_stable_cyclesort {
+namespace inplace {
+namespace stable_cyclesort {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
@@ -17,7 +18,7 @@ inline void assert_or_throw(bool condition, std::string_view message = "empty me
 }
 
 // Stub: delegates to std::stable_partition (non-in-place, O(n) extra space).
-// Real in-place O(1) implementation: inplace_stable_partition.hpp
+// Real in-place O(1) implementation: inplace/stable_partition.hpp
 template <typename RandomIt, typename Pred>
 RandomIt inplace_stable_partition_stub(RandomIt first, RandomIt last, Pred pred) {
     return std::stable_partition(first, last, pred);
@@ -95,5 +96,6 @@ void inplace_stable_cyclesort(RandomIt first, RandomIt last, Proj proj) {
         }
     }
 }
-}  // namespace inplace_stable_cyclesort
+}  // namespace stable_cyclesort
+}  // namespace inplace
 }  // namespace tcs

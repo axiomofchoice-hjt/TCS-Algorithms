@@ -5,7 +5,7 @@
 
 #include "common/test_array.hpp"
 #include "common/utest.hpp"
-#include "tcs/inplace_stable_unpartition.hpp"
+#include "tcs/inplace/stable_unpartition.hpp"
 
 namespace {
 struct TestParam {
@@ -59,7 +59,7 @@ void random_test(TestParam param) {
         auto expected = arr;
         std::ranges::stable_sort(arr.begin(), arr.end(), {}, IndexedElement::proj);
 
-        tcs::inplace_stable_unpartition::inplace_stable_unpartition(
+        tcs::inplace::stable_unpartition::inplace_stable_unpartition(
             arr.begin(), arr.end(), [](IndexedElement e) { return IndexedElement::proj(e) == 0; },
             [&arr, &placement](auto p) { return !placement[p - arr.begin()]; });
 

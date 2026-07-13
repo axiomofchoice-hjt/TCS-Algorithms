@@ -13,7 +13,8 @@
 #include <utility>
 
 namespace tcs {
-namespace inplace_unstable_select {
+namespace inplace {
+namespace unstable_select {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
@@ -234,5 +235,6 @@ void inplace_unstable_select(RandomIt first, RandomIt mid, RandomIt last, Proj p
         }
     }
 }
-}  // namespace inplace_unstable_select
+}  // namespace unstable_select
+}  // namespace inplace
 }  // namespace tcs

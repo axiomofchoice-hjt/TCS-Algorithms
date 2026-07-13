@@ -1,11 +1,11 @@
 #include <print>
 #include <vector>
 
-#include "common.hpp"
-#include "tcs/inplace_stable_unpartition.hpp"
+#include "../common.hpp"
+#include "tcs/inplace/stable_unpartition.hpp"
 
 int main() {
-    std::println("=== tcs::inplace_stable_unpartition::inplace_stable_unpartition ===");
+    std::println("=== tcs::inplace::stable_unpartition::inplace_stable_unpartition ===");
 
     // partitioned: zeros first, ones last
     auto arr = std::vector<int64_t>{0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1};
@@ -14,7 +14,7 @@ int main() {
 
     print_arr(arr, "before");
 
-    tcs::inplace_stable_unpartition::inplace_stable_unpartition(
+    tcs::inplace::stable_unpartition::inplace_stable_unpartition(
         arr.begin(), arr.end(), [](int64_t x) { return x == 0; },
         [&arr, &placement](auto p) { return !placement[p - arr.begin()]; });
 

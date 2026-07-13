@@ -12,7 +12,8 @@
 #include <string_view>
 
 namespace tcs {
-namespace inplace_stable_unpartition {
+namespace inplace {
+namespace stable_unpartition {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
@@ -364,5 +365,6 @@ void inplace_stable_unpartition(RandomIt first, RandomIt last, Pred pred, Placem
         first, last, [pred](T x) { return pred(x) ? 0 : 1; },
         [placement](RandomIt x) { return placement(x) ? 0 : 1; });
 }
-}  // namespace inplace_stable_unpartition
+}  // namespace stable_unpartition
+}  // namespace inplace
 }  // namespace tcs

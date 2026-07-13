@@ -8,7 +8,8 @@
 #include <string_view>
 
 namespace tcs {
-namespace inplace_stable_unique {
+namespace inplace {
+namespace stable_unique {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
@@ -169,5 +170,6 @@ RandomIt inplace_stable_unique(RandomIt first, RandomIt last, Proj proj = {}) {
     mid -= first - original_first;
     return mid;
 }
-}  // namespace inplace_stable_unique
+}  // namespace stable_unique
+}  // namespace inplace
 }  // namespace tcs

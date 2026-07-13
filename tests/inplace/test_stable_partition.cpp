@@ -4,7 +4,7 @@
 
 #include "common/test_array.hpp"
 #include "common/utest.hpp"
-#include "tcs/inplace_stable_partition.hpp"
+#include "tcs/inplace/stable_partition.hpp"
 
 namespace {
 struct TestParam {
@@ -56,7 +56,7 @@ void random_test(TestParam param) {
         TestArray::iterator expected_result = std::stable_partition(expected.begin(),
             expected.end(), [](IndexedElement e) { return IndexedElement::proj(e) == 0; });
 
-        TestArray::iterator result = tcs::inplace_stable_partition::inplace_stable_partition(
+        TestArray::iterator result = tcs::inplace::stable_partition::inplace_stable_partition(
             arr.begin(), arr.end(), [](IndexedElement e) { return IndexedElement::proj(e) == 0; });
 
         utest::assert_or_throw(result - arr.begin() == expected_result - expected.begin());

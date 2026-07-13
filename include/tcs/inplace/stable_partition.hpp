@@ -11,7 +11,8 @@
 #include <string_view>
 
 namespace tcs {
-namespace inplace_stable_partition {
+namespace inplace {
+namespace stable_partition {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
@@ -309,5 +310,6 @@ RandomIt inplace_stable_partition(RandomIt first, RandomIt last, Pred pred) {
     static_assert(std::is_invocable_r_v<bool, Pred, T>);
     return inplace_stable_01_partition(first, last, [pred](T x) { return pred(x) ? 0 : 1; });
 }
-}  // namespace inplace_stable_partition
+}  // namespace stable_partition
+}  // namespace inplace
 }  // namespace tcs

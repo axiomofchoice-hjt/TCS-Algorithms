@@ -144,7 +144,7 @@ RandomIt partition_blocks(RandomIt first, RandomIt last, int64_t block_size, Pro
 
 ## 4. 完整代码
 
-[完整实现](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/include/tcs/inplace_stable_unique.hpp)和[测试](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/tests/test_inplace_stable_unique.cpp)。
+[完整实现](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/include/tcs/inplace/stable_unique.hpp)和[测试](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/tests/inplace/test_stable_unique.cpp)。
 
 ## 5. 原地稳定集合操作
 
