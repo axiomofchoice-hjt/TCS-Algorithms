@@ -24,8 +24,6 @@ struct LinkedList {
         NodeBase* next = nullptr;
         NodeBase* prev = nullptr;
 
-        virtual ~NodeBase() = default;
-
         static void link(NodeBase* a, NodeBase* b) {
             a->next = b;
             b->prev = a;
@@ -35,10 +33,11 @@ struct LinkedList {
         T value;
     };
 
+   private:
     std::unique_ptr<NodeBase> head;
     std::unique_ptr<NodeBase> tail;
 
-    struct Iterator {
+   public:    struct Iterator {
         using difference_type = int64_t;
         using value_type = T;
         using iterator_category = std::bidirectional_iterator_tag;
@@ -114,7 +113,7 @@ struct LinkedList {
     }
 
     Iterator erase(Iterator it) {
-        NodeBase* node = it.ptr;
+        auto* node = static_cast<Node*>(it.ptr);
         NodeBase* nxt = node->next;
         NodeBase::link(node->prev, nxt);
         delete node;
@@ -123,8 +122,14 @@ struct LinkedList {
 
     void push_back(const T& value) { insert(end(), value); }
     void push_front(const T& value) { insert(begin(), value); }
-    void pop_back() { erase(std::prev(end())); }
-    void pop_front() { erase(begin()); }
+    void pop_back() {
+        assert_or_throw(!empty(), "pop_back() on empty list");
+        erase(std::prev(end()));
+    }
+    void pop_front() {
+        assert_or_throw(!empty(), "pop_front() on empty list");
+        erase(begin());
+    }
 
     static std::tuple<LinkedList, LinkedList> split(LinkedList list, Iterator it) {
         LinkedList right;
