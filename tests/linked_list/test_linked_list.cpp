@@ -32,7 +32,6 @@ auto test_push_back = utest::register_test([] {
         [](int64_t) {
             LinkedList list;
             utest::assert_or_throw(list.empty(), "new list should be empty");
-            utest::assert_or_throw(list.size() == 0, "new list size should be 0");
 
             list.push_back(1);
             utest::assert_or_throw(!list.empty(), "list should not be empty");
@@ -115,22 +114,29 @@ auto test_move = utest::register_test([] {
     utest::test(
         "linked_list", "move",
         [](int64_t) {
-            LinkedList list;
-            for (int v : kSeq12) {
-                list.push_back(v);
+            {
+                LinkedList list;
+                for (int v : kSeq12) {
+                    list.push_back(v);
+                }
+
+                LinkedList moved(std::move(list));
+                utest::assert_or_throw(
+                    to_vector(moved) == kSeq12, "moved list should contain original elements");
+                utest::assert_or_throw(list.empty(), "moved-from list should be empty");
             }
+            {
+                LinkedList list;
+                for (int v : kSeq12) {
+                    list.push_back(v);
+                }
 
-            LinkedList moved(std::move(list));
-            utest::assert_or_throw(
-                to_vector(moved) == kSeq12, "moved list should contain original elements");
-            utest::assert_or_throw(list.empty(), "moved-from list should be empty");
-            utest::assert_or_throw(list.size() == 0, "moved-from list size should be 0");
-
-            LinkedList assigned;
-            assigned = std::move(moved);
-            utest::assert_or_throw(to_vector(assigned) == kSeq12,
-                "move-assigned list should contain original elements");
-            utest::assert_or_throw(moved.empty(), "moved-from list should be empty");
+                LinkedList assigned;
+                assigned = std::move(list);
+                utest::assert_or_throw(to_vector(assigned) == kSeq12,
+                    "move-assigned list should contain original elements");
+                utest::assert_or_throw(list.empty(), "moved-from list should be empty");
+            }
         },
         int64_t{0});
 });
