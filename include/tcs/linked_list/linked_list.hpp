@@ -103,6 +103,7 @@ struct LinkedList {
     Iterator end() const { return Iterator{tail.get()}; }
 
     [[nodiscard]] bool empty() const { return head->next == tail.get(); }
+    int64_t size() const { return std::distance(begin(), end()); }
 
     Iterator insert(Iterator it, const T& value) {
         auto* node = new Node;
@@ -125,7 +126,6 @@ struct LinkedList {
     void pop_back() { erase(std::prev(end())); }
     void pop_front() { erase(begin()); }
 
-    int64_t size() const { return std::distance(begin(), end()); }
     static std::tuple<LinkedList, LinkedList> split(LinkedList list, Iterator it) {
         LinkedList right;
         if (it != list.end()) {
