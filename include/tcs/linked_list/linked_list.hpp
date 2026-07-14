@@ -113,11 +113,12 @@ struct LinkedList {
 
     [[nodiscard]] bool empty() const { return head->next == tail.get(); }
 
-    void push_back(const T& value) {
+    Iterator insert(Iterator it, const T& value) {
         auto* node = new Node;
         node->value = value;
-        NodeBase::concat(tail->prev, node);
-        NodeBase::concat(node, tail.get());
+        NodeBase::concat(it.ptr->prev, node);
+        NodeBase::concat(node, it.ptr);
+        return Iterator{node};
     }
 
     Iterator erase(Iterator it) {
@@ -127,6 +128,12 @@ struct LinkedList {
         delete node;
         return Iterator{nxt};
     }
+
+    void push_back(const T& value) { insert(end(), value); }
+    void push_front(const T& value) { insert(begin(), value); }
+    void pop_back() { erase(std::prev(end())); }
+    void pop_front() { erase(begin()); }
+
     int64_t size() const { return std::distance(begin(), end()); }
     static std::tuple<LinkedList, LinkedList> split(LinkedList list, Iterator it) {
         LinkedList right = {it, list.end()};

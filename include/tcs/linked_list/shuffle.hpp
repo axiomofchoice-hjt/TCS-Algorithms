@@ -29,15 +29,12 @@ LinkedList<T> linked_list_shuffle(LinkedList<T> list, Random& rand) {
         std::uniform_int_distribution<int64_t> dist(0, left_sz + right_sz - 1);
         int64_t i = dist(rand);
         if (i < left_sz) {
-            LinkedList<T> node;
-            std::tie(node, left) = LinkedList<T>::split(std::move(left), std::next(left.begin()));
-            res = LinkedList<T>::concat(std::move(res), std::move(node));
+            res.push_back(*left.begin());
+            left.pop_front();
             left_sz--;
         } else {
-            LinkedList<T> node;
-            std::tie(node, right) =
-                LinkedList<T>::split(std::move(right), std::next(right.begin()));
-            res = LinkedList<T>::concat(std::move(res), std::move(node));
+            res.push_back(*right.begin());
+            right.pop_front();
             right_sz--;
         }
     }
