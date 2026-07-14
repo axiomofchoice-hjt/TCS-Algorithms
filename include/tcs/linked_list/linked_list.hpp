@@ -73,15 +73,6 @@ struct LinkedList {
         head->next = tail.get();
         tail->prev = head.get();
     }
-    LinkedList(Iterator begin, Iterator end) : LinkedList() {
-        if (begin != end) {
-            auto begin_prev = std::prev(begin);
-            auto end_prev = std::prev(end);
-            NodeBase::link(begin_prev.ptr, end.ptr);
-            NodeBase::link(head.get(), begin.ptr);
-            NodeBase::link(end_prev.ptr, tail.get());
-        }
-    }
     LinkedList(const LinkedList& other) = delete;
     LinkedList(LinkedList&& other) noexcept
         : head(std::move(other.head)), tail(std::move(other.tail)) {
@@ -136,7 +127,14 @@ struct LinkedList {
 
     int64_t size() const { return std::distance(begin(), end()); }
     static std::tuple<LinkedList, LinkedList> split(LinkedList list, Iterator it) {
-        LinkedList right = {it, list.end()};
+        LinkedList right;
+        if (it != list.end()) {
+            auto begin_prev = std::prev(it);
+            auto end_prev = std::prev(list.end());
+            NodeBase::link(begin_prev.ptr, list.end().ptr);
+            NodeBase::link(right.head.get(), it.ptr);
+            NodeBase::link(end_prev.ptr, right.tail.get());
+        }
         return std::make_tuple(std::move(list), std::move(right));
     }
     static LinkedList concat(LinkedList left, LinkedList right) {
