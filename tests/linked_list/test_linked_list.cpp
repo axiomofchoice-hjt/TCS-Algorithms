@@ -42,8 +42,8 @@ auto test_push_back = utest::register_test([] {
             list.push_back(2);
             list.push_back(3);
             utest::assert_or_throw(list.size() == 3, "size should be 3");
-            utest::assert_or_throw(to_vector(list) == kSeq123,
-                "elements should be in insertion order");
+            utest::assert_or_throw(
+                to_vector(list) == kSeq123, "elements should be in insertion order");
         },
         int64_t{0});
 });
@@ -105,8 +105,8 @@ auto test_concat = utest::register_test([] {
             }
 
             auto merged = LinkedList::concat(std::move(left), std::move(right));
-            utest::assert_or_throw(to_vector(merged) == kSeq1234,
-                "concat should append right after left");
+            utest::assert_or_throw(
+                to_vector(merged) == kSeq1234, "concat should append right after left");
         },
         int64_t{0});
 });
@@ -121,8 +121,8 @@ auto test_move = utest::register_test([] {
             }
 
             LinkedList moved(std::move(list));
-            utest::assert_or_throw(to_vector(moved) == kSeq12,
-                "moved list should contain original elements");
+            utest::assert_or_throw(
+                to_vector(moved) == kSeq12, "moved list should contain original elements");
             utest::assert_or_throw(list.empty(), "moved-from list should be empty");
             utest::assert_or_throw(list.size() == 0, "moved-from list size should be 0");
 
