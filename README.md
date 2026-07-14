@@ -73,12 +73,15 @@ curl -fsSL https://xmake.io/shget.text | bash
 ```text
 TCS-Algorithms/
 ├── include/tcs/           # Header-only library
-│   └── inplace/           # In-place algorithms
+│   ├── inplace/           # In-place algorithms (O(1) space)
+│   └── linked_list/        # Linked list algorithms
 ├── tests/                 # Unit tests
-│   └── inplace/           # Tests for in-place algorithms
+│   ├── inplace/           # Tests for in-place algorithms
+│   └── linked_list/        # Tests for linked list algorithms
 ├── docs/                  # Algorithm articles (Chinese)
 ├── examples/              # Usage examples
-│   └── inplace/           # Examples for in-place algorithms
+│   ├── inplace/           # Examples for in-place algorithms
+│   └── linked_list/        # Examples for linked list algorithms
 ├── scripts/               # Code quality checks
 └── xmake.lua              # Build configuration
 ```
