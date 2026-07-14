@@ -26,7 +26,7 @@ struct LinkedList {
 
         virtual ~NodeBase() = default;
 
-        static void concat(NodeBase* a, NodeBase* b) {
+        static void link(NodeBase* a, NodeBase* b) {
             a->next = b;
             b->prev = a;
         }
@@ -77,9 +77,9 @@ struct LinkedList {
         if (begin != end) {
             auto begin_prev = std::prev(begin);
             auto end_prev = std::prev(end);
-            NodeBase::concat(begin_prev.ptr, end.ptr);
-            NodeBase::concat(head.get(), begin.ptr);
-            NodeBase::concat(end_prev.ptr, tail.get());
+            NodeBase::link(begin_prev.ptr, end.ptr);
+            NodeBase::link(head.get(), begin.ptr);
+            NodeBase::link(end_prev.ptr, tail.get());
         }
     }
     LinkedList(const LinkedList& other) = delete;
@@ -116,15 +116,15 @@ struct LinkedList {
     Iterator insert(Iterator it, const T& value) {
         auto* node = new Node;
         node->value = value;
-        NodeBase::concat(it.ptr->prev, node);
-        NodeBase::concat(node, it.ptr);
+        NodeBase::link(it.ptr->prev, node);
+        NodeBase::link(node, it.ptr);
         return Iterator{node};
     }
 
     Iterator erase(Iterator it) {
         NodeBase* node = it.ptr;
         NodeBase* nxt = node->next;
-        NodeBase::concat(node->prev, nxt);
+        NodeBase::link(node->prev, nxt);
         delete node;
         return Iterator{nxt};
     }
@@ -141,9 +141,9 @@ struct LinkedList {
     }
     static LinkedList concat(LinkedList left, LinkedList right) {
         if (!right.empty()) {
-            NodeBase::concat(left.tail->prev, right.head->next);
-            NodeBase::concat(right.tail->prev, left.tail.get());
-            NodeBase::concat(right.head.get(), right.tail.get());
+            NodeBase::link(left.tail->prev, right.head->next);
+            NodeBase::link(right.tail->prev, left.tail.get());
+            NodeBase::link(right.head.get(), right.tail.get());
         }
         return left;
     }
