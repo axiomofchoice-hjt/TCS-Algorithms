@@ -20,6 +20,7 @@ inline void assert_or_throw(bool condition, std::string_view message = "empty me
 
 template <typename T>
 struct LinkedList {
+   public:
     struct NodeBase {
         NodeBase* next = nullptr;
         NodeBase* prev = nullptr;
@@ -29,15 +30,12 @@ struct LinkedList {
             b->prev = a;
         }
     };
+
     struct Node : NodeBase {
         T value;
     };
 
-   private:
-    std::unique_ptr<NodeBase> head;
-    std::unique_ptr<NodeBase> tail;
-
-   public:    struct Iterator {
+    struct Iterator {
         using difference_type = int64_t;
         using value_type = T;
         using iterator_category = std::bidirectional_iterator_tag;
@@ -100,7 +98,6 @@ struct LinkedList {
 
     Iterator begin() const { return Iterator{head->next}; }
     Iterator end() const { return Iterator{tail.get()}; }
-
     [[nodiscard]] bool empty() const { return head->next == tail.get(); }
     int64_t size() const { return std::distance(begin(), end()); }
 
@@ -121,11 +118,11 @@ struct LinkedList {
     }
 
     void push_back(const T& value) { insert(end(), value); }
-    void push_front(const T& value) { insert(begin(), value); }
     void pop_back() {
         assert_or_throw(!empty(), "pop_back() on empty list");
         erase(std::prev(end()));
     }
+    void push_front(const T& value) { insert(begin(), value); }
     void pop_front() {
         assert_or_throw(!empty(), "pop_front() on empty list");
         erase(begin());
@@ -142,6 +139,7 @@ struct LinkedList {
         }
         return std::make_tuple(std::move(list), std::move(right));
     }
+
     static LinkedList concat(LinkedList left, LinkedList right) {
         if (!right.empty()) {
             NodeBase::link(left.tail->prev, right.head->next);
@@ -150,6 +148,10 @@ struct LinkedList {
         }
         return left;
     }
+
+   private:
+    std::unique_ptr<NodeBase> head;
+    std::unique_ptr<NodeBase> tail;
 };
 }  // namespace linked_list
 }  // namespace tcs
