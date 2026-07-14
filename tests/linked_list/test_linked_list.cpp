@@ -53,7 +53,9 @@ auto test_erase = utest::register_test([] {
         "linked_list", "erase",
         [](int64_t) {
             LinkedList list;
-            for (int v : kSeq123) list.push_back(v);
+            for (int v : kSeq123) {
+                list.push_back(v);
+            }
 
             auto it = list.begin();
             ++it;
@@ -93,10 +95,14 @@ auto test_concat = utest::register_test([] {
         "linked_list", "concat",
         [](int64_t) {
             LinkedList left;
-            for (int v : kSeq12) left.push_back(v);
+            for (int v : kSeq12) {
+                left.push_back(v);
+            }
 
             LinkedList right;
-            for (int v : kSeq34) right.push_back(v);
+            for (int v : kSeq34) {
+                right.push_back(v);
+            }
 
             auto merged = LinkedList::concat(std::move(left), std::move(right));
             utest::assert_or_throw(to_vector(merged) == kSeq1234,
@@ -110,7 +116,9 @@ auto test_move = utest::register_test([] {
         "linked_list", "move",
         [](int64_t) {
             LinkedList list;
-            for (int v : kSeq12) list.push_back(v);
+            for (int v : kSeq12) {
+                list.push_back(v);
+            }
 
             LinkedList moved(std::move(list));
             utest::assert_or_throw(to_vector(moved) == kSeq12,
