@@ -111,24 +111,32 @@ struct ScapegoatTable {
         update_counts(0, n_blocks_);
     }
 
-    void rebalance(int64_t block_idx) {
-        int64_t flatten_level = -1;
-        int64_t i = block_idx;
-        for (int64_t level = height_; level >= 0; level--) {
+    void increment_counts(int64_t block_idx) {
+        for (int64_t level = height_, i = block_idx; level >= 0; level--, i /= 2) {
             counts_[(1 << level) + i]++;
-            if (flatten_level == -1 &&
-                counts_[(1 << level) + i] < (1 << (height_ - level)) * block_size_ * tau(level)) {
-                flatten_level = level;
-            }
-            i /= 2;
         }
+    }
+
+    int64_t find_scapegoat(int64_t block_idx) {
+        for (int64_t level = height_, i = block_idx; level >= 0; level--, i /= 2) {
+            if (counts_[(1 << level) + i] < (1 << (height_ - level)) * block_size_ * tau(level)) {
+                return level;
+            }
+        }
+        return -1;
+    }
+
+    void rebalance(int64_t block_idx) {
+        increment_counts(block_idx);
+        int64_t flatten_level = find_scapegoat(block_idx);
         if (flatten_level >= 0 && flatten_level < height_) {
             int64_t len = (1 << (height_ - flatten_level));
-            auto keys = genuine_keys(block_idx / len * len, ((block_idx / len) + 1) * len);
-            redistribute(block_idx / len * len, ((block_idx / len) + 1) * len, keys);
-            update_counts(block_idx / len * len, ((block_idx / len) + 1) * len);
-        }
-        if (flatten_level == -1) {
+            int64_t start = block_idx / len * len;
+            int64_t end = start + len;
+            auto keys = genuine_keys(start, end);
+            redistribute(start, end, keys);
+            update_counts(start, end);
+        } else if (flatten_level == -1) {
             resize(std::ceil(counts_[1] / tau(0) * 2));
         }
     }
