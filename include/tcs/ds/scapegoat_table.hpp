@@ -24,7 +24,8 @@ template <typename T, typename Proj = std::identity>
 struct ScapegoatTable {
     static constexpr double tau_root = 0.25;
     static constexpr double tau_leaf = 0.75;
-    static constexpr int64_t max_capacity = 1048576;  // safety limit to prevent OOM; not a DS constraint
+    static constexpr int64_t max_capacity =
+        1048576;  // safety limit to prevent OOM; not a DS constraint
 
     int64_t capacity_ = 0;
     int64_t block_size_ = 0;
@@ -38,6 +39,7 @@ struct ScapegoatTable {
     double tau(int64_t level) const {
         return tau_root + ((tau_leaf - tau_root) * static_cast<double>(level) / height_);
     }
+
     // last element of a run of equal keys; earlier copies are dummies
     bool genuine(int64_t index) const {
         return index == capacity_ - 1 || proj_(data_[index]) != proj_(data_[index + 1]);
