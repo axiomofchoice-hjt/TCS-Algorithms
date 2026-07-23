@@ -40,6 +40,14 @@ struct ScapegoatTable {
         return tau_root + ((tau_leaf - tau_root) * static_cast<double>(level) / height_);
     }
 
+    int64_t segment_size(int64_t level) const {
+        return (int64_t{1} << (height_ - level)) * block_size_;
+    }
+
+    auto counts(this auto&& self, int64_t level) {
+        return self.counts_.data() + (int64_t{1} << level);
+    }
+
     // last element of a run of equal keys; earlier copies are dummies
     bool genuine(int64_t index) const {
         return index == capacity_ - 1 || proj_(data_[index]) != proj_(data_[index + 1]);
@@ -92,8 +100,7 @@ struct ScapegoatTable {
             l /= 2;
             r = (r + 1) / 2;
             for (int64_t i = l; i < r; i++) {
-                counts_[(1 << level) + i] =
-                    counts_[((1 << level) + i) * 2] + counts_[(((1 << level) + i) * 2) + 1];
+                counts(level)[i] = counts(level + 1)[i * 2] + counts(level + 1)[(i * 2) + 1];
             }
         }
     }
@@ -118,14 +125,14 @@ struct ScapegoatTable {
 
     void increment_counts(int64_t block_idx) {
         for (int64_t level = height_, i = block_idx; level >= 0; level--, i /= 2) {
-            counts_[(1 << level) + i]++;
+            counts(level)[i]++;
         }
     }
 
     // returns deepest level with density below its threshold; -1 = expand
     int64_t find_scapegoat(int64_t block_idx) {
         for (int64_t level = height_, i = block_idx; level >= 0; level--, i /= 2) {
-            if (counts_[(1 << level) + i] < (1 << (height_ - level)) * block_size_ * tau(level)) {
+            if (counts(level)[i] < segment_size(level) * tau(level)) {
                 return level;
             }
         }
