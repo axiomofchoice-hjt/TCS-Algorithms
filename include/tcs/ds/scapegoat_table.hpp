@@ -38,10 +38,12 @@ struct ScapegoatTable {
     double tau(int64_t level) const {
         return tau_root + ((tau_leaf - tau_root) * static_cast<double>(level) / height_);
     }
+    // last element of a run of equal keys; earlier copies are dummies
     bool genuine(int64_t index) const {
         return index == capacity_ - 1 || proj_(data_[index]) != proj_(data_[index + 1]);
     }
 
+    // returns {b·2^h, b, 2^h, h} where h = max(0, b - bit_width(b) + 1)
     static std::tuple<int64_t, int64_t, int64_t, int64_t> dimensions(int64_t size) {
         int64_t block_size = 1;
         int64_t capacity = 2;
@@ -118,6 +120,7 @@ struct ScapegoatTable {
         }
     }
 
+    // returns deepest level with density below its threshold; -1 = expand
     int64_t find_scapegoat(int64_t block_idx) {
         for (int64_t level = height_, i = block_idx; level >= 0; level--, i /= 2) {
             if (counts_[(1 << level) + i] < (1 << (height_ - level)) * block_size_ * tau(level)) {
@@ -157,6 +160,7 @@ struct ScapegoatTable {
             right++;
         }
         if (right < capacity_) {
+            // shift genuine block right into the dummy
             std::ranges::copy_backward(
                 data_.begin() + index, data_.begin() + right, data_.begin() + right + 1);
             data_[index] = value;
@@ -168,6 +172,7 @@ struct ScapegoatTable {
             left--;
         }
         if (left >= 0) {
+            // shift genuine block left into the dummy
             std::ranges::copy(
                 data_.begin() + left + 1, data_.begin() + index, data_.begin() + left);
             data_[index - 1] = value;
