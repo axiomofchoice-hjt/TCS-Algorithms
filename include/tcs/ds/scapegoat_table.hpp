@@ -43,7 +43,6 @@ struct ScapegoatTable {
     }
 
     static std::tuple<int64_t, int64_t, int64_t, int64_t> dimensions(int64_t size) {
-        assert_or_throw(size <= max_capacity);
         int64_t block_size = 1;
         int64_t capacity = 2;
         while (capacity < size) {
@@ -96,6 +95,7 @@ struct ScapegoatTable {
     }
 
     void assign(int64_t size, T value) {
+        assert_or_throw(size <= max_capacity);
         std::tie(capacity_, block_size_, n_blocks_, height_) = dimensions(size);
         data_.assign(capacity_, value);
         counts_.assign(n_blocks_ * 2, 0);
@@ -103,6 +103,7 @@ struct ScapegoatTable {
     }
 
     void resize(int64_t size) {
+        assert_or_throw(size <= max_capacity);
         auto keys = genuine_keys(0, n_blocks_);
         std::tie(capacity_, block_size_, n_blocks_, height_) = dimensions(size);
         data_.resize(capacity_, T{});
