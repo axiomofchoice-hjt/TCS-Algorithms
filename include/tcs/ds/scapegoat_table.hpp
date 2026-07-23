@@ -151,8 +151,7 @@ struct ScapegoatTable {
             return;
         }
         int64_t index = std::ranges::lower_bound(data_, proj_(value), {}, proj_) - data_.begin();
-        // exist
-        if (index < capacity_ && proj_(data_[index]) == proj_(value)) {
+        if (index < capacity_ && proj_(data_[index]) == proj_(value)) {  // already exists
             return;
         }
         int64_t right = index;
