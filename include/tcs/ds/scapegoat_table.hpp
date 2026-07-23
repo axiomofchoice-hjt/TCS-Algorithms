@@ -45,16 +45,12 @@ struct ScapegoatTable {
     static std::tuple<int64_t, int64_t, int64_t, int64_t> dimensions(int64_t size) {
         assert_or_throw(size <= max_capacity);
         int64_t block_size = 1;
-        int64_t capacity = 0;
-        while (true) {
-            capacity = block_size;
-            while (capacity < (int64_t{1} << block_size)) {
-                capacity *= 2;
-            }
-            if (capacity >= size) {
-                break;
-            }
+        int64_t capacity = 2;
+        while (capacity < size) {
             block_size++;
+            capacity =
+                block_size << (block_size -
+                               static_cast<int64_t>(std::bit_width(uint64_t(block_size))) + 1);
         }
         int64_t n_blocks = capacity / block_size;
         int64_t height = std::bit_width(uint64_t(n_blocks)) - 1;
