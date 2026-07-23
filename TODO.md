@@ -59,35 +59,3 @@ need `.begin()` adjustment.
 ### 10. `assert_or_throw` semantics
 
 Split into `ASSERT` (debug-only) vs `VERIFY` (always-active) for intent clarity.
-
-## Completed
-
-- [x] `T*` → `RandomIt` iterator refactoring (all headers)
-- [x] `Proj = std::identity` default template parameter (all headers)
-- [x] `std::is_sorted` → `std::ranges::is_sorted`
-- [x] `std::find_if/count_if/all_of/max_element` → `std::ranges::` versions
-- [x] `std::less{}` → `{}` in `std::ranges` calls
-- [x] `kStandardCases` + `kEdgeCases` → unified `kCases[]` with `repeat`
-- [x] `IndexedElement` extracted to `tests/common_test.hpp`
-- [x] `readability-function-cognitive-complexity` disabled (REQUIRE inflates metric)
-- [x] Sweep tests converted from GENERATE to manual for loops (utest migration)
-- [x] `int` → `int64_t` in all test files
-- [x] `assert.hpp` deleted; `assert_or_throw` inlined per header
-- [x] `#include <functional>` added to all headers using `std::identity`
-- [x] `inplace_stable_select` core algorithm with O(1) buffer-backed bit stack
-- [x] `inplace_stable_quicksort` iterative quicksort with O(1) call-stack space
-- [x] Catch2 replaced with custom `utest.hpp`
-- [x] `utest.hpp` CLI filtering: `--filter` and `--params` with interval notation
-- [x] `readability-use-anyofallof` clang-tidy check disabled
-
-## Future Algorithms
-
-- O(n) Moves In-place Stable Sort
-- In-place Burrows–Wheeler Transform
-- Rank-Pairing / Hollow / Soft / Strict Fibonacci / Brodal Heap
-- Fusion Tree, Cuckoo Hashing, Tango Tree
-- Deamortized Splay Tree
-- Succinct Bit Vector
-- Cache-Oblivious B-Tree
-- In-place Linked List Shuffle
-- Stable Duplicate-Key Extraction
