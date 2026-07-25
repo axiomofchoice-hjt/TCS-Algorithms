@@ -48,11 +48,6 @@ struct ScapegoatTable {
         return self.counts_.data() + (int64_t{1} << level);
     }
 
-    // last element of a run of equal keys; earlier copies are dummies
-    bool genuine(int64_t index) const {
-        return index == capacity_ - 1 || proj_(data_[index]) != proj_(data_[index + 1]);
-    }
-
     // returns {b·2^h, b, 2^h, h} where h = max(0, b - bit_width(b) + 1)
     static std::tuple<int64_t, int64_t, int64_t, int64_t> dimensions(int64_t size) {
         int64_t block_size = 1;
@@ -68,16 +63,9 @@ struct ScapegoatTable {
         return {capacity, block_size, n_blocks, height};
     }
 
-    void redistribute(int64_t l, int64_t r, std::span<T> keys) {
-        if (keys.empty()) {
-            return;
-        }
-        int64_t len = (r - l) * block_size_;
-        assert_or_throw(static_cast<int64_t>(keys.size()) <= len);
-        for (int64_t i = 0; i < len; i++) {
-            data_[(l * block_size_) + i] = keys[i * keys.size() / len];
-        }
-        assert_or_throw(proj_(keys.back()) == proj_(data_[(r * block_size_) - 1]));
+    // last element of a run of equal keys; earlier copies are dummies
+    bool genuine(int64_t index) const {
+        return index == capacity_ - 1 || proj_(data_[index]) != proj_(data_[index + 1]);
     }
 
     std::vector<T> genuine_keys(int64_t l, int64_t r) const {
@@ -88,6 +76,18 @@ struct ScapegoatTable {
             }
         }
         return keys;
+    }
+
+    void redistribute(int64_t l, int64_t r, std::span<T> keys) {
+        if (keys.empty()) {
+            return;
+        }
+        int64_t len = (r - l) * block_size_;
+        assert_or_throw(static_cast<int64_t>(keys.size()) <= len);
+        for (int64_t i = 0; i < len; i++) {
+            data_[(l * block_size_) + i] = keys[i * keys.size() / len];
+        }
+        assert_or_throw(proj_(keys.back()) == proj_(data_[(r * block_size_) - 1]));
     }
 
     void update_counts(int64_t l, int64_t r) {
