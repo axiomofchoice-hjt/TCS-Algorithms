@@ -101,16 +101,16 @@ double tau(int64_t level) const {
 
 某个位置从虚拟键变成真实键后，需要做以下事情：
 
-1. `increment_counts` 线段树从叶子到根的计数器加一。
-2. `find_scapegoat` 找到最近平衡祖先，如果找到的话：
-    - `genuine_keys` 把这个区间的真实键复制到一个临时 `std::vector`。
-    - `redistribute` 把 `std::vector` 均匀平铺到区间内，同时设置虚拟键。
-    - `update_counts` 更新区间里面的计数器。
-3. 如果没找到，就要扩容：
-    - `genuine_keys` 把所有的真实键复制到一个临时 `std::vector`。
-    - 更新一些参数，数组扩容。
-    - `redistribute` 把 `std::vector` 均匀平铺到数组内，同时设置虚拟键。
-    - `update_counts` 更新区间里面的计数器。
+- `increment_counts` 线段树从叶子到根的计数器加一。
+- `find_scapegoat` 找到最近平衡祖先，如果找到的话：
+  - `genuine_keys` 把这个区间的真实键复制到一个临时 `std::vector`。
+  - `redistribute` 把 `std::vector` 均匀平铺到区间内，同时设置虚拟键。
+  - `update_counts` 更新区间里的计数器。
+- 如果没找到，就要扩容：
+  - `genuine_keys` 把所有的真实键复制到一个临时 `std::vector`。
+  - 更新一些参数，数组扩容。
+  - `redistribute` 把 `std::vector` 均匀平铺到数组内，同时设置虚拟键。
+  - `update_counts` 更新所有计数器。
 
 ```cpp
 void resize(int64_t size) {
@@ -139,11 +139,25 @@ void rebalance(int64_t block_idx) {
 }
 ```
 
-## 4. 放个代码
+## 4. 删除操作
+
+我在前面直接说不支持删除，为什么这么说呢？
+
+第一层，删除时把真实键和虚拟键都替换为后继元素。这个问题是，一个均匀的替罪羊表，从小到大删除就可以卡 $O(n^2)$ 了。
+
+第二层，删除需要在数组里维护删除标记，这是论文的做法。这个问题是，`lower_bound` 会找不到真实键，继续往后找就变 $O(n)$ 了。
+
+第三层，`lower_bound` 也改为均摊做法，将一系列假的键替换为后继值。这个问题是，一个均匀的替罪羊表，不断删除最小值和 `lower_bound` 查询刚刚删除的最小值，就可以卡 $O(n^2)$ 了。
+
+第四层，没错，该并查集登场了，通过堆很多指针来避免复杂度退化。
+
+只能说，理论可行，只不过移动键、线段树计数器、重分布，都要对此进行调整。为了删除把整个数据结构都换了一个，这能叫替罪羊表吗，不如叫忒修斯之船吧。所以还是放弃思考，不支持删除了。
+
+## 5. 放个代码
 
 [完整代码](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/include/tcs/ds/scapegoat_table.hpp)和[测试](https://github.com/axiomofchoice-hjt/TCS-Algorithms/blob/master/tests/ds/test_scapegoat_table.cpp)。
 
-## 5. 结尾
+## 6. 结尾
 
 我的实现完全不考虑常数，仍然写了 180 行，快赶上红黑树了。如果不是随机插入（比如顺序插入），性能会显著被 $O(\log^2 n)$ 的复杂度影响，相比平衡树只能说拉完了。
 
