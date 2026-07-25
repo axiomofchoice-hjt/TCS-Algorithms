@@ -1,7 +1,6 @@
 #pragma once
 
 #include <algorithm>
-#include <cmath>
 #include <cstdint>
 #include <format>
 #include <optional>
@@ -150,7 +149,7 @@ struct ScapegoatTable {
             redistribute(start, end, keys);
             update_counts(start, end);
         } else if (flatten_level == -1) {
-            resize(std::ceil(counts_[1] / tau(0) * 2));
+            resize(capacity_ * 2);
         }
     }
 
