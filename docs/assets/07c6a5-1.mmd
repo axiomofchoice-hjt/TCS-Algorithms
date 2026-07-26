@@ -1,13 +1,13 @@
 graph TD
-    R["<b>counts[1]</b> = 3<br/>τ₀ = 0.25<br/>(m = 8)"]:::root
+    R["<b>counts[1]</b> = 3<br/>τ₀ = 0.25<br/>block 0-3"]:::root
 
-    N2["<b>counts[2]</b> = 1<br/>τ₁ = 0.50<br/>(4 cells)"]:::internal
-    N3["<b>counts[3]</b> = 2<br/>τ₁ = 0.50<br/>(4 cells)"]:::internal
+    N2["<b>counts[2]</b> = 1<br/>τ₁ = 0.50<br/>block 0-1"]:::internal
+    N3["<b>counts[3]</b> = 2<br/>τ₁ = 0.50<br/>block 2-3"]:::internal
 
-    L0["<b>counts[8]</b> = 1<br/>τ₂ = 0.75<br/>block 0"]:::leaf
-    L1["<b>counts[9]</b> = 0<br/>τ₂ = 0.75<br/>block 1"]:::leaf
-    L2["<b>counts[10]</b> = 1<br/>τ₂ = 0.75<br/>block 2"]:::leaf
-    L3["<b>counts[11]</b> = 1<br/>τ₂ = 0.75<br/>block 3"]:::leaf
+    L0["<b>counts[4]</b> = 1<br/>τ₂ = 0.75<br/>block 0"]:::leaf
+    L1["<b>counts[5]</b> = 0<br/>τ₂ = 0.75<br/>block 1"]:::leaf
+    L2["<b>counts[6]</b> = 1<br/>τ₂ = 0.75<br/>block 2"]:::leaf
+    L3["<b>counts[7]</b> = 1<br/>τ₂ = 0.75<br/>block 3"]:::leaf
 
     subgraph table["data_"]
         T0["[0] = 2"]
