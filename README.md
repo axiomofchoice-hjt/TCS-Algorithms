@@ -35,11 +35,10 @@ For the full story behind each algorithm, start with the [overview](docs/overvie
    - Partition an array around a predicate while preserving relative order
    - [Blog post](docs/stable-partition.md) (also at [axiomofchoice-hjt.github.io](https://axiomofchoice-hjt.github.io/pages/0d69d8/))
 
-4. **BFPRT** (Median of Medians) & **In-place Unstable Select**
-   - `#include <tcs/bfprt.hpp>`, `#include <tcs/inplace/unstable_select.hpp>`
-   - $O(n)$ time; BFPRT uses $O(\log n)$ extra space (recursion), while in-place unstable select uses $O(1)$
+4. **In-place Unstable Select** — `#include <tcs/inplace/unstable_select.hpp>`
+   - $O(n)$ time, $O(1)$ extra space
    - k-th smallest element selection
-   - [Blog post](docs/bfprt-and-unstable-select.md) (also at [axiomofchoice-hjt.github.io](https://axiomofchoice-hjt.github.io/pages/63a6df/))
+   - [Blog post](docs/unstable-select.md) (also at [axiomofchoice-hjt.github.io](https://axiomofchoice-hjt.github.io/pages/63a6df/))
 
 5. **In-place Stable Unpartition** — `#include <tcs/inplace/stable_unpartition.hpp>`
     - $O(n)$ time, $O(1)$ extra space
