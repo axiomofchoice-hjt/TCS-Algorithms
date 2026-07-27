@@ -40,7 +40,7 @@ For the full story behind each algorithm, start with the [overview](https://axio
    - k-th smallest element selection with stability guarantee
    - [Blog post](https://axiomofchoice-hjt.github.io/pages/8da648/)
 
-More algorithms are available in `include/tcs/` — browse `docs/` for detailed articles (Chinese) and `examples/` for usage demos.
+More algorithms are available in `include/tcs/` and `examples/` for usage demos.
 
 ## 3. Quick Start
 
