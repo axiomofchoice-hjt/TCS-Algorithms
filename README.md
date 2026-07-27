@@ -35,27 +35,12 @@ For the full story behind each algorithm, start with the [overview](docs/overvie
    - Partition an array around a predicate while preserving relative order
    - [Blog post](docs/stable-partition.md) (also at [axiomofchoice-hjt.github.io](https://axiomofchoice-hjt.github.io/pages/0d69d8/))
 
-4. **In-place Unstable Select** — `#include <tcs/inplace/unstable_select.hpp>`
+4. **In-place Stable Select** — `#include <tcs/inplace/stable_select.hpp>`
    - $O(n)$ time, $O(1)$ extra space
-   - k-th smallest element selection
-   - [Blog post](docs/unstable-select.md) (also at [axiomofchoice-hjt.github.io](https://axiomofchoice-hjt.github.io/pages/63a6df/))
+   - k-th smallest element selection with stability guarantee
+   - [Blog post](docs/stable-select.md)
 
-5. **In-place Stable Unpartition** — `#include <tcs/inplace/stable_unpartition.hpp>`
-    - $O(n)$ time, $O(1)$ extra space
-    - Reverse a stable partition to its original order via a placement oracle
-    - [Blog post](docs/stable-unpartition.md) (also at [axiomofchoice-hjt.github.io](https://axiomofchoice-hjt.github.io/pages/60450e/))
-
-6. **In-place Stable Select** — `#include <tcs/inplace/stable_select.hpp>`
-    - $O(n)$ time, $O(1)$ extra space
-    - k-th smallest element selection with stability guarantee
-    - [Blog post](docs/stable-select.md)
-
-7. **In-place Stable Quicksort** — `#include <tcs/inplace/stable_quicksort.hpp>`
-    - $O(n\log n)$ expected time, $O(1)$ extra call-stack space
-    - Iterative stable quicksort with median-of-medians pivot
-    - [Blog post](docs/quicksort.md)
-
-See `examples/` for usage demos and `docs/` for detailed articles (Chinese).
+More algorithms are available in `include/tcs/` — browse `docs/` for detailed articles (Chinese) and `examples/` for usage demos.
 
 ## 3. Quick Start
 
