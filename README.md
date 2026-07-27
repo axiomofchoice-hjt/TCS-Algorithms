@@ -16,29 +16,29 @@ Under this model, "in-place" has a rigorous meaning: $O(1)$ extra space, not jus
 Each header is self-contained — copy one file, include it, and you're done.
 
 The goal is **algorithmic clarity**, not chasing constant factors.
-For the full story behind each algorithm, start with the [overview](docs/overview.md) (Chinese).
+For the full story behind each algorithm, start with the [overview](https://axiomofchoice-hjt.github.io/pages/1b8e07/) (Chinese).
 
 ## 2. Algorithms
 
 1. **In-place Unstable Merge** — `#include <tcs/inplace/unstable_merge.hpp>`
    - $O(n)$ time, $O(1)$ extra space
    - Merge two sorted adjacent subarrays (unstable)
-   - [Blog post](docs/unstable-merge.md) (also at [axiomofchoice-hjt.github.io](https://axiomofchoice-hjt.github.io/pages/c829b5/))
+   - [Blog post](https://axiomofchoice-hjt.github.io/pages/c829b5/)
 
 2. **In-place Stable Merge** — `#include <tcs/inplace/stable_merge.hpp>`
    - $O(n)$ time, $O(1)$ extra space
    - Merge two sorted adjacent subarrays, preserving stability
-   - [Blog post](docs/stable-merge.md) (also at [axiomofchoice-hjt.github.io](https://axiomofchoice-hjt.github.io/pages/326ae9/))
+   - [Blog post](https://axiomofchoice-hjt.github.io/pages/326ae9/)
 
 3. **In-place Stable Partition** — `#include <tcs/inplace/stable_partition.hpp>`
    - $O(n)$ time, $O(1)$ extra space
    - Partition an array around a predicate while preserving relative order
-   - [Blog post](docs/stable-partition.md) (also at [axiomofchoice-hjt.github.io](https://axiomofchoice-hjt.github.io/pages/0d69d8/))
+   - [Blog post](https://axiomofchoice-hjt.github.io/pages/0d69d8/)
 
 4. **In-place Stable Select** — `#include <tcs/inplace/stable_select.hpp>`
    - $O(n)$ time, $O(1)$ extra space
    - k-th smallest element selection with stability guarantee
-   - [Blog post](docs/stable-select.md)
+   - [Blog post](https://axiomofchoice-hjt.github.io/pages/8da648/)
 
 More algorithms are available in `include/tcs/` — browse `docs/` for detailed articles (Chinese) and `examples/` for usage demos.
 
