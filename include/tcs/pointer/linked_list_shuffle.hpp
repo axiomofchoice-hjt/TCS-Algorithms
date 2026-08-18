@@ -41,10 +41,10 @@ void linked_list_shuffle(std::list<T>& list, Rand rand) {
     while (left_sz + right_sz > 0) {
         int64_t i = rand(0, left_sz + right_sz - 1);
         if (i < left_sz) {
-            list.splice(list.end(), left, left.begin(), std::next(left.begin()));
+            list.splice(list.end(), left, left.begin());
             left_sz--;
         } else {
-            list.splice(list.end(), right, right.begin(), std::next(right.begin()));
+            list.splice(list.end(), right, right.begin());
             right_sz--;
         }
     }
