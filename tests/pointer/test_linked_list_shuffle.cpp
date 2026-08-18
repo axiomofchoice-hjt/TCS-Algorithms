@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "common/utest.hpp"
-#include "tcs/linked_list/shuffle.hpp"
+#include "tcs/pointer/linked_list_shuffle.hpp"
 
 namespace {
 using IntList = std::list<int>;
@@ -36,7 +36,7 @@ const std::vector<int> kCases[] = {
 // *referenced* generator, not the capture itself. The lambda draws a uniform
 // integer in [lo, hi], per the Rand contract of the shuffle.
 void shuffle_inplace(IntList& list, std::mt19937& gen) {
-    tcs::linked_list::shuffle::linked_list_shuffle(list, [&](int64_t lo, int64_t hi) {
+    tcs::pointer::linked_list_shuffle::linked_list_shuffle(list, [&](int64_t lo, int64_t hi) {
         return std::uniform_int_distribution<int64_t>(lo, hi)(gen);
     });
 }

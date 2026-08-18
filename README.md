@@ -13,6 +13,7 @@ The answer to each of these is yes, but the algorithms are buried in academic pa
 
 This project brings them to life under the **Word RAM model** — the standard model for algorithm analysis where a word is just large enough to hold a pointer (like `size_t`), but cannot encode arbitrary information.
 Under this model, "in-place" has a rigorous meaning: $O(1)$ extra space, not just "no heap allocation."
+The `include/tcs/pointer/` directory instead hosts algorithms for the **pointer-machine model**, where following a link is the only cost unit and linked structures are the native representation.
 Each header is self-contained — copy one file, include it, and you're done.
 
 The goal is **algorithmic clarity**, not chasing constant factors.
@@ -58,14 +59,14 @@ curl -fsSL https://xmake.io/shget.text | bash
 TCS-Algorithms/
 ├── include/tcs/           # Header-only library
 │   ├── inplace/           # In-place algorithms (O(1) space)
-│   └── linked_list/        # Linked list algorithms
+│   └── pointer/            # Pointer-machine algorithms
 ├── tests/                 # Unit tests
 │   ├── inplace/           # Tests for in-place algorithms
-│   └── linked_list/        # Tests for linked list algorithms
+│   └── pointer/            # Tests for pointer-machine algorithms
 ├── docs/                  # Algorithm articles (Chinese)
 ├── examples/              # Usage examples
 │   ├── inplace/           # Examples for in-place algorithms
-│   └── linked_list/        # Examples for linked list algorithms
+│   └── pointer/            # Examples for pointer-machine algorithms
 ├── scripts/               # Code quality checks
 └── xmake.lua              # Build configuration
 ```
