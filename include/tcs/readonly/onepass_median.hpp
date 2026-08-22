@@ -28,8 +28,12 @@ void select_stub(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
 
 template <typename RandomIt, typename Proj = std::identity>
 void select_range(RandomIt first, RandomIt left, RandomIt right, RandomIt last, Proj proj = {}) {
-    select_stub(first, left, last, proj);
-    select_stub(left, right, last, proj);
+    if (left != last) {
+        select_stub(first, left, last, proj);
+    }
+    if (right != last) {
+        select_stub(left, right, last, proj);
+    }
 }
 
 template <typename RandomIt, typename Proj = std::identity>
@@ -114,7 +118,6 @@ std::array<std::iter_value_t<ForwardIt>, 2> onepass_median(
         select_range(left, left + (n_drops / 2), right - (n_drops / 2), right, proj);
         candidates = std::rotate(left + (n_drops / 2), right - (n_drops / 2), right);
     }
-    // final selection
     return median(candidates, buffer_last, proj);
 }
 }  // namespace onepass_median
