@@ -105,9 +105,12 @@ std::array<std::iter_value_t<ForwardIt>, 2> onepass_median(
             break;
         }
         int64_t n_drops = n_loads * 2;
-        assert_or_throw(buffer_size >= n_drops + (size % 2 == 0 ? 2 : 1));
+        int64_t n_candidates = std::min((n_loads * 4) - 1, buffer_last - candidates);
+        if (n_candidates == buffer_last - candidates) {
+            assert_or_throw(n_candidates >= n_drops + (size % 2 == 0 ? 2 : 1));
+        }
         BufferIt left = candidates;
-        BufferIt right = buffer_last;
+        BufferIt right = buffer_first + n_candidates;
         select_range(left, left + (n_drops / 2), right - (n_drops / 2), right, proj);
         candidates = std::rotate(left + (n_drops / 2), right - (n_drops / 2), right);
     }
