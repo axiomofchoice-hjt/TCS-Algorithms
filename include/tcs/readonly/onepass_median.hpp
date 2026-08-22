@@ -35,6 +35,7 @@ void select_range(RandomIt first, RandomIt left, RandomIt right, RandomIt last, 
 template <typename RandomIt, typename Proj = std::identity>
 std::array<std::iter_value_t<RandomIt>, 2> median(RandomIt first, RandomIt last, Proj proj = {}) {
     int64_t size = last - first;
+    assert_or_throw(size > 0);
     if (size > 2) {
         select_range(first, first + ((size - 1) / 2), first + (size / 2) + 1, last, proj);
     }
@@ -49,6 +50,14 @@ template <typename ForwardIt, typename BufferIt, typename Proj = std::identity>
 std::array<std::iter_value_t<ForwardIt>, 2> onepass_median(
     ForwardIt first, int64_t size, BufferIt buffer_first, BufferIt buffer_last, Proj proj = {}) {
     int64_t remain = size;
+    auto next = [&]() {
+        assert_or_throw(remain > 0);
+        std::iter_value_t<ForwardIt> value = *first;
+        first++;
+        remain--;
+        return value;
+    };
+
     assert_or_throw(size > 0);
 
     int64_t buffer_size = buffer_last - buffer_first;
@@ -57,20 +66,14 @@ std::array<std::iter_value_t<ForwardIt>, 2> onepass_median(
     if (size <= 4) {
         assert_or_throw(size <= buffer_size);
         for (int64_t i = 0; i < size; i++) {
-            assert_or_throw(remain > 0);
-            buffer_first[i] = *first;
-            first++;
-            remain--;
+            buffer_first[i] = next();
         }
         return median(buffer_first, buffer_first + size, proj);
     }
 
     // initial load
     for (int64_t i = 0; i < (size / 2) + 1; i++) {
-        assert_or_throw(remain > 0);
-        buffer_first[i + 1] = *first;
-        first++;
-        remain--;
+        buffer_first[i + 1] = next();
     }
     // tournament ladder: repeatedly split the loaded window so the extreme
     // elements (provably non-medians) collect at the front/back
@@ -95,11 +98,8 @@ std::array<std::iter_value_t<ForwardIt>, 2> onepass_median(
     while (true) {
         int64_t n_loads = std::min(remain, candidates - buffer_first);
         for (int64_t i = 0; i < n_loads; i++) {
-            assert_or_throw(remain > 0);
             candidates--;
-            *candidates = *first;
-            first++;
-            remain--;
+            *candidates = next();
         }
         if (remain == 0) {
             break;
