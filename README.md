@@ -57,18 +57,27 @@ curl -fsSL https://xmake.io/shget.text | bash
 
 ```text
 TCS-Algorithms/
-├── include/tcs/           # Header-only library
-│   ├── inplace/           # In-place algorithms (O(1) space)
-│   └── pointer/            # Pointer-machine algorithms
-├── tests/                 # Unit tests
-│   ├── inplace/           # Tests for in-place algorithms
-│   └── pointer/            # Tests for pointer-machine algorithms
-├── docs/                  # Algorithm articles (Chinese)
-├── examples/              # Usage examples
-│   ├── inplace/           # Examples for in-place algorithms
-│   └── pointer/            # Examples for pointer-machine algorithms
-├── scripts/               # Code quality checks
-└── xmake.lua              # Build configuration
+├── include/tcs/            # Header-only library
+│   ├── bfprt.hpp           # Median-of-medians selection
+│   ├── cyclesort.hpp       # Classic in-place cycle sort
+│   ├── inplace/            # In-place algorithms (O(1) space)
+│   ├── pointer/            # Pointer-machine algorithms
+│   ├── readonly/           # Read-only-input algorithms
+│   └── ds/                 # Data structures
+├── tests/                  # Unit tests
+│   ├── common/             # Shared test helpers
+│   ├── inplace/            # Tests for in-place algorithms
+│   ├── pointer/            # Tests for pointer-machine algorithms
+│   ├── readonly/           # Tests for readonly algorithms
+│   └── ds/                 # Tests for data structures
+├── examples/               # Usage examples
+│   ├── common.hpp          # Shared example helpers
+│   ├── example_bfprt.cpp   # BFPRT selection demo
+│   └── inplace/            # Examples for in-place algorithms
+├── scripts/                # Dev scripts
+│   ├── format.sh           # clang-format all sources
+│   └── code-quality.sh     # clang-format + clang-tidy checks
+└── xmake.lua               # Build configuration
 ```
 
 ## 5. Dependencies
