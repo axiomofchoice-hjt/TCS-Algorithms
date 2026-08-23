@@ -4,6 +4,10 @@
 // once, using only floor(n / 2) + 2 elements of buffer space, in O(n) time.
 // The buffer is sized independently, so the range itself stays read-only.
 //
+// The per-window selection comes from the real O(1) in-place primitive in
+// unstable_select.hpp when TCS_NO_TEMP_IMPL is defined; otherwise it falls
+// back to std::ranges::nth_element.
+//
 // Blog: https://axiomofchoice-hjt.github.io/pages/c8ca67/
 
 #pragma once

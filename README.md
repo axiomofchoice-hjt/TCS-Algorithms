@@ -43,6 +43,14 @@ For the full story behind each algorithm, start with the [overview](https://axio
 
 More algorithms are available in `include/tcs/` and `examples/` for usage demos.
 
+The complexity above is that of the algorithms. A few headers delegate to a
+secondary helper (partition / unpartition / select): by default they build that
+helper with `std`-based fallbacks so they remain copyable as single files, but
+those fallbacks run in O(n) extra space. When you use the full `include/tcs/`
+tree, define **`TCS_NO_TEMP_IMPL`** to switch those helpers to the true O(1)
+in-place primitives in `stable_partition.hpp`, `stable_unpartition.hpp`,
+`stable_select.hpp`, and `unstable_select.hpp`.
+
 ## 3. Quick Start
 
 ```bash
