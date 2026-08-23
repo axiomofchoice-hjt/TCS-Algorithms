@@ -78,6 +78,7 @@ std::tuple<RandomIt, RandomIt> three_way_partition(
 template <typename RandomIt, typename Proj = std::identity>
 void inplace_stable_quicksort(RandomIt first, RandomIt last, Proj proj = {}) {
     using T = std::iter_value_t<RandomIt>;
+    assert_or_throw(first <= last, "stable_quicksort: first must not be past last");
     RandomIt tail_it = last;
     while (last - tail_it < 2) {
         if (tail_it == first) {
@@ -109,6 +110,8 @@ void inplace_stable_quicksort(RandomIt first, RandomIt last, Proj proj = {}) {
             std::swap(*left, *right);
         }
     }
+    assert_or_throw(std::ranges::is_sorted(first, last, std::less{}, proj),
+        "inplace_stable_quicksort: result is not sorted");
 }
 }  // namespace stable_quicksort
 }  // namespace inplace

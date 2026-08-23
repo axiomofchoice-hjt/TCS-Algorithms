@@ -385,6 +385,7 @@ void inplace_stable_unpartition(RandomIt first, RandomIt last, Pred pred, Placem
     using T = std::iter_value_t<RandomIt>;
     static_assert(std::is_invocable_r_v<bool, Pred, T>);
     static_assert(std::is_invocable_r_v<bool, Placement, RandomIt>);
+    assert_or_throw(first <= last, "inplace_stable_unpartition: first must not be past last");
     inplace_stable_01_unpartition(
         first, last, [pred](T x) { return pred(x) ? 0 : 1; },
         [placement](RandomIt x) { return placement(x) ? 0 : 1; });

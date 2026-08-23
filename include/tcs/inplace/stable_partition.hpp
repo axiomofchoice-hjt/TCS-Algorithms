@@ -333,7 +333,12 @@ template <typename RandomIt, typename Pred>
 RandomIt inplace_stable_partition(RandomIt first, RandomIt last, Pred pred) {
     using T = std::iter_value_t<RandomIt>;
     static_assert(std::is_invocable_r_v<bool, Pred, T>);
-    return inplace_stable_01_partition(first, last, [pred](T x) { return pred(x) ? 0 : 1; });
+    assert_or_throw(first <= last, "inplace_stable_partition: first must not be past last");
+    RandomIt boundary =
+        inplace_stable_01_partition(first, last, [pred](T x) { return pred(x) ? 0 : 1; });
+    assert_or_throw(std::ranges::is_partitioned(first, last, pred),
+        "inplace_stable_partition: result is not partitioned");
+    return boundary;
 }
 }  // namespace stable_partition
 }  // namespace inplace

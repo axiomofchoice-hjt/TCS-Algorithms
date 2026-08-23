@@ -134,6 +134,8 @@ void inplace_unstable_merge(RandomIt first, RandomIt mid, RandomIt last, Proj pr
     block_merge_pairwise(first, first + aligned_len, block_size, proj);
     bubble_sort(first + aligned_len - block_size, last, proj);
     inplace_merge_with_rotation(first, first + aligned_len - block_size, last, proj);
+    assert_or_throw(std::ranges::is_sorted(first, last, std::less{}, proj),
+        "inplace_unstable_merge: result is not sorted");
 }
 }  // namespace unstable_merge
 }  // namespace inplace

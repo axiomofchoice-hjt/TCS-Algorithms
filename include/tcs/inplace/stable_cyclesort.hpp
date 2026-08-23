@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <format>
+#include <functional>
 #include <iterator>
 #include <optional>
 #include <source_location>
@@ -95,6 +96,7 @@ std::optional<std::iter_value_t<RandomIt>> unordered_upper_bound(
 template <typename RandomIt, typename Proj>
 void inplace_stable_cyclesort(RandomIt first, RandomIt last, Proj proj) {
     using T = std::iter_value_t<RandomIt>;
+    assert_or_throw(first <= last, "stable_cyclesort: first must not be past last");
     if (last - first <= 1) {
         return;
     }
@@ -116,6 +118,8 @@ void inplace_stable_cyclesort(RandomIt first, RandomIt last, Proj proj) {
             dest = next_dest;
         }
     }
+    assert_or_throw(std::ranges::is_sorted(first, last, std::less{}, proj),
+        "inplace_stable_cyclesort: result is not sorted");
 }
 }  // namespace stable_cyclesort
 }  // namespace inplace

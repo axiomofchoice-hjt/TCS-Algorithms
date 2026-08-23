@@ -245,10 +245,14 @@ void inplace_stable_merge(RandomIt first, RandomIt mid, RandomIt last, Proj proj
     assert_or_throw(first <= mid && mid <= last, "Error: invalid input");
     assert_or_throw(std::ranges::is_sorted(first, mid, std::less{}, proj), "Error: invalid input");
     assert_or_throw(std::ranges::is_sorted(mid, last, std::less{}, proj), "Error: invalid input");
+    RandomIt orig_first = first;
+    RandomIt orig_last = last;
     int64_t len = last - first;
     int64_t block_size = std::floor(std::sqrt(len));
     if (block_size <= 4) {
         bubble_sort(first, last, proj);
+        assert_or_throw(std::ranges::is_sorted(orig_first, orig_last, std::less{}, proj),
+            "inplace_stable_merge: result is not sorted");
         return;
     }
     int64_t n_blocks = len / block_size;
@@ -285,6 +289,8 @@ void inplace_stable_merge(RandomIt first, RandomIt mid, RandomIt last, Proj proj
         first = buf1;
         inplace_merge_with_rotation(first, last, original_last, proj);
     }
+    assert_or_throw(std::ranges::is_sorted(orig_first, orig_last, std::less{}, proj),
+        "inplace_stable_merge: result is not sorted");
 }
 }  // namespace stable_merge
 }  // namespace inplace

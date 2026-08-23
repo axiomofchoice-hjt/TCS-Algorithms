@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <format>
+#include <functional>
 #include <iterator>
 #include <source_location>
 #include <stdexcept>
@@ -41,12 +42,14 @@ std::tuple<RandomIt, RandomIt> destination_range(
             eq++;
         }
     }
+    assert_or_throw(gt + eq <= last - first, "cyclesort: destination range exceeds the array");
     return {first + gt, first + gt + eq};
 }
 
 template <typename RandomIt, typename Proj>
 void cyclesort(RandomIt first, RandomIt last, Proj proj) {
     using T = std::iter_value_t<RandomIt>;
+    assert_or_throw(first <= last, "cyclesort: first must not be past last");
     if (last - first <= 1) {
         return;
     }
@@ -60,6 +63,8 @@ void cyclesort(RandomIt first, RandomIt last, Proj proj) {
             std::swap(*it, *std::find_if(left, right, [&](T x) { return proj(x) != proj(*it); }));
         }
     }
+    assert_or_throw(
+        std::ranges::is_sorted(first, last, std::less{}, proj), "cyclesort: result is not sorted");
 }
 }  // namespace cyclesort
 }  // namespace tcs
