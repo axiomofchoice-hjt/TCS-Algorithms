@@ -11,7 +11,6 @@
 #pragma once
 
 #include <algorithm>
-#include <cstdint>
 #include <format>
 #include <functional>
 #include <iterator>
