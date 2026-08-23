@@ -11,6 +11,7 @@ Checks: >
   -readability-convert-member-functions-to-static,
   -readability-function-cognitive-complexity,
   -readability-use-anyofallof,
+  -readability-suspicious-call-argument,
   modernize-use-nullptr,
   modernize-use-override,
   modernize-use-using
