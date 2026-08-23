@@ -1,8 +1,10 @@
 #pragma once
 
 #include <algorithm>
+#include <concepts>
 #include <cstdint>
 #include <ranges>
+#include <utility>
 #include <vector>
 
 #include "indexed_element.hpp"

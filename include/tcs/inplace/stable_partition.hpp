@@ -10,14 +10,19 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <bit>
 #include <climits>
 #include <cmath>
+#include <cstdint>
 #include <format>
 #include <functional>
 #include <source_location>
 #include <stdexcept>
 #include <string_view>
+#include <tuple>
+#include <type_traits>
+#include <utility>
 
 namespace tcs {
 namespace inplace {

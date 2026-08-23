@@ -12,16 +12,20 @@
 #pragma once
 
 #include <algorithm>
+#include <bit>
 #include <climits>
 #include <cmath>
 #include <cstdint>
 #include <format>
 #include <functional>
+#include <iterator>
 #include <ranges>
 #include <source_location>
 #include <stdexcept>
 #include <string_view>
+#include <tuple>
 #include <utility>
+#include <vector>
 
 namespace tcs {
 namespace inplace {

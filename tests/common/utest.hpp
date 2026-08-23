@@ -12,6 +12,8 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 namespace utest {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",

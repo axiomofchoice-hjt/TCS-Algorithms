@@ -10,10 +10,14 @@
 #pragma once
 
 #include <algorithm>
+#include <cstdint>
 #include <format>
+#include <iterator>
 #include <source_location>
 #include <stdexcept>
 #include <string_view>
+#include <tuple>
+#include <utility>
 
 namespace tcs {
 namespace cyclesort {

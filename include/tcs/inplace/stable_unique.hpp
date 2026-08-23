@@ -11,10 +11,16 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <format>
+#include <functional>
+#include <iterator>
+#include <optional>
 #include <source_location>
 #include <stdexcept>
 #include <string_view>
+#include <tuple>
+#include <utility>
 
 namespace tcs {
 namespace inplace {

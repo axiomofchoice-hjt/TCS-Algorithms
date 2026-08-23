@@ -10,9 +10,12 @@
 
 #include <cstdint>
 #include <format>
+#include <iterator>
 #include <list>
 #include <source_location>
 #include <stdexcept>
+#include <string_view>
+#include <utility>
 
 namespace tcs {
 namespace pointer {

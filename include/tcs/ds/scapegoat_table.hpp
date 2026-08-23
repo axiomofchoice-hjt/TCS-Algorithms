@@ -10,11 +10,15 @@
 #pragma once
 
 #include <algorithm>
+#include <bit>
 #include <cstdint>
 #include <format>
+#include <functional>
 #include <optional>
 #include <ranges>
 #include <source_location>
+#include <span>
+#include <tuple>
 #include <vector>
 
 namespace tcs {
