@@ -21,7 +21,29 @@ option("tcs_no_temp_impl")
         "Use true in-place O(1) partition/select primitives instead of std-based stubs (defines TCS_NO_TEMP_IMPL)")
 option_end()
 
+-- Option: build the local test/example binaries with AddressSanitizer and
+-- UndefinedBehaviorSanitizer. This is for on-demand (manual) hardening, not CI.
+-- Enable with: xmake f --tcs_sanitize=y
+option("tcs_sanitize")
+    set_default(false)
+    set_showmenu(true)
+    set_description(
+        "Build test/example binaries with ASan+UBSan (-fsanitize=address,undefined)")
+option_end()
+
 local no_temp_impl = has_config("tcs_no_temp_impl")
+local sanitize = has_config("tcs_sanitize")
+
+-- Apply ASan+UBSan flags to the *current* target (call inside a target block).
+local function apply_sanitize()
+    if not sanitize then
+        return
+    end
+    add_cxxflags("-fsanitize=address,undefined", "-fno-omit-frame-pointer")
+    -- `{force = true}`: xmake's linker-flag auto-check otherwise drops
+    -- -fsanitize here, which would leave ASan symbols unresolved at link time.
+    add_ldflags("-fsanitize=address,undefined", {force = true})
+end
 
 -- Header-only library target
 target("tcs")
@@ -40,6 +62,7 @@ target("test")
     if no_temp_impl then
         add_defines("TCS_NO_TEMP_IMPL")
     end
+    apply_sanitize()
     set_targetdir("$(builddir)/tests")
 
 -- Example targets (each file compiled as a standalone executable)
@@ -52,5 +75,6 @@ for _, file in ipairs(os.files("examples/**.cpp")) do
         if no_temp_impl then
             add_defines("TCS_NO_TEMP_IMPL")
         end
+        apply_sanitize()
         set_targetdir("$(builddir)/examples")
 end

@@ -59,6 +59,14 @@ curl -fsSL https://xmake.io/shget.text | bash
 
 # Build & run all tests
 ./run.sh
+
+# Manual ASan + UBSan: build the test/example binaries with AddressSanitizer
+# and UndefinedBehaviorSanitizer, then run the test suite.
+./scripts/asan.sh
+
+# Or scope a run down to one suite (sanitizers + huge parameter ranges can
+# exhaust memory, so run the full suite only when you want the whole sweep):
+./scripts/asan.sh --filter onepass_median
 ```
 
 ## 4. Directory Structure
@@ -84,7 +92,8 @@ TCS-Algorithms/
 │   └── inplace/            # Examples for in-place algorithms
 ├── scripts/                # Dev scripts
 │   ├── format.sh           # clang-format all sources
-│   └── code-quality.sh     # clang-format + clang-tidy checks
+│   ├── code-quality.sh     # clang-format + clang-tidy checks
+│   └── asan.sh             # Manual ASan+UBSan build & run
 └── xmake.lua               # Build configuration
 ```
 
