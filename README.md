@@ -63,10 +63,6 @@ curl -fsSL https://xmake.io/shget.text | bash
 # Manual ASan + UBSan: build the test/example binaries with AddressSanitizer
 # and UndefinedBehaviorSanitizer, then run the test suite.
 ./scripts/asan.sh
-
-# Or scope a run down to one suite (sanitizers + huge parameter ranges can
-# exhaust memory, so run the full suite only when you want the whole sweep):
-./scripts/asan.sh --filter onepass_median
 ```
 
 ## 4. Directory Structure

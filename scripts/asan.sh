@@ -1,18 +1,11 @@
 #!/usr/bin/env bash
 # Manual ASan+UBSan build & run (on-demand, not CI).
+# Extra arguments are forwarded to the test binary (e.g. --filter <suite>).
 #
-# Builds the local test/example binaries with AddressSanitizer and
-# UndefinedBehaviorSanitizer, then runs the test suite — or a subset of it —
-# under the sanitizers. Any extra arguments are forwarded to the test binary,
-# so you can scope a run down (useful: sanitizers + a huge parameter range can
-# exhaust memory, so pull the trigger surgically):
+#   scripts/asan.sh                     # full test suite under ASan+UBSan
+#   scripts/asan.sh --filter <suite>    # run a single suite
 #
-#   scripts/asan.sh                              # full test suite under ASan+UBSan
-#   scripts/asan.sh --filter onepass_median      # one suite
-#   scripts/asan.sh --filter stable_merge        # by name substring
-#
-# The xmake config is restored to the default (non-sanitized) state afterward,
-# even if the build or test fails.
+# Restores the default (non-sanitized) xmake config on exit.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
