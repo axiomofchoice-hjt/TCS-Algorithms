@@ -31,17 +31,17 @@ inline void assert_or_throw(bool condition, std::string_view message = "empty me
 }
 
 template <typename RandomIt, typename Proj = std::identity>
-void select_stub(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
+void inplace_unstable_select_stub(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
     std::ranges::nth_element(first, mid, last, {}, proj);
 }
 
 template <typename RandomIt, typename Proj = std::identity>
 void select_range(RandomIt first, RandomIt left, RandomIt right, RandomIt last, Proj proj = {}) {
     if (left != last) {
-        select_stub(first, left, last, proj);
+        inplace_unstable_select_stub(first, left, last, proj);
     }
     if (right != last) {
-        select_stub(left, right, last, proj);
+        inplace_unstable_select_stub(left, right, last, proj);
     }
 }
 
