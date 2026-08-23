@@ -19,6 +19,10 @@
 #include <string_view>
 #include <utility>
 
+#ifdef TCS_NO_TEMP_IMPL
+#include "tcs/inplace/unstable_select.hpp"
+#endif
+
 namespace tcs {
 namespace readonly {
 namespace onepass_median {
@@ -31,17 +35,21 @@ inline void assert_or_throw(bool condition, std::string_view message = "empty me
 }
 
 template <typename RandomIt, typename Proj = std::identity>
-void inplace_unstable_select_stub(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
+void inplace_unstable_select_ref(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
+#ifdef TCS_NO_TEMP_IMPL
+    return inplace::unstable_select::inplace_unstable_select(first, mid, last, proj);
+#else
     std::ranges::nth_element(first, mid, last, {}, proj);
+#endif
 }
 
 template <typename RandomIt, typename Proj = std::identity>
 void select_range(RandomIt first, RandomIt left, RandomIt right, RandomIt last, Proj proj = {}) {
     if (left != last) {
-        inplace_unstable_select_stub(first, left, last, proj);
+        inplace_unstable_select_ref(first, left, last, proj);
     }
     if (right != last) {
-        inplace_unstable_select_stub(left, right, last, proj);
+        inplace_unstable_select_ref(left, right, last, proj);
     }
 }
 

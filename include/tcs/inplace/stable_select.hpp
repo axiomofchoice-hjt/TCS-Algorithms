@@ -2,10 +2,11 @@
 // --------------------------------------------------------------------------
 // Selects the k-th smallest element of a range while preserving stability,
 // using a restoring-select core that encodes its recursion stack into spare
-// buffer elements. The partition/unpartition helpers are currently stubs
-// (std::stable_partition / a vector buffer); the real O(1) primitives are in
-// stable_partition.hpp and stable_unpartition.hpp. Target: O(n) time, O(1)
-// extra space.
+// buffer elements. The partition/unpartition helpers come from the real O(1)
+// in-place primitives in stable_partition.hpp / stable_unpartition.hpp when
+// TCS_NO_TEMP_IMPL is defined; otherwise they fall back to std-based stubs
+// (std::stable_partition / a temporary buffer). Target: O(n) time, O(1) extra
+// space.
 //
 // Blog: https://axiomofchoice-hjt.github.io/pages/8da648/
 
@@ -25,7 +26,13 @@
 #include <string_view>
 #include <tuple>
 #include <utility>
+
+#ifdef TCS_NO_TEMP_IMPL
+#include "tcs/inplace/stable_partition.hpp"
+#include "tcs/inplace/stable_unpartition.hpp"
+#else
 #include <vector>
+#endif
 
 namespace tcs {
 namespace inplace {
@@ -43,18 +50,20 @@ inline int64_t ceil_log2(int64_t x) {
     return std::bit_width(static_cast<uint64_t>(x) - 1);
 }
 
-// Stub: delegates to std::stable_partition (non-in-place, O(n) extra space).
-// Real in-place O(1) implementation: inplace/stable_partition.hpp
 template <typename RandomIt, typename Pred>
-void inplace_stable_partition_stub(RandomIt first, RandomIt last, Pred pred) {
-    std::stable_partition(first, last, pred);
+RandomIt inplace_stable_partition_ref(RandomIt first, RandomIt last, Pred pred) {
+#ifdef TCS_NO_TEMP_IMPL
+    return stable_partition::inplace_stable_partition(first, last, pred);
+#else
+    return std::stable_partition(first, last, pred);
+#endif
 }
 
-// Stub: rebuilds array using a vector buffer (non-in-place, O(n) extra space).
-// Real in-place O(1) implementation: inplace/stable_unpartition.hpp
 template <typename RandomIt, typename Pred, typename Placement>
-void inplace_stable_unpartition_stub(
-    RandomIt first, RandomIt last, Pred pred, Placement placement) {
+void inplace_stable_unpartition_ref(RandomIt first, RandomIt last, Pred pred, Placement placement) {
+#ifdef TCS_NO_TEMP_IMPL
+    return stable_unpartition::inplace_stable_unpartition(first, last, pred, placement);
+#else
     using T = std::iter_value_t<RandomIt>;
     RandomIt left_it = first;
     RandomIt right_it = std::find_if(first, last, [pred](T x) { return !pred(x); });
@@ -69,6 +78,7 @@ void inplace_stable_unpartition_stub(
         }
     }
     std::ranges::copy(buffer, first);
+#endif
 }
 
 template <typename RandomIt, typename Proj = std::identity>
@@ -124,7 +134,7 @@ bool extract_buffer(RandomIt first, RandomIt last, int64_t buffer_len, Proj proj
     // buffer holds non-major and the paired region holds major.
     if (std::ranges::count_if(first, last, [&](T x) { return proj(x) == proj(major); }) <=
         len - buffer_len) {
-        inplace_stable_partition_stub(first, last, [&](T x) { return proj(x) != proj(major); });
+        inplace_stable_partition_ref(first, last, [&](T x) { return proj(x) != proj(major); });
         RandomIt major_it =
             std::ranges::find_if(first, last, [&](T x) { return proj(x) == proj(major); });
         bubble_sort(first, first + buffer_len, proj);
@@ -179,10 +189,10 @@ template <typename RandomIt, typename Proj = std::identity>
 std::tuple<RandomIt, RandomIt> three_way_partition(
     RandomIt first, RandomIt last, std::iter_value_t<RandomIt> pivot, Proj proj = {}) {
     using T = std::iter_value_t<RandomIt>;
-    inplace_stable_partition_stub(first, last, [&](T x) { return proj(x) < proj(pivot); });
+    inplace_stable_partition_ref(first, last, [&](T x) { return proj(x) < proj(pivot); });
     RandomIt pivot_start =
         std::ranges::find_if(first, last, [&](T x) { return proj(x) >= proj(pivot); });
-    inplace_stable_partition_stub(pivot_start, last, [&](T x) { return proj(x) == proj(pivot); });
+    inplace_stable_partition_ref(pivot_start, last, [&](T x) { return proj(x) == proj(pivot); });
     RandomIt pivot_end =
         std::ranges::find_if(pivot_start, last, [&](T x) { return proj(x) != proj(pivot); });
     return {pivot_start, pivot_end};
@@ -252,7 +262,7 @@ struct Stack {
     }
 };
 
-int64_t restoring_select_buffer_size(int64_t len) {
+inline int64_t restoring_select_buffer_size(int64_t len) {
     constexpr int64_t group_size = 5;
     int64_t scalar_bits = ceil_log2(len + 1);
     int64_t buffer_size = 0;
@@ -324,11 +334,11 @@ std::iter_value_t<RandomIt> restoring_select(RandomIt first, RandomIt mid, Rando
             for (RandomIt i = first; i < last; i++) {
                 stack.push(proj(*i) < proj(pivot), 1);
             }
-            inplace_stable_partition_stub(first, last, [&](T x) { return proj(x) < proj(pivot); });
+            inplace_stable_partition_ref(first, last, [&](T x) { return proj(x) < proj(pivot); });
             for (RandomIt i = first; i < last; i++) {
                 stack.push(proj(*i) <= proj(pivot), 1);
             }
-            inplace_stable_partition_stub(first, last, [&](T x) { return proj(x) <= proj(pivot); });
+            inplace_stable_partition_ref(first, last, [&](T x) { return proj(x) <= proj(pivot); });
             RandomIt pivot_start =
                 std::ranges::find_if(first, last, [&](T x) { return proj(x) >= proj(pivot); });
             RandomIt pivot_end =
@@ -358,12 +368,12 @@ std::iter_value_t<RandomIt> restoring_select(RandomIt first, RandomIt mid, Rando
             int64_t len = last - first;
             auto placement = [&](RandomIt i) { return stack.get(i - first, len); };
             T pivot = first[std::ranges::count_if(std::views::iota(first, last), placement) - 1];
-            inplace_stable_unpartition_stub(
+            inplace_stable_unpartition_ref(
                 first, last, [&](T x) { return proj(x) <= proj(pivot); }, placement);
             for (int64_t _ : std::views::iota(0, len)) {
                 stack.pop(1);
             }
-            inplace_stable_unpartition_stub(
+            inplace_stable_unpartition_ref(
                 first, last, [&](T x) { return proj(x) < proj(pivot); }, placement);
             for (int64_t _ : std::views::iota(0, len)) {
                 stack.pop(1);
@@ -387,7 +397,7 @@ void inplace_stable_select(RandomIt first, RandomIt mid, RandomIt last, Proj pro
         int64_t buffer_len = restoring_select_buffer_size(block_size);
         if (!extract_buffer(first, last, buffer_len, proj)) {
             T major = probable_major(first, last, proj);
-            inplace_stable_partition_stub(first, last, [&](T x) { return proj(x) != proj(major); });
+            inplace_stable_partition_ref(first, last, [&](T x) { return proj(x) != proj(major); });
             RandomIt major_it =
                 std::ranges::find_if(first, last, [&](T x) { return proj(x) == proj(major); });
             bubble_sort(first, major_it, proj);

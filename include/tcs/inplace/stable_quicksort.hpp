@@ -1,10 +1,11 @@
 // In-place stable three-way quicksort
 // --------------------------------------------------------------------------
 // A stable three-way quicksort that partitions around a median-of-medians
-// pivot. The partition/select helpers are currently stubs (std::stable_partition
-// / std::ranges::nth_element via a vector buffer); the real O(1) primitives are
-// in stable_partition.hpp and stable_select.hpp. Target: O(n log n) time, O(1)
-// extra space.
+// pivot. The partition/select helpers come from the real O(1) in-place
+// primitives in stable_partition.hpp / stable_select.hpp when TCS_NO_TEMP_IMPL
+// is defined; otherwise they fall back to std-based stubs (std::stable_partition
+// / std::ranges::nth_element via a temporary buffer). Target: O(n log n) time,
+// O(1) extra space.
 //
 // Blog: https://axiomofchoice-hjt.github.io/pages/74ae0e/
 
@@ -19,7 +20,13 @@
 #include <string_view>
 #include <tuple>
 #include <utility>
+
+#ifdef TCS_NO_TEMP_IMPL
+#include "tcs/inplace/stable_partition.hpp"
+#include "tcs/inplace/stable_select.hpp"
+#else
 #include <vector>
+#endif
 
 namespace tcs {
 namespace inplace {
@@ -32,17 +39,20 @@ inline void assert_or_throw(bool condition, std::string_view message = "empty me
     }
 }
 
-// Stub: delegates to std::stable_partition (non-in-place, O(n) extra space).
-// Real in-place O(1) implementation: inplace/stable_partition.hpp
 template <typename RandomIt, typename Pred>
-RandomIt inplace_stable_partition_stub(RandomIt first, RandomIt last, Pred pred) {
+RandomIt inplace_stable_partition_ref(RandomIt first, RandomIt last, Pred pred) {
+#ifdef TCS_NO_TEMP_IMPL
+    return stable_partition::inplace_stable_partition(first, last, pred);
+#else
     return std::stable_partition(first, last, pred);
+#endif
 }
 
-// Stub: copies to vector and uses std::ranges::nth_element (non-in-place, O(n) extra space).
-// Real in-place O(1) implementation: inplace/stable_select.hpp
 template <typename RandomIt, typename Proj = std::identity>
-void inplace_stable_select_stub(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
+void inplace_stable_select_ref(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
+#ifdef TCS_NO_TEMP_IMPL
+    return stable_select::inplace_stable_select(first, mid, last, proj);
+#else
     using T = std::iter_value_t<RandomIt>;
     auto buffer = std::vector<T>(first, last);
     std::ranges::nth_element(
@@ -51,6 +61,7 @@ void inplace_stable_select_stub(RandomIt first, RandomIt mid, RandomIt last, Pro
     RandomIt pivot_it =
         std::stable_partition(first, last, [&](T x) { return proj(x) < proj(pivot); });
     std::stable_partition(pivot_it, last, [&](T x) { return proj(x) == proj(pivot); });
+#endif
 }
 
 template <typename RandomIt, typename Proj = std::identity>
@@ -58,8 +69,8 @@ std::tuple<RandomIt, RandomIt> three_way_partition(
     RandomIt first, RandomIt last, std::iter_value_t<RandomIt> pivot, Proj proj = {}) {
     using T = std::iter_value_t<RandomIt>;
     RandomIt pivot_start =
-        inplace_stable_partition_stub(first, last, [&](T x) { return proj(x) < proj(pivot); });
-    RandomIt pivot_end = inplace_stable_partition_stub(
+        inplace_stable_partition_ref(first, last, [&](T x) { return proj(x) < proj(pivot); });
+    RandomIt pivot_end = inplace_stable_partition_ref(
         pivot_start, last, [&](T x) { return proj(x) == proj(pivot); });
     return {pivot_start, pivot_end};
 }
@@ -74,13 +85,13 @@ void inplace_stable_quicksort(RandomIt first, RandomIt last, Proj proj = {}) {
         }
         T max = *std::ranges::max_element(first, tail_it, {}, proj);
         tail_it =
-            inplace_stable_partition_stub(first, tail_it, [&](T x) { return proj(x) < proj(max); });
+            inplace_stable_partition_ref(first, tail_it, [&](T x) { return proj(x) < proj(max); });
     }
     RandomIt left = first;
     RandomIt right = tail_it;
     while (true) {
         if (right - left > 1) {
-            inplace_stable_select_stub(left, left + ((right - left) / 2), right, proj);
+            inplace_stable_select_ref(left, left + ((right - left) / 2), right, proj);
             T pivot = left[(right - left) / 2];
             auto [pivot_start, pivot_end] = three_way_partition(left, right, pivot, proj);
             std::swap(*pivot_end, *right);

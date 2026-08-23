@@ -2,8 +2,9 @@
 // --------------------------------------------------------------------------
 // A stable variant of cycle sort that preserves the relative order of equal
 // elements while keeping the total number of moves O(n), with O(n^2)
-// comparisons. The equal-keys partition helper is currently a stub delegating
-// to std::stable_partition; the real O(1) primitive is in stable_partition.hpp.
+// comparisons. The equal-keys partition helper uses the real O(1) in-place
+// primitive in stable_partition.hpp when TCS_NO_TEMP_IMPL is defined;
+// otherwise it falls back to std::stable_partition.
 //
 // Blog: https://axiomofchoice-hjt.github.io/pages/e2847a/
 
@@ -20,6 +21,10 @@
 #include <tuple>
 #include <utility>
 
+#ifdef TCS_NO_TEMP_IMPL
+#include "tcs/inplace/stable_partition.hpp"
+#endif
+
 namespace tcs {
 namespace inplace {
 namespace stable_cyclesort {
@@ -31,11 +36,13 @@ inline void assert_or_throw(bool condition, std::string_view message = "empty me
     }
 }
 
-// Stub: delegates to std::stable_partition (non-in-place, O(n) extra space).
-// Real in-place O(1) implementation: inplace/stable_partition.hpp
 template <typename RandomIt, typename Pred>
-RandomIt inplace_stable_partition_stub(RandomIt first, RandomIt last, Pred pred) {
+RandomIt inplace_stable_partition_ref(RandomIt first, RandomIt last, Pred pred) {
+#ifdef TCS_NO_TEMP_IMPL
+    return stable_partition::inplace_stable_partition(first, last, pred);
+#else
     return std::stable_partition(first, last, pred);
+#endif
 }
 
 template <typename RandomIt, typename Proj>
@@ -94,7 +101,7 @@ void inplace_stable_cyclesort(RandomIt first, RandomIt last, Proj proj) {
     for (std::optional<T> key = *std::ranges::min_element(first, last, {}, proj); key;
         key = unordered_upper_bound(first, last, *key, proj)) {
         auto [left, right] = destination_range(first, last, *key, proj);
-        int64_t inner_sames = inplace_stable_partition_stub(left, right, [&](T x) {
+        int64_t inner_sames = inplace_stable_partition_ref(left, right, [&](T x) {
             return proj(x) == proj(*key);
         }) - left;
         int64_t left_sames = std::count_if(first, left, [&](T x) { return proj(x) == proj(*key); });
