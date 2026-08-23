@@ -1,5 +1,6 @@
 #include <random>
 #include <set>
+#include <string>
 #include <vector>
 
 #include "common/utest.hpp"
@@ -69,8 +70,15 @@ void random_test(TestParam param) {
                 utest::assert_or_throw(
                     !lb.has_value(), std::format("lower_bound({}) should be nullopt", query));
             } else {
-                utest::assert_or_throw(lb.has_value() && *lb == *expected_lb,
-                    std::format("lower_bound({}) = {}, expected {}", query, *lb, *expected_lb));
+                std::string msg;
+                if (lb.has_value()) {
+                    msg = std::format(
+                        "lower_bound({}) = {}, expected {}", query, *lb, *expected_lb);
+                } else {
+                    msg = std::format("lower_bound({}) returned nullopt, expected {}", query,
+                        *expected_lb);
+                }
+                utest::assert_or_throw(lb.has_value() && *lb == *expected_lb, msg);
             }
         }
     }

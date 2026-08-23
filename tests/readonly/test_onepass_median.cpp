@@ -2,7 +2,6 @@
 #include <cstdint>
 #include <forward_list>
 #include <random>
-#include <ranges>
 #include <utility>
 #include <vector>
 
@@ -13,6 +12,7 @@
 namespace {
 constexpr int kRandomSeed = 42;
 constexpr int64_t kSweepMaxSize = 100;
+constexpr int64_t kForwardListMaxKey = 10;
 
 struct TestParam {
     int64_t size;
@@ -148,7 +148,7 @@ auto signed_keys = utest::register_test([] {
 auto forward_list = utest::register_test([] {
     for (int64_t n : {1, 2, 3, 7, 16, 64, 100}) {
         utest::test("onepass_median", "forward_list", forward_list_test,
-            TestParam{.size = n, .max_key = 10, .repeat = 1});
+            TestParam{.size = n, .max_key = kForwardListMaxKey, .repeat = 1});
     }
 });
 }  // namespace
