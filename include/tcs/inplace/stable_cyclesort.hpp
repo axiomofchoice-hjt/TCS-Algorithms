@@ -1,3 +1,12 @@
+// In-place stable cycle sort
+// --------------------------------------------------------------------------
+// A stable variant of cycle sort that preserves the relative order of equal
+// elements while keeping the total number of moves O(n), with O(n^2)
+// comparisons. The equal-keys partition helper is currently a stub delegating
+// to std::stable_partition; the real O(1) primitive is in stable_partition.hpp.
+//
+// Blog: https://axiomofchoice-hjt.github.io/pages/e2847a/
+
 #pragma once
 
 #include <algorithm>

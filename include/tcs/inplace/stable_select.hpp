@@ -1,3 +1,14 @@
+// In-place stable select
+// --------------------------------------------------------------------------
+// Selects the k-th smallest element of a range while preserving stability,
+// using a restoring-select core that encodes its recursion stack into spare
+// buffer elements. The partition/unpartition helpers are currently stubs
+// (std::stable_partition / a vector buffer); the real O(1) primitives are in
+// stable_partition.hpp and stable_unpartition.hpp. Target: O(n) time, O(1)
+// extra space.
+//
+// Blog: https://axiomofchoice-hjt.github.io/pages/8da648/
+
 #pragma once
 
 #include <algorithm>

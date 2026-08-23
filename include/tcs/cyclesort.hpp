@@ -1,3 +1,12 @@
+// Cycle sort
+// --------------------------------------------------------------------------
+// Classic in-place cycle sort: repeatedly swaps each element into its final
+// position, found by counting how many elements should precede it. Minimizes
+// the number of writes to O(n) at the cost of O(n^2) comparisons, using O(1)
+// extra space. Not stable — see tcs::inplace::stable_cyclesort.
+//
+// Blog: https://axiomofchoice-hjt.github.io/pages/e2847a/
+
 #pragma once
 
 #include <algorithm>

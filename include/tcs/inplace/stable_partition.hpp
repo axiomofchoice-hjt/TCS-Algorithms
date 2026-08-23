@@ -1,3 +1,12 @@
+// In-place stable partition
+// --------------------------------------------------------------------------
+// 0-1 stable partition in O(n) time and O(1) extra space: partitions a range
+// around a predicate while preserving each side's relative order, by
+// extracting a buffer and encoding target positions in a word or in the
+// buffer itself.
+//
+// Blog: https://axiomofchoice-hjt.github.io/pages/0d69d8/
+
 #pragma once
 
 #include <algorithm>

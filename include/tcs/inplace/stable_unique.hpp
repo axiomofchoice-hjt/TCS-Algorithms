@@ -1,3 +1,12 @@
+// In-place stable unique
+// --------------------------------------------------------------------------
+// Removes duplicate elements in place, keeping the first occurrence of each
+// key and preserving its relative order, in O(n) time and O(1) extra space.
+// Built on block extraction, block partitioning and rotation so no auxiliary
+// buffer is allocated.
+//
+// Blog: https://axiomofchoice-hjt.github.io/pages/1aa983/
+
 #pragma once
 
 #include <algorithm>

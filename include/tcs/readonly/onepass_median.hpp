@@ -1,3 +1,11 @@
+// One-pass median (minimum-space median)
+// --------------------------------------------------------------------------
+// Computes the median of a forward range by reading each element exactly
+// once, using only floor(n / 2) + 2 elements of buffer space, in O(n) time.
+// The buffer is sized independently, so the range itself stays read-only.
+//
+// Blog: https://axiomofchoice-hjt.github.io/pages/c8ca67/
+
 #pragma once
 
 #include <algorithm>

@@ -1,3 +1,12 @@
+// BFPRT — Median of Medians selection
+// --------------------------------------------------------------------------
+// Selects the k-th smallest element of a range by recursively choosing the
+// median of medians (groups of 5) as the partition pivot, giving worst-case
+// O(n) time. Uses an unstable partition and costs O(log n) extra stack space;
+// tcs::inplace::unstable_select removes that stack for a strict O(1) version.
+//
+// Blog: https://axiomofchoice-hjt.github.io/pages/63a6df/
+
 #pragma once
 
 #include <algorithm>

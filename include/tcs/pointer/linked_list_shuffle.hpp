@@ -1,3 +1,11 @@
+// Linked-list shuffle (pointer-machine model)
+// --------------------------------------------------------------------------
+// Uniformly shuffles a std::list in O(n log n) time by recursively splitting
+// it in half, shuffling each half, then interleaving the two halves using a
+// randomness source. Runs under the pointer-machine model, where following a
+// link is the only cost unit, so it manipulates list nodes directly rather
+// than an indexable array. Recursion depth is O(log n).
+
 #pragma once
 
 #include <cstdint>

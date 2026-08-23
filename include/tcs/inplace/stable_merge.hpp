@@ -1,3 +1,12 @@
+// In-place stable merge
+// --------------------------------------------------------------------------
+// Merges two sorted adjacent subarrays in place while preserving the relative
+// order of equal elements, in O(n) time and O(1) extra space. Uses buffer
+// extraction, block selection and rotation, and serves as the core of a
+// stable O(n log n) in-place merge sort.
+//
+// Blog: https://axiomofchoice-hjt.github.io/pages/326ae9/
+
 #pragma once
 
 #include <algorithm>

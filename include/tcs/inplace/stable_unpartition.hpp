@@ -1,3 +1,12 @@
+// In-place stable unpartition
+// --------------------------------------------------------------------------
+// The inverse of stable partition, in O(n) time and O(1) extra space: given a
+// 0-1 placement pattern, reorders an already-partitioned array back to that
+// pattern while preserving relative order within each side. This is the basis
+// for stable selection.
+//
+// Blog: https://axiomofchoice-hjt.github.io/pages/60450e/
+
 #pragma once
 
 #include <algorithm>

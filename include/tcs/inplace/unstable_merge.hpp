@@ -1,3 +1,12 @@
+// In-place unstable merge
+// --------------------------------------------------------------------------
+// Merges two sorted adjacent subarrays in place in O(n) time and O(1) extra
+// space, using block selection, pairwise block merging and rotation (the
+// standard block-merge trick). Unstable — the relative order of equal
+// elements is not guaranteed.
+//
+// Blog: https://axiomofchoice-hjt.github.io/pages/c829b5/
+
 #pragma once
 
 #include <algorithm>

@@ -1,3 +1,11 @@
+// In-place unstable select (implicit selection)
+// --------------------------------------------------------------------------
+// Selects the k-th smallest element of a range in O(n) worst-case time and
+// strict O(1) extra space, eliminating BFPRT's O(log n) recursion stack by
+// encoding the stack into spare buffer elements. Stability is not required.
+//
+// Blog: https://axiomofchoice-hjt.github.io/pages/63a6df/
+
 #pragma once
 
 #include <algorithm>

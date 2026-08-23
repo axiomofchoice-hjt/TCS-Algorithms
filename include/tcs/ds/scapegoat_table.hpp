@@ -1,3 +1,12 @@
+// Scapegoat table
+// --------------------------------------------------------------------------
+// A cache-friendly ordered set built from a contiguous array, a segment tree
+// of block counts and a scapegoat rebalancing mechanism whose density
+// threshold (tau) is biased toward the root. Inserts in O(log^2 n) amortized
+// time and keeps all data in one flat buffer. A 1981 exotic data structure.
+//
+// Blog: https://axiomofchoice-hjt.github.io/pages/07c6a5/
+
 #pragma once
 
 #include <algorithm>
