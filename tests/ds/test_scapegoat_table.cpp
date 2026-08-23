@@ -72,11 +72,11 @@ void random_test(TestParam param) {
             } else {
                 std::string msg;
                 if (lb.has_value()) {
-                    msg = std::format(
-                        "lower_bound({}) = {}, expected {}", query, *lb, *expected_lb);
+                    msg =
+                        std::format("lower_bound({}) = {}, expected {}", query, *lb, *expected_lb);
                 } else {
-                    msg = std::format("lower_bound({}) returned nullopt, expected {}", query,
-                        *expected_lb);
+                    msg = std::format(
+                        "lower_bound({}) returned nullopt, expected {}", query, *expected_lb);
                 }
                 utest::assert_or_throw(lb.has_value() && *lb == *expected_lb, msg);
             }
