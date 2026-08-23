@@ -60,7 +60,7 @@ void select_range(RandomIt first, RandomIt left, RandomIt right, RandomIt last, 
 template <typename RandomIt, typename Proj = std::identity>
 std::array<std::iter_value_t<RandomIt>, 2> median(RandomIt first, RandomIt last, Proj proj = {}) {
     int64_t size = last - first;
-    assert_or_throw(size > 0);
+    assert_or_throw(size > 0, "onepass_median: size must be positive");
     if (size > 2) {
         select_range(first, first + ((size - 1) / 2), first + (size / 2) + 1, last, proj);
     }
@@ -76,20 +76,21 @@ std::array<std::iter_value_t<ForwardIt>, 2> onepass_median(
     ForwardIt first, int64_t size, BufferIt buffer_first, BufferIt buffer_last, Proj proj = {}) {
     int64_t remain = size;
     auto next = [&]() {
-        assert_or_throw(remain > 0);
+        assert_or_throw(remain > 0, "onepass_median: reading past the end of the input");
         std::iter_value_t<ForwardIt> value = *first;
         first++;
         remain--;
         return value;
     };
 
-    assert_or_throw(size > 0);
+    assert_or_throw(size > 0, "onepass_median: size must be positive");
 
     int64_t buffer_size = buffer_last - buffer_first;
-    assert_or_throw(buffer_size == (size / 2) + 2);
+    assert_or_throw(
+        buffer_size == (size / 2) + 2, "onepass_median: buffer must be exactly size/2 + 2 cells");
 
     if (size <= 4) {
-        assert_or_throw(size <= buffer_size);
+        assert_or_throw(size <= buffer_size, "onepass_median: buffer too small for the input");
         for (int64_t i = 0; i < size; i++) {
             buffer_first[i] = next();
         }
@@ -111,11 +112,11 @@ std::array<std::iter_value_t<ForwardIt>, 2> onepass_median(
         BufferIt right = buffer_last;
         for (int64_t ladder_size = max_ladder_size; ladder_size > 0; ladder_size /= 2) {
             int64_t n_keeps = (ladder_size - 1) * 2;
-            assert_or_throw(n_keeps < right - left);
+            assert_or_throw(n_keeps < right - left, "onepass_median: ladder exceeds the window");
             select_range(left, left + (n_keeps / 2), right - (n_keeps / 2), right, proj);
             right = std::rotate(left + (n_keeps / 2), right - (n_keeps / 2), right);
         }
-        assert_or_throw(left == right);
+        assert_or_throw(left == right, "onepass_median: ladder did not converge");
     }
     // elimination: read new elements into the vacated front, then drop the
     // current extremes (upper/lower "quartiles") from the candidate window
@@ -132,7 +133,8 @@ std::array<std::iter_value_t<ForwardIt>, 2> onepass_median(
         int64_t n_drops = n_loads * 2;
         int64_t n_candidates = std::min((n_loads * 4) - 1, buffer_last - candidates);
         if (n_candidates == buffer_last - candidates) {
-            assert_or_throw(n_candidates >= n_drops + (size % 2 == 0 ? 2 : 1));
+            assert_or_throw(n_candidates >= n_drops + (size % 2 == 0 ? 2 : 1),
+                "onepass_median: candidate window is too small");
         }
         BufferIt left = candidates;
         BufferIt right = buffer_first + n_candidates;

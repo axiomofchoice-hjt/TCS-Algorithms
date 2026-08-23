@@ -36,7 +36,7 @@ inline void assert_or_throw(bool condition, std::string_view message = "empty me
 }
 
 inline int64_t ceil_log2(int64_t x) {
-    assert_or_throw(x > 0);
+    assert_or_throw(x > 0, "ceil_log2: argument must be positive");
     return std::bit_width(static_cast<uint64_t>(x) - 1);
 }
 
@@ -59,30 +59,33 @@ void check_partition_consistency(RandomIt first, RandomIt last, Proj proj, Place
     static_assert(std::is_invocable_v<Placement, RandomIt>);
     assert_or_throw(std::ranges::count_if(first, last, proj) ==
                         count_if_placement_equals(first, last, 1, placement),
-        "empty message", loc);
+        "partition is inconsistent with the placement", loc);
 }
 
 template <typename RandomIt, typename Proj = std::identity, typename Placement>
 void dehomogenize_blocks(
     RandomIt first, RandomIt last, int64_t block_size, Proj proj, Placement placement) {
     using T = std::iter_value_t<RandomIt>;
-    assert_or_throw((last - first) % block_size == 0);
+    assert_or_throw((last - first) % block_size == 0,
+        "stable_unpartition: range must be a whole number of blocks");
     int64_t n_blocks = (last - first) / block_size;
     for (int64_t i = 0; i + 2 <= n_blocks; i++) {
         RandomIt left = first + (i * block_size);
         RandomIt mid = left + block_size;
         RandomIt right = mid + block_size;
         RandomIt split01 = std::ranges::find_if(left, mid, proj);
-        assert_or_throw(std::ranges::is_sorted(left, mid, {}, proj));
+        assert_or_throw(std::ranges::is_sorted(left, mid, {}, proj),
+            "dehomogenize_blocks: block is not sorted");
         assert_or_throw(
-            std::ranges::all_of(mid, right, [proj, mid](T x) { return proj(x) == proj(*mid); }));
+            std::ranges::all_of(mid, right, [proj, mid](T x) { return proj(x) == proj(*mid); }),
+            "dehomogenize_blocks: block is not homogeneous");
         int64_t cnt0_left = count_if_placement_equals(left, mid, 0, placement);
         if (split01 < left + cnt0_left) {
-            assert_or_throw(proj(*mid) == 0);
+            assert_or_throw(proj(*mid) == 0, "dehomogenize_blocks: expected a zero block");
             std::ranges::rotate(split01, mid, mid + (left + cnt0_left - split01));
             std::ranges::rotate(mid, mid + (left + cnt0_left - split01), right);
         } else if (split01 > left + cnt0_left) {
-            assert_or_throw(proj(*mid) == 1);
+            assert_or_throw(proj(*mid) == 1, "dehomogenize_blocks: expected a one block");
             std::ranges::rotate(left + cnt0_left, split01, mid + (split01 - left - cnt0_left));
         }
     }
@@ -99,18 +102,20 @@ struct WordStorage {
     uint64_t word;
 
     static WordStorage create(StorageAttributes attr) {
-        assert_or_throw(attr.n_bits <= static_cast<int64_t>(sizeof(uint64_t) * CHAR_BIT));
+        assert_or_throw(attr.n_bits <= static_cast<int64_t>(sizeof(uint64_t) * CHAR_BIT),
+            "WordStorage: n_bits exceeds a word");
         return WordStorage{.n_bits = attr.n_bits, .element_bits = attr.element_bits, .word = 0};
     }
 
     uint64_t get(int64_t index) const {
-        assert_or_throw(index < n_bits / element_bits);
+        assert_or_throw(index < n_bits / element_bits, "storage index exceeds capacity");
         return (word >> (index * element_bits)) & ((uint64_t{1} << element_bits) - 1);
     }
 
     void set(int64_t index, uint64_t value) {
-        assert_or_throw(index < n_bits / element_bits);
-        assert_or_throw(value < (uint64_t{1} << element_bits));
+        assert_or_throw(index < n_bits / element_bits, "storage index exceeds capacity");
+        assert_or_throw(
+            value < (uint64_t{1} << element_bits), "value does not fit in element_bits");
         auto slot_mask = ((uint64_t{1} << element_bits) - 1) << (index * element_bits);
         word = (word & ~slot_mask) | (value << (index * element_bits));
     }
@@ -138,7 +143,7 @@ struct BufferStorage {
     }
 
     uint64_t get(int64_t index) const {
-        assert_or_throw(index < n_bits / element_bits);
+        assert_or_throw(index < n_bits / element_bits, "storage index exceeds capacity");
         uint64_t res = 0;
         for (int64_t i = 0; i < element_bits; i++) {
             res |= uint64_t(proj(buf0[(index * element_bits) + i])) << i;
@@ -147,8 +152,9 @@ struct BufferStorage {
     }
 
     void set(int64_t index, uint64_t value) {
-        assert_or_throw(index < n_bits / element_bits);
-        assert_or_throw(value < (uint64_t{1} << element_bits));
+        assert_or_throw(index < n_bits / element_bits, "storage index exceeds capacity");
+        assert_or_throw(
+            value < (uint64_t{1} << element_bits), "value does not fit in element_bits");
         for (int64_t i = 0; i < element_bits; i++) {
             if (uint64_t(proj(buf0[(index * element_bits) + i])) != ((value >> i) & 1)) {
                 std::swap(buf0[(index * element_bits) + i], buf1[(index * element_bits) + i]);
@@ -170,7 +176,8 @@ void inplace_01_split(
     RandomIt mid = std::ranges::find_if(first, last, proj);
     RandomIt l = first + count_if_placement_equals(first, split, 0, placement);
     RandomIt r = split + count_if_placement_equals(split, last, 0, placement);
-    assert_or_throw(l <= mid && mid <= r);
+    assert_or_throw(
+        l <= mid && mid <= r, "inplace_01_split: split index falls outside placement bounds");
     std::ranges::rotate(l, mid, r);
 }
 
@@ -241,7 +248,7 @@ void merge_blocks_impl(RandomIt first, RandomIt last, int64_t block_size, Storag
             global_pos++;
             counters[0] += block_size;
         } else {
-            assert_or_throw(pointers[1] < n_blocks);
+            assert_or_throw(pointers[1] < n_blocks, "merge_blocks_impl: block pointer overflow");
             storage.set(pointers[1], global_pos);
             pointers[1]++;
             global_pos++;
@@ -269,7 +276,8 @@ void merge_blocks_impl(RandomIt first, RandomIt last, int64_t block_size, Storag
 template <typename RandomIt, typename Proj = std::identity, typename Placement>
 void merge_blocks_using_word(RandomIt first, RandomIt last, int64_t block_size, Proj proj,
     Placement placement, int64_t word_bits) {
-    assert_or_throw((last - first) % block_size == 0);
+    assert_or_throw((last - first) % block_size == 0,
+        "stable_unpartition: range must be a whole number of blocks");
     int64_t n_blocks = (last - first) / block_size;
     if (n_blocks <= 2) {
         return;
@@ -277,7 +285,8 @@ void merge_blocks_using_word(RandomIt first, RandomIt last, int64_t block_size, 
     int64_t element_bits = ceil_log2(n_blocks);
     assert_or_throw(n_blocks * element_bits <= word_bits,
         std::format("{} {} {}", n_blocks, element_bits, word_bits));
-    assert_or_throw(word_bits <= static_cast<int64_t>(sizeof(uint64_t) * CHAR_BIT));
+    assert_or_throw(word_bits <= static_cast<int64_t>(sizeof(uint64_t) * CHAR_BIT),
+        "merge_blocks_using_word: word_bits exceeds a word");
     auto storage = WordStorage::create({.n_bits = word_bits, .element_bits = element_bits});
     merge_blocks_impl(first, last, block_size, storage, proj, placement);
 }
@@ -285,7 +294,8 @@ void merge_blocks_using_word(RandomIt first, RandomIt last, int64_t block_size, 
 template <typename RandomIt, typename Proj = std::identity, typename Placement>
 void merge_blocks_using_buffer(RandomIt first, RandomIt last, int64_t block_size, RandomIt buf0,
     RandomIt buf1, int64_t buffer_len, Proj proj, Placement placement) {
-    assert_or_throw((last - first) % block_size == 0);
+    assert_or_throw((last - first) % block_size == 0,
+        "stable_unpartition: range must be a whole number of blocks");
     int64_t n_blocks = (last - first) / block_size;
     if (n_blocks <= 2) {
         return;
@@ -326,7 +336,8 @@ void inplace_stable_01_unpartition(RandomIt first, RandomIt last, Proj proj, Pla
     len = last - first;
     int64_t merge_size = max_blocks_for_word * max_blocks_for_word * max_blocks_for_buffer *
                          max_blocks_for_buffer * max_blocks_for_buffer;
-    assert_or_throw(merge_size >= len);
+    assert_or_throw(
+        merge_size >= len, "inplace_stable_01_unpartition: merge_size did not cover the range");
     // inter-block unpartition, using buffer as counter and marker, merge_size divided by (sqrtn /
     // logn)
     for (int64_t step = 0; step < 3; step++) {

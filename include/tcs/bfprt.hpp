@@ -44,7 +44,7 @@ void bubble_sort(RandomIt first, RandomIt last, Proj proj = {}) {
 template <typename RandomIt, typename Proj = std::identity>
 void bfprt(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
     using T = std::iter_value_t<RandomIt>;
-    assert_or_throw(first <= mid && mid < last);
+    assert_or_throw(first <= mid && mid < last, "bfprt: mid must lie in [first, last)");
     int64_t len = last - first;
     constexpr int64_t group_size = 5;
     if (len < group_size) {

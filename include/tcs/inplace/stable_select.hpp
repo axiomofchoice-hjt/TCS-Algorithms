@@ -46,7 +46,7 @@ inline void assert_or_throw(bool condition, std::string_view message = "empty me
 }
 
 inline int64_t ceil_log2(int64_t x) {
-    assert_or_throw(x > 0);
+    assert_or_throw(x > 0, "ceil_log2: argument must be positive");
     return std::bit_width(static_cast<uint64_t>(x) - 1);
 }
 
@@ -148,7 +148,7 @@ bool extract_buffer(RandomIt first, RandomIt last, int64_t buffer_len, Proj proj
 
 template <typename RandomIt, typename Proj = std::identity>
 RandomIt strided_min_element(RandomIt first, RandomIt last, int64_t stride, Proj proj = {}) {
-    assert_or_throw((last - first) % stride == 0);
+    assert_or_throw((last - first) % stride == 0, "range must be aligned to stride");
     RandomIt min_it = first;
     for (RandomIt i = first; i < last; i += stride) {
         if (proj(*i) < proj(*min_it)) {
@@ -177,7 +177,7 @@ RandomIt strided_next_element(
 
 template <typename RandomIt, typename Proj = std::identity>
 RandomIt strided_topk(RandomIt first, RandomIt last, int64_t stride, int64_t k, Proj proj = {}) {
-    assert_or_throw((last - first) % stride == 0);
+    assert_or_throw((last - first) % stride == 0, "range must be aligned to stride");
     RandomIt median_it = strided_min_element(first, last, stride, proj);
     for (int64_t i = 0; i < k; i++) {
         median_it = strided_next_element(first, last, stride, median_it, proj);
@@ -228,9 +228,11 @@ struct Stack {
     }
 
     void push(uint64_t value, int64_t value_bits) {
-        assert_or_throw(value_bits <= static_cast<int64_t>(sizeof(uint64_t) * CHAR_BIT));
-        assert_or_throw(size_ + value_bits <= buffer_len_);
-        assert_or_throw(std::bit_width(value) <= value_bits);
+        assert_or_throw(value_bits <= static_cast<int64_t>(sizeof(uint64_t) * CHAR_BIT),
+            "Stack: value_bits exceeds a word");
+        assert_or_throw(size_ + value_bits <= buffer_len_, "Stack: push exceeds buffer capacity");
+        assert_or_throw(
+            std::bit_width(value) <= value_bits, "Stack: value does not fit in value_bits");
         for (int64_t i = 0; i < value_bits; i++) {
             size_++;
             if ((value >> i & 1) == 1) {
@@ -240,8 +242,9 @@ struct Stack {
     }
 
     uint64_t pop(int64_t value_bits) {
-        assert_or_throw(value_bits <= static_cast<int64_t>(sizeof(uint64_t) * CHAR_BIT));
-        assert_or_throw(size_ >= value_bits);
+        assert_or_throw(value_bits <= static_cast<int64_t>(sizeof(uint64_t) * CHAR_BIT),
+            "Stack: value_bits exceeds a word");
+        assert_or_throw(size_ >= value_bits, "Stack: pop underflow");
         uint64_t res = 0;
         for (int64_t i = value_bits - 1; i >= 0; i--) {
             if (proj(buf0_[size_ - 1]) > proj(buf1_[size_ - 1])) {
@@ -256,8 +259,8 @@ struct Stack {
     bool empty() const { return size_ == 0; }
 
     int64_t get(int64_t index, int64_t len) const {
-        assert_or_throw(0 <= index && index <= len);
-        assert_or_throw(len <= size_);
+        assert_or_throw(0 <= index && index <= len, "Stack: index out of range");
+        assert_or_throw(len <= size_, "Stack: len exceeds stack size");
         return proj(buf0_[size_ - len + index]) > proj(buf1_[size_ - len + index]) ? 1 : 0;
     }
 };
@@ -387,7 +390,8 @@ template <typename RandomIt, typename Proj = std::identity>
 void inplace_stable_select(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
     using T = std::iter_value_t<RandomIt>;
     while (true) {
-        assert_or_throw(first <= mid && mid < last);
+        assert_or_throw(
+            first <= mid && mid < last, "inplace_stable_select: mid must lie in [first, last)");
         int64_t len = last - first;
         int64_t block_size = static_cast<int64_t>(std::floor(std::sqrt(len))) / 4;
         if (block_size <= 1) {
@@ -406,7 +410,8 @@ void inplace_stable_select(RandomIt first, RandomIt mid, RandomIt last, Proj pro
                 major_it, last);
             return;
         }
-        assert_or_throw(std::ranges::is_sorted(first, first + (buffer_len * 2), {}, proj));
+        assert_or_throw(std::ranges::is_sorted(first, first + (buffer_len * 2), {}, proj),
+            "inplace_stable_select: buffer is not sorted after extraction");
         RandomIt main = first + (buffer_len * 2);
         int64_t n_blocks = (last - main) / block_size;
         if (n_blocks == 0) {

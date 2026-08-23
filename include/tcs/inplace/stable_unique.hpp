@@ -89,7 +89,8 @@ std::tuple<RandomIt, RandomIt> build_blocks(
 
 template <typename RandomIt, typename Proj = std::identity>
 RandomIt partition_blocks(RandomIt first, RandomIt last, int64_t block_size, Proj proj = {}) {
-    assert_or_throw((last - first) % block_size == 0);
+    assert_or_throw(
+        (last - first) % block_size == 0, "stable_unique: block size must divide the range");
     int64_t n_blocks = (last - first) / block_size;
     RandomIt mid = last;
     for (int64_t i = n_blocks - 1; i >= 0; i--) {
@@ -108,7 +109,8 @@ RandomIt partition_blocks(RandomIt first, RandomIt last, int64_t block_size, Pro
 
 template <typename RandomIt, typename Proj = std::identity>
 void sort_blocks(RandomIt first, RandomIt last, int64_t block_size, Proj proj = {}) {
-    assert_or_throw((last - first) % block_size == 0);
+    assert_or_throw(
+        (last - first) % block_size == 0, "stable_unique: block size must divide the range");
     for (RandomIt cur = first; cur < last; cur += block_size) {
         RandomIt min = cur;
         for (RandomIt scan = cur + block_size; scan < last; scan += block_size) {

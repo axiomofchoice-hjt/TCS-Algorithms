@@ -169,8 +169,10 @@ std::tuple<RandomIt, RandomIt, RandomIt, RandomIt> stable_unique_limit(
 template <typename RandomIt, typename Proj = std::identity>
 std::tuple<RandomIt, RandomIt, RandomIt, RandomIt> align_blocks_limit(RandomIt first, RandomIt mid,
     RandomIt last, int64_t block_size, int64_t n_blocks, Proj proj = {}) {
-    assert_or_throw(block_size > 0 && n_blocks > 0);
-    assert_or_throw(block_size * n_blocks <= static_cast<int64_t>(last - first));
+    assert_or_throw(block_size > 0 && n_blocks > 0,
+        "align_blocks_limit: block size and block count must be positive");
+    assert_or_throw(block_size * n_blocks <= static_cast<int64_t>(last - first),
+        "align_blocks_limit: block layout exceeds the range");
     RandomIt original_mid = mid;
     RandomIt original_last = last;
     mid = first + ((mid - first) / block_size * block_size);
@@ -254,7 +256,8 @@ void inplace_stable_merge(RandomIt first, RandomIt mid, RandomIt last, Proj proj
     std::tie(buf1, first, mid, last) =
         stable_unique_limit(first, mid, last, n_blocks + block_size, proj);
     // buf1 [buffer] first [left_elements] mid [right_elements]
-    assert_or_throw(std::ranges::is_sorted(buf1, first, std::less{}, proj));
+    assert_or_throw(std::ranges::is_sorted(buf1, first, std::less{}, proj),
+        "stable_merge: buffer region is not sorted");
     int64_t buffer_len = first - buf1;
     if (buffer_len == n_blocks + block_size) {  // enough unique values
         n_blocks = (last - first) / block_size;

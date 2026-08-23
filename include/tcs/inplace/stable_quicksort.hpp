@@ -97,7 +97,7 @@ void inplace_stable_quicksort(RandomIt first, RandomIt last, Proj proj = {}) {
             std::swap(*pivot_end, *right);
             right = pivot_start;
         } else {
-            assert_or_throw(right <= tail_it);
+            assert_or_throw(right <= tail_it, "stable_quicksort: right pointer exceeds tail");
             if (right == tail_it) {
                 break;
             }

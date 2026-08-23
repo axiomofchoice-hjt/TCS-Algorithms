@@ -33,7 +33,7 @@ inline void assert_or_throw(bool condition, std::string_view message = "empty me
 }
 
 inline int64_t ceil_log2(int64_t x) {
-    assert_or_throw(x > 0);
+    assert_or_throw(x > 0, "ceil_log2: argument must be positive");
     return std::bit_width(static_cast<uint64_t>(x) - 1);
 }
 
@@ -51,16 +51,19 @@ struct BitStack {
 
     static BitStack create(BitStackAttributes attr) {
         assert_or_throw(
-            attr.word_bits > 0 && attr.word_bits <= int64_t{sizeof(uint64_t) * CHAR_BIT});
-        assert_or_throw(attr.element_bits > 0);
+            attr.word_bits > 0 && attr.word_bits <= int64_t{sizeof(uint64_t) * CHAR_BIT},
+            "BitStack: word_bits must fit in a word");
+        assert_or_throw(attr.element_bits > 0, "BitStack: element_bits must be positive");
         return BitStack{.word_bits = attr.word_bits, .element_bits = attr.element_bits};
     }
 
     bool empty() const { return size == 0; }
 
     void push(uint64_t value) {
-        assert_or_throw((size + 1) * element_bits <= N * word_bits);
-        assert_or_throw(ceil_log2(static_cast<int64_t>(value + 1)) <= element_bits);
+        assert_or_throw(
+            (size + 1) * element_bits <= N * word_bits, "BitStack: push would overflow storage");
+        assert_or_throw(ceil_log2(static_cast<int64_t>(value + 1)) <= element_bits,
+            "BitStack: value does not fit in element_bits");
         for (int64_t i = 0; i < element_bits; i++) {
             int64_t bit_offset = (size * element_bits) + i;
             storage[bit_offset / word_bits] &= ~(uint64_t{1} << (bit_offset % word_bits));
@@ -70,7 +73,7 @@ struct BitStack {
     }
 
     uint64_t pop() {
-        assert_or_throw(size > 0);
+        assert_or_throw(size > 0, "BitStack: pop from empty stack");
         size--;
         uint64_t res = 0;
         for (int64_t i = 0; i < element_bits; i++) {
@@ -110,10 +113,12 @@ bool prepare_buffer(RandomIt first, RandomIt last, int64_t n_bits, Proj proj = {
 
 template <typename RandomIt, typename Proj = std::identity>
 bool write_buffer(RandomIt buffer, uint64_t value, int64_t n_bits, Proj proj = {}) {
-    assert_or_throw(ceil_log2(static_cast<int64_t>(value + 1)) <= n_bits);
+    assert_or_throw(ceil_log2(static_cast<int64_t>(value + 1)) <= n_bits,
+        "write_buffer: value does not fit in n_bits");
 
     for (int64_t i = 0; i < n_bits; i++) {
-        assert_or_throw(proj(buffer[i * 2]) != proj(buffer[(i * 2) + 1]));
+        assert_or_throw(proj(buffer[i * 2]) != proj(buffer[(i * 2) + 1]),
+            "write_buffer: buffer pair holds equal keys");
         if ((proj(buffer[i * 2]) > proj(buffer[(i * 2) + 1])) != ((value >> i) & 1)) {
             std::swap(buffer[i * 2], buffer[(i * 2) + 1]);
         }
@@ -125,7 +130,8 @@ template <typename RandomIt, typename Proj = std::identity>
 uint64_t read_buffer(RandomIt buffer, int64_t n_bits, Proj proj = {}) {
     uint64_t res = 0;
     for (int64_t i = 0; i < n_bits; i++) {
-        assert_or_throw(proj(buffer[i * 2]) != proj(buffer[(i * 2) + 1]));
+        assert_or_throw(proj(buffer[i * 2]) != proj(buffer[(i * 2) + 1]),
+            "read_buffer: buffer pair holds equal keys");
         res |= (proj(buffer[i * 2]) > proj(buffer[(i * 2) + 1]) ? uint64_t{1} : uint64_t{0}) << i;
     }
     return res;
@@ -231,13 +237,15 @@ void inplace_unstable_select(RandomIt first, RandomIt mid, RandomIt last, Proj p
         } else if (stage == Stage::restore_right) {
             // restore (first, last, k)
             int64_t len = last - first;
-            assert_or_throw(len % (shrink_den - shrink_num) == 0);
+            assert_or_throw(len % (shrink_den - shrink_num) == 0,
+                "unstable_select: shrink steps do not divide the length");
             last += len * shrink_num / (shrink_den - shrink_num);
             last += tail_sizes.pop();
         } else if (stage == Stage::restore_left) {
             // restore (first, last, k)
             int64_t len = last - first;
-            assert_or_throw(len % (shrink_den - shrink_num) == 0);
+            assert_or_throw(len % (shrink_den - shrink_num) == 0,
+                "unstable_select: shrink steps do not divide the length");
             first -= len * shrink_num / (shrink_den - shrink_num);
             k += len * shrink_num / (shrink_den - shrink_num);
             last += tail_sizes.pop();
