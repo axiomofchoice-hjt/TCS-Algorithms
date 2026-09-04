@@ -99,22 +99,28 @@ RandomIt select_recursive(RandomIt first, RandomIt last, RandomIt lower_it, Rand
                           std::pow(n_candidates, 1.0 / static_cast<double>(n_layers)));
             int64_t n_blocks = (size + block_size - 1) / block_size;
 
-            RandomIt max_block_start = last;
-            RandomIt max_block_end = last;
-            int64_t max_block_count = 0;
+            RandomIt recursive_start = last;
+            RandomIt recursive_end = last;
+            int64_t recursive_count = 0;
             for (int64_t i = 0; i < n_blocks; i++) {
                 RandomIt block_start = first + (i * block_size);
                 RandomIt block_end = first + std::min(size, (i + 1) * block_size);
                 int64_t block_count =
                     count_in_range(block_start, block_end, lower_it, upper_it, iter_proj);
-                if (block_count > max_block_count) {
-                    max_block_start = block_start;
-                    max_block_end = block_end;
-                    max_block_count = block_count;
+                if (block_count > recursive_count) {
+                    recursive_start = block_start;
+                    recursive_end = block_end;
+                    recursive_count = block_count;
                 }
             }
-            pivot_it = select_recursive(max_block_start, max_block_end, lower_it, upper_it,
-                (max_block_count - 1) / 2, n_layers - 1, iter_proj);
+            while (recursive_count > n_blocks) {
+                recursive_end--;
+                if (in_range(recursive_end, lower_it, upper_it, iter_proj)) {
+                    recursive_count--;
+                }
+            }
+            pivot_it = select_recursive(recursive_start, recursive_end, lower_it, upper_it,
+                (recursive_count - 1) / 2, n_layers - 1, iter_proj);
         }
         int64_t rank = count_in_range(first, last, lower_it, pivot_it, iter_proj) - 1;
         if (rank == k) {
