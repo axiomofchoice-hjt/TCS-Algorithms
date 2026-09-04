@@ -85,7 +85,7 @@ RandomIt select_recursive(RandomIt first, RandomIt last, RandomIt lower_it, Rand
     while (true) {
         int64_t n_candidates = count_in_range(first, last, lower_it, upper_it, iter_proj);
         assert_or_throw(k >= 0 && k < n_candidates);
-        std::optional<RandomIt> pivot_it;
+        RandomIt pivot_it;
         if (n_layers == 1) {
             for (RandomIt it = first; it < last; it++) {
                 if (in_range(it, lower_it, upper_it, iter_proj)) {
@@ -116,16 +116,15 @@ RandomIt select_recursive(RandomIt first, RandomIt last, RandomIt lower_it, Rand
             pivot_it = select_recursive(max_block_start, max_block_end, lower_it, upper_it,
                 (max_block_count - 1) / 2, n_layers - 1, iter_proj);
         }
-        assert_or_throw(pivot_it.has_value());
-        int64_t rank = count_in_range(first, last, lower_it, pivot_it.value(), iter_proj) - 1;
+        int64_t rank = count_in_range(first, last, lower_it, pivot_it, iter_proj) - 1;
         if (rank == k) {
-            return pivot_it.value();
+            return pivot_it;
         }
         if (rank < k) {
-            lower_it = min_greater(first, last, pivot_it.value(), iter_proj);
+            lower_it = min_greater(first, last, pivot_it, iter_proj);
             k -= rank + 1;
         } else {
-            upper_it = max_smaller(first, last, pivot_it.value(), iter_proj);
+            upper_it = max_smaller(first, last, pivot_it, iter_proj);
         }
     }
 }
