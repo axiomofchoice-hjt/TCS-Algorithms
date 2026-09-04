@@ -6,7 +6,7 @@
 
 #include "common/indexed_element.hpp"
 #include "common/utest.hpp"
-#include "tcs/readonly/select.hpp"
+#include "tcs/readonly/constant_space_select.hpp"
 
 namespace {
 struct TestParam {
@@ -52,7 +52,7 @@ void run_checked(const std::vector<IndexedElement>& arr, int64_t k, int64_t n_la
 
     auto snapshot = arr;
     const auto& carr = arr;  // const vector -> const_iterator (read-only)
-    auto result = tcs::readonly::select::select(
+    auto result = tcs::readonly::constant_space_select::constant_space_select(
         carr.cbegin(), carr.cend(), k, n_layers, IndexedElement::proj);
 
     utest::assert_or_throw(result >= carr.cbegin() && result < carr.cend());
@@ -101,8 +101,8 @@ void identity_proj_test(TestParam param) {
 
         auto snapshot = arr;
         const auto& carr = arr;
-        auto result =
-            tcs::readonly::select::select(carr.cbegin(), carr.cend(), param.k, param.n_layers);
+        auto result = tcs::readonly::constant_space_select::constant_space_select(
+            carr.cbegin(), carr.cend(), param.k, param.n_layers);
         utest::assert_or_throw(*result == expected[param.k]);
         utest::assert_or_throw(std::ranges::equal(arr, snapshot));
     }
@@ -115,7 +115,8 @@ void invalid_input_throws([[maybe_unused]] int64_t unused) {
     // n_layers must be positive.
     bool threw = false;
     try {
-        (void)tcs::readonly::select::select(arr.begin(), arr.end(), 0, 0);
+        (void)tcs::readonly::constant_space_select::constant_space_select(
+            arr.begin(), arr.end(), 0, 0);
     } catch (const std::runtime_error&) {
         threw = true;
     }
@@ -124,7 +125,8 @@ void invalid_input_throws([[maybe_unused]] int64_t unused) {
     // k must be within [0, size).
     threw = false;
     try {
-        (void)tcs::readonly::select::select(arr.begin(), arr.end(), 3, 1);
+        (void)tcs::readonly::constant_space_select::constant_space_select(
+            arr.begin(), arr.end(), 3, 1);
     } catch (const std::runtime_error&) {
         threw = true;
     }
@@ -132,7 +134,8 @@ void invalid_input_throws([[maybe_unused]] int64_t unused) {
 
     threw = false;
     try {
-        (void)tcs::readonly::select::select(arr.begin(), arr.end(), -1, 1);
+        (void)tcs::readonly::constant_space_select::constant_space_select(
+            arr.begin(), arr.end(), -1, 1);
     } catch (const std::runtime_error&) {
         threw = true;
     }
