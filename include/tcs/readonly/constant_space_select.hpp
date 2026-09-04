@@ -98,6 +98,8 @@ RandomIt select_recursive(RandomIt first, RandomIt last, RandomIt lower_it, Rand
                 std::ceil(static_cast<double>(size) /
                           std::pow(n_candidates, 1.0 / static_cast<double>(n_layers)));
             int64_t n_blocks = (size + block_size - 1) / block_size;
+            int64_t recursive_max =
+                std::ceil(std::pow(n_candidates, 1.0 - (1.0 / static_cast<double>(n_layers))));
 
             RandomIt recursive_start = last;
             RandomIt recursive_end = last;
@@ -113,7 +115,7 @@ RandomIt select_recursive(RandomIt first, RandomIt last, RandomIt lower_it, Rand
                     recursive_count = block_count;
                 }
             }
-            while (recursive_count > n_blocks) {
+            while (recursive_count > recursive_max) {
                 recursive_end--;
                 if (in_range(recursive_end, lower_it, upper_it, iter_proj)) {
                     recursive_count--;
