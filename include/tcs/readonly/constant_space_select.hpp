@@ -6,7 +6,7 @@
 //
 // Time-space complexity: O(n^(1 + 1/s)) for constant s (Frederickson 1987).
 //
-// Blog:
+// Blog: https://axiomofchoice-hjt.github.io/pages/f68c6b/
 
 #pragma once
 
