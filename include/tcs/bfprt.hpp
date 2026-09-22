@@ -19,8 +19,7 @@
 #include <string_view>
 #include <utility>
 
-namespace tcs {
-namespace bfprt {
+namespace tcs::bfprt {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
@@ -70,5 +69,4 @@ void bfprt(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
         bfprt(pivot_end, mid, last, proj);
     }
 }
-}  // namespace bfprt
-}  // namespace tcs
+}  // namespace tcs::bfprt

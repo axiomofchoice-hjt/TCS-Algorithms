@@ -17,9 +17,7 @@
 #include <string_view>
 #include <utility>
 
-namespace tcs {
-namespace pointer {
-namespace linked_list_shuffle {
+namespace tcs::pointer::linked_list_shuffle {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
@@ -60,6 +58,4 @@ void linked_list_shuffle(std::list<T>& list, Rand rand) {
         }
     }
 }
-}  // namespace linked_list_shuffle
-}  // namespace pointer
-}  // namespace tcs
+}  // namespace tcs::pointer::linked_list_shuffle

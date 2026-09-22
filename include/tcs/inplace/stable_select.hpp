@@ -34,9 +34,7 @@
 #include <vector>
 #endif
 
-namespace tcs {
-namespace inplace {
-namespace stable_select {
+namespace tcs::inplace::stable_select {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
@@ -440,6 +438,4 @@ void inplace_stable_select(RandomIt first, RandomIt mid, RandomIt last, Proj pro
         }
     }
 }
-}  // namespace stable_select
-}  // namespace inplace
-}  // namespace tcs
+}  // namespace tcs::inplace::stable_select

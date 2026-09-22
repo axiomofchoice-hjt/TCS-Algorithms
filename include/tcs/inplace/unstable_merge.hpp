@@ -19,9 +19,7 @@
 #include <string_view>
 #include <utility>
 
-namespace tcs {
-namespace inplace {
-namespace unstable_merge {
+namespace tcs::inplace::unstable_merge {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
@@ -137,6 +135,4 @@ void inplace_unstable_merge(RandomIt first, RandomIt mid, RandomIt last, Proj pr
     assert_or_throw(std::ranges::is_sorted(first, last, std::less{}, proj),
         "inplace_unstable_merge: result is not sorted");
 }
-}  // namespace unstable_merge
-}  // namespace inplace
-}  // namespace tcs
+}  // namespace tcs::inplace::unstable_merge

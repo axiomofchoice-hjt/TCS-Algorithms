@@ -20,9 +20,7 @@
 #include <tuple>
 #include <utility>
 
-namespace tcs {
-namespace inplace {
-namespace stable_merge {
+namespace tcs::inplace::stable_merge {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
@@ -292,6 +290,4 @@ void inplace_stable_merge(RandomIt first, RandomIt mid, RandomIt last, Proj proj
     assert_or_throw(std::ranges::is_sorted(orig_first, orig_last, std::less{}, proj),
         "inplace_stable_merge: result is not sorted");
 }
-}  // namespace stable_merge
-}  // namespace inplace
-}  // namespace tcs
+}  // namespace tcs::inplace::stable_merge

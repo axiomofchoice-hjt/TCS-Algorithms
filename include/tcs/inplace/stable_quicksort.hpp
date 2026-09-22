@@ -28,9 +28,7 @@
 #include <vector>
 #endif
 
-namespace tcs {
-namespace inplace {
-namespace stable_quicksort {
+namespace tcs::inplace::stable_quicksort {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
@@ -113,6 +111,4 @@ void inplace_stable_quicksort(RandomIt first, RandomIt last, Proj proj = {}) {
     assert_or_throw(std::ranges::is_sorted(first, last, std::less{}, proj),
         "inplace_stable_quicksort: result is not sorted");
 }
-}  // namespace stable_quicksort
-}  // namespace inplace
-}  // namespace tcs
+}  // namespace tcs::inplace::stable_quicksort

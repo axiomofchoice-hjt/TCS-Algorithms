@@ -21,9 +21,7 @@
 #include <tuple>
 #include <vector>
 
-namespace tcs {
-namespace ds {
-namespace scapegoat_table {
+namespace tcs::ds::scapegoat_table {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
@@ -216,6 +214,4 @@ struct ScapegoatTable {
         return *it;
     }
 };
-}  // namespace scapegoat_table
-}  // namespace ds
-}  // namespace tcs
+}  // namespace tcs::ds::scapegoat_table

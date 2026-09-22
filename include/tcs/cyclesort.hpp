@@ -20,8 +20,7 @@
 #include <tuple>
 #include <utility>
 
-namespace tcs {
-namespace cyclesort {
+namespace tcs::cyclesort {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
@@ -66,5 +65,4 @@ void cyclesort(RandomIt first, RandomIt last, Proj proj) {
     assert_or_throw(
         std::ranges::is_sorted(first, last, std::less{}, proj), "cyclesort: result is not sorted");
 }
-}  // namespace cyclesort
-}  // namespace tcs
+}  // namespace tcs::cyclesort

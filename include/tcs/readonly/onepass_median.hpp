@@ -27,9 +27,7 @@
 #include "tcs/inplace/unstable_select.hpp"
 #endif
 
-namespace tcs {
-namespace readonly {
-namespace onepass_median {
+namespace tcs::readonly::onepass_median {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
@@ -143,6 +141,4 @@ std::array<std::iter_value_t<ForwardIt>, 2> onepass_median(
     }
     return median(candidates, buffer_last, proj);
 }
-}  // namespace onepass_median
-}  // namespace readonly
-}  // namespace tcs
+}  // namespace tcs::readonly::onepass_median

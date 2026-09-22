@@ -19,9 +19,7 @@
 #include <string_view>
 #include <utility>
 
-namespace tcs {
-namespace readonly {
-namespace constant_space_select {
+namespace tcs::readonly::constant_space_select {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
@@ -150,6 +148,4 @@ RandomIt constant_space_select(
     }
     return select_recursive(first, last, lower_it, upper_it, k, n_layers, iter_proj);
 }
-}  // namespace constant_space_select
-}  // namespace readonly
-}  // namespace tcs
+}  // namespace tcs::readonly::constant_space_select

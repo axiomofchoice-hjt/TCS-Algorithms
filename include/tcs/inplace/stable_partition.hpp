@@ -24,9 +24,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace tcs {
-namespace inplace {
-namespace stable_partition {
+namespace tcs::inplace::stable_partition {
 inline void assert_or_throw(bool condition, std::string_view message = "empty message",
     const std::source_location& loc = std::source_location::current()) {
     if (!condition) [[unlikely]] {
@@ -340,6 +338,4 @@ RandomIt inplace_stable_partition(RandomIt first, RandomIt last, Pred pred) {
         "inplace_stable_partition: result is not partitioned");
     return boundary;
 }
-}  // namespace stable_partition
-}  // namespace inplace
-}  // namespace tcs
+}  // namespace tcs::inplace::stable_partition
