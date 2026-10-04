@@ -7,6 +7,10 @@ cache/
 # clangd
 .cache/
 
+# Lean (proof/)
+.lake/
+.audit.log
+
 # IDE
 .vscode/
 .idea/

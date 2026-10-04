@@ -65,6 +65,15 @@ curl -fsSL https://xmake.io/shget.text | bash
 ./scripts/asan.sh
 ```
 
+The Lean 4 formalization lives in `proof/` and is built on its own with `lake`
+— it is not part of the xmake build:
+
+```bash
+cd proof
+lake build   # type check every proof
+./check.sh   # proof-completeness audit: no sorry, no sorryAx
+```
+
 ## 4. Directory Structure
 
 ```text
@@ -86,6 +95,12 @@ TCS-Algorithms/
 │   ├── common.hpp          # Shared example helpers
 │   ├── example_bfprt.cpp   # BFPRT selection demo
 │   └── inplace/            # Examples for in-place algorithms
+├── proof/                  # Lean 4 formalization (independent lake project)
+│   ├── Tcs/Spec.lean       # Specification vocabulary (Sorted / Permutes / IsSort)
+│   ├── Tcs/Perm.lean       # Swap → Perm bridge for in-place algorithms
+│   ├── lakefile.toml       # Lake package definition
+│   ├── lean-toolchain      # Pinned Lean toolchain
+│   └── check.sh            # Proof-completeness audit (no sorry / sorryAx)
 ├── scripts/                # Dev scripts
 │   ├── format.sh           # clang-format all sources
 │   ├── code-quality.sh     # clang-format + clang-tidy checks
@@ -93,10 +108,17 @@ TCS-Algorithms/
 └── xmake.lua               # Build configuration
 ```
 
+The `proof/` directory is deliberately **not** wired into the xmake build: it is
+a self-contained Lean 4 project with its own `lakefile.toml` and pinned
+`lean-toolchain`, and it is built with `lake` alone (no CMake, no Makefile).
+
 ## 5. Dependencies
 
 - **Compiler**: GCC 14+ / Clang 18+ (C++23 support required)
 - **Build tool**: [xmake](https://xmake.io/)
+- **Lean toolchain** (optional, `proof/` only): Lean 4 via
+  [elan](https://github.com/leanprover/elan); `lake` builds it with no further
+  dependencies and no Mathlib.
 
 ## 6. Usage
 
