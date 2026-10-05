@@ -20,6 +20,7 @@
 -/
 import Tcs.Perm
 import Tcs.Select
+import Tcs.Sort
 
 namespace Tcs
 namespace Bfprt
@@ -62,21 +63,10 @@ theorem getElem?_take_append_of_le {l s : List α} {lo k : Nat} (hlen : lo ≤ l
     exact hlo
   rw [List.getElem?_append_right h, List.length_take, Nat.min_eq_left hlen]
 
-/-! ## Sorting a range -/
+/-! ## Splicing a sub-range back in
 
-/-- C++'s `bubble_sort` on a range. Core's `mergeSort` is used as the model: both
-are stable comparison sorts for the same total order, so they return the same
-list, and everything used below is arrangement-agnostic anyway. -/
-def sortRange (proj : α → β) (l : List α) : List α :=
-  l.mergeSort (fun a b => Cmp.ble (proj a) (proj b))
-
-theorem sortRange_perm (proj : α → β) (l : List α) : (sortRange proj l).Perm l :=
-  List.mergeSort_perm l _
-
-theorem sortRange_sorted (proj : α → β) (l : List α) : Sorted (KeyLe proj) (sortRange proj l) :=
-  List.pairwise_mergeSort (le := fun a b => Cmp.ble (proj a) (proj b))
-    (fun _ _ _ h₁ h₂ => Cmp.ble_trans h₁ h₂)
-    (fun a b => by rcases Cmp.ble_total (proj a) (proj b) with h | h <;> simp [h]) l
+`sortRange` (the sorting primitive behind the C++ `bubble_sort` calls) lives in
+`Tcs.Sort`, which this file imports. -/
 
 /-- Sorting a sub-range in place: sort `s` and glue it back between the untouched
 prefix and suffix. This is how every range operation below is modelled. -/
