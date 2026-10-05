@@ -1,3 +1,12 @@
+// Compact bit vector (rank/select)
+// --------------------------------------------------------------------------
+// Bit vector packed into machine words with O(1) rank and select and O(n) extra
+// bits (not succinct). rank uses log(n)/2-bit blocks and a popcount table;
+// select encodes each log(n)-one segment, sparsely or Elias-Fano style, and
+// decodes it with a lookup table.
+//
+// Blog: https://axiomofchoice-hjt.github.io/pages/6b2b47/
+
 #pragma once
 
 #include <algorithm>
