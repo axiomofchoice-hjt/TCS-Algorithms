@@ -65,14 +65,8 @@ curl -fsSL https://xmake.io/shget.text | bash
 ./scripts/asan.sh
 ```
 
-The Lean 4 formalization lives in `proof/` and is built on its own with `lake`
-— it is not part of the xmake build:
-
-```bash
-cd proof
-lake build   # type check every proof
-./check.sh   # proof-completeness audit: no sorry, no sorryAx
-```
+The Lean 4 formalization lives in `proof/` and is built on its own with `lake` —
+see [`proof/README.md`](proof/README.md).
 
 ## 4. Directory Structure
 
@@ -95,17 +89,7 @@ TCS-Algorithms/
 │   ├── common.hpp          # Shared example helpers
 │   ├── example_bfprt.cpp   # BFPRT selection demo
 │   └── inplace/            # Examples for in-place algorithms
-├── proof/                  # Lean 4 formalization (independent lake project)
-│   ├── Tcs/Spec.lean       # Specification vocabulary (Sorted / Permutes / IsSort)
-│   ├── Tcs/Order.lean      # Decidable total order on keys (Lean core has none)
-│   ├── Tcs/Count.lean      # List.countP lemmas shared by the algorithm proofs
-│   ├── Tcs/Perm.lean       # Swap → Perm bridge for in-place algorithms
-│   ├── Tcs/Select.lean     # Rank and selection specs (k-th smallest key)
-│   ├── Tcs/Cyclesort.lean  # Verified cycle sort (see below)
-│   ├── Tcs/Bfprt.lean      # Verified BFPRT selection (see below)
-│   ├── lakefile.toml       # Lake package definition
-│   ├── lean-toolchain      # Pinned Lean toolchain
-│   └── check.sh            # Proof-completeness audit (no sorry / sorryAx)
+├── proof/                  # Lean 4 formalization (see proof/README.md)
 ├── scripts/                # Dev scripts
 │   ├── format.sh           # clang-format all sources
 │   ├── code-quality.sh     # clang-format + clang-tidy checks
@@ -113,31 +97,9 @@ TCS-Algorithms/
 └── xmake.lua               # Build configuration
 ```
 
-The `proof/` directory is deliberately **not** wired into the xmake build: it is
-a self-contained Lean 4 project with its own `lakefile.toml` and pinned
-`lean-toolchain`, and it is built with `lake` alone (no CMake, no Makefile).
-
-So far `tcs::cyclesort::cyclesort` and `tcs::bfprt::bfprt` are formally verified
-end to end, with no `sorry` anywhere and no `Classical.choice` in either proof.
-
-`Tcs/Cyclesort.lean`: the result is a permutation of the input and is sorted by
-`proj`. The proof also covers the memory-safety property the C++ relies on
-implicitly — that `std::find_if` in the inner loop can never run past the
-destination range — as `exists_partner`.
-
-`Tcs/Bfprt.lean`: modelled on the element list of the range `[first, last)`, with
-`k = mid - first`, and matching `tests/test_bfprt.cpp`: the result is a permutation
-of the range and its element at index `k` has rank `k` (`Tcs.IsKthSmallest`), that
-is, its key is the `(k+1)`-th smallest of the range counting multiplicity
-(`bfprtAux_selects`, with the array-level `bfprtRange_selects` and
-`bfprtRange_key_eq_sorted` corollaries). The median-of-medians *choice* is
-deliberately unused: a three-way partition selects correctly for whatever pivot it
-is given, and the recursion terminates because every recursive range is strictly
-shorter — which only needs the pivot to occur in the range. Median of medians is
-what makes that shortening fast, a running-time fact that is not formalized. The
-model was cross-checked against the C++ implementation on 400 shared random cases
-(identical `k`-th smallest keys) and against an exhaustive sweep of every input of
-length at most 6.
+The `proof/` directory is deliberately **not** wired into the xmake build (its own
+lake package, built with `lake` alone); what is verified there, and how, is
+documented in [`proof/README.md`](proof/README.md).
 
 ## 5. Dependencies
 

@@ -1,0 +1,100 @@
+# Lean 4 formalization
+
+Machine-checked correctness proofs for the algorithms in `include/tcs/`, written
+in Lean 4 against Lean core + Std only: no Mathlib, no package dependencies, and
+`lake` alone is enough to build them (no CMake, no Makefile).
+
+```bash
+cd proof
+lake build   # type check every proof
+./check.sh   # proof-completeness audit: clean rebuild, per-file
+             # -DwarningAsError=true, and no `sorry` / `sorryAx`
+```
+
+The package is deliberately **not** wired into the xmake build: it has its own
+`lakefile.toml` and a pinned `lean-toolchain`, so the C++ build never needs a Lean
+toolchain installed.
+
+## What is verified
+
+### Cycle sort — `Tcs/Cyclesort.lean`
+
+`tcs::cyclesort::cyclesort`: the result is a permutation of the input and is sorted
+by `proj` (`cyclesort_perm`, `cyclesort_sorted`, and `cyclesort_isSort` for both
+halves together). The proof also covers the memory-safety property the C++ relies
+on implicitly — that `std::find_if` in the inner loop can never run past the
+destination range, where running off the end would be UB — as `exists_partner`.
+The `while (true)` inner loop is modelled as a recursion whose fuel is the number
+of unsettled positions.
+
+### BFPRT selection — `Tcs/Bfprt.lean`
+
+`tcs::bfprt::bfprt`, matching `tests/test_bfprt.cpp`: the result is a permutation
+of the range and its element at index `k = mid - first` has rank `k`
+(`bfprtAux_selects`) — its key is the `(k+1)`-th smallest of the range counting
+multiplicity. At the `Array` level this is `bfprtRange_selects`, and
+`bfprtRange_key_eq_sorted` is exactly the test's assertion: the key at `mid` equals
+the key a sorted copy of the range carries there.
+
+`Tcs/Select.lean` holds the rank relation `IsKthSmallest` and the selection
+contract `Selects`; `Tcs/Bfprt.lean` holds `sortRange` (the `bubble_sort`
+contract), a `std::partition` model with its permutation/split lemmas, the
+median-of-medians group pass (`placeMedian` / `groupPass`), and `bfprtAux`, which
+mirrors `bfprt.hpp` line for line on the element list of the range, with the range
+length as fuel.
+
+The median-of-medians *choice* is deliberately unused: a three-way partition
+selects correctly for whatever pivot it is given, and the recursion terminates
+because every recursive range is strictly shorter — the pivot occurs in the range,
+so the block it lands in is a proper sub-range. Median of medians is what makes
+that shortening *fast*, a running-time fact that is not formalized here. The group
+pass is still modelled faithfully and proved to permute, because the C++ does it.
+
+## Modelling conventions
+
+Conventions shared by every proof module (`Tcs/Spec.lean` states them):
+
+- an algorithm is `Array α → Array α`, mirroring a C++ iterator range
+  `[first, last)`; `Array.swap` / `Array.set` model `std::swap` / assignment;
+- a range algorithm is modelled on that range's element list — the C++ never reads
+  outside `[first, last)` — and `bfprtRange` splices the result back into the array;
+- "rearranged" is `List.Perm` on `Array.toList`;
+- "sorted" is `Sorted`, i.e. core's `List.Pairwise`;
+- key order is the `Cmp` class (`Tcs/Order.lean`): Lean core and Std ship no order
+  classes (`LinearOrder` belongs to Mathlib), so keys carry their own Bool-valued
+  decidable total order, matching what the C++ comparison operators compute;
+- "rank" is count-based (`Tcs/Select.lean`), which handles duplicate keys exactly:
+  two elements of the same rank in one list have equal keys
+  (`isKthSmallest_unique`), which is why comparing keys against a sorted copy — as
+  the C++ tests do — is the right contract;
+- "stable" labels elements with their original index and orders by key only;
+- "O(1) extra space" is constructive: algorithms only `swap` / `set` in place.
+
+## Quality gates
+
+- no `sorry` / `admit` / `axiom` / `native_decide` / `unsafe` / `partial` anywhere;
+- `#print axioms` for every public theorem reports only `[propext, Quot.sound]`,
+  with no `Classical.choice`;
+- `check.sh` demands a clean rebuild, a per-file type check with
+  `-DwarningAsError=true`, and no `sorryAx` in the environment;
+- beyond the proofs, the models were cross-checked behaviourally against the C++
+  implementations: exhaustive sweeps over all small inputs and random larger ones
+  (two independent oracles: a sorted copy and a direct count), and, for BFPRT, 400
+  shared random cases fed through both implementations (identical `k`-th smallest
+  keys).
+
+## Module map
+
+```text
+proof/
+├── Tcs/Spec.lean         # Specification vocabulary (Sorted / Permutes / IsSort)
+├── Tcs/Order.lean        # `Cmp`: a decidable total order on keys
+├── Tcs/Count.lean        # Generic `List.countP` lemmas
+├── Tcs/Perm.lean         # Swap → `Perm` bridge for in-place algorithms
+├── Tcs/Select.lean       # Rank and selection specs (k-th smallest key)
+├── Tcs/Cyclesort.lean    # Verified cycle sort
+├── Tcs/Bfprt.lean        # Verified BFPRT selection
+├── lakefile.toml         # Lake package definition
+├── lean-toolchain        # Pinned Lean toolchain
+└── check.sh              # Proof-completeness audit (no sorry / sorryAx)
+```
