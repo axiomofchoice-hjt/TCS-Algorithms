@@ -50,6 +50,32 @@ so the block it lands in is a proper sub-range. Median of medians is what makes
 that shortening *fast*, a running-time fact that is not formalized here. The group
 pass is still modelled faithfully and proved to permute, because the C++ does it.
 
+### In-place unstable merge — `Tcs/UnstableMerge.lean`
+
+`tcs::inplace::unstable_merge::inplace_unstable_merge`, matching
+`tests/inplace/test_unstable_merge.cpp`: given two adjacent sorted runs
+(`SortedOn proj l 0 k` and `SortedOn proj l k l.length`), the result is a
+permutation of the range and is sorted (`unstableMerge_sorted_and_perm`), with the
+`Array`-level `unstableMergeArray_sorted_and_perm`.
+
+Every stage of the C++ is modelled in a module of its own. `Tcs/Merge.lean` proves
+the rotation model `rot`/`rotRange` (the `std::ranges::rotate` calls),
+`mergeWithSwap` — including the buffer-safety condition `output + (last - mid) ≤ first`
+that the C++ relies on, and the fact that the buffer ends up holding *exactly* the
+pure merge of the two runs, which pins the loop's tie-breaking — and
+`mergeByRotation`. `Tcs/UnstableMerge.lean` proves the block phase
+(`blockSelectionSort`, and `blockMergePairwise` whose "everything but the last block
+is sorted" invariant needs a counting argument on the block order) and assembles the
+algorithm.
+
+Because these algorithms are deterministic, the Lean and the C++ results can be
+compared element by element: 300 random cases through the whole pipeline (plus
+400 + 400 through the two primitives) produced byte-identical arrays, and every pair
+of sorted runs of length ≤ 3 over `{0,1,2}` (100 cases) satisfies the contract. The
+`bubble_sort` calls are modelled by core's `mergeSort` in `Tcs/Sort.lean`; both are
+stable comparison sorts for the same order, and only the sorted + permutation
+contract is used.
+
 ## Modelling conventions
 
 Conventions shared by every proof module (`Tcs/Spec.lean` states them):
@@ -79,22 +105,27 @@ Conventions shared by every proof module (`Tcs/Spec.lean` states them):
   `-DwarningAsError=true`, and no `sorryAx` in the environment;
 - beyond the proofs, the models were cross-checked behaviourally against the C++
   implementations: exhaustive sweeps over all small inputs and random larger ones
-  (two independent oracles: a sorted copy and a direct count), and, for BFPRT, 400
-  shared random cases fed through both implementations (identical `k`-th smallest
-  keys).
+  (two independent oracles: a sorted copy and a direct count); for BFPRT, 400 shared
+  random cases fed through both implementations (identical `k`-th smallest keys);
+  and for the unstable merge — whose stages are deterministic, so the whole output
+  array is comparable — 300 + 400 + 400 shared random cases with byte-identical
+  arrays.
 
 ## Module map
 
 ```text
 proof/
-├── Tcs/Spec.lean         # Specification vocabulary (Sorted / Permutes / IsSort)
-├── Tcs/Order.lean        # `Cmp`: a decidable total order on keys
-├── Tcs/Count.lean        # Generic `List.countP` lemmas
-├── Tcs/Perm.lean         # Swap → `Perm` bridge for in-place algorithms
-├── Tcs/Select.lean       # Rank and selection specs (k-th smallest key)
-├── Tcs/Cyclesort.lean    # Verified cycle sort
-├── Tcs/Bfprt.lean        # Verified BFPRT selection
-├── lakefile.toml         # Lake package definition
-├── lean-toolchain        # Pinned Lean toolchain
-└── check.sh              # Proof-completeness audit (no sorry / sorryAx)
+├── Tcs/Spec.lean          # Specification vocabulary (Sorted / Permutes / IsSort)
+├── Tcs/Order.lean         # `Cmp`: a decidable total order on keys
+├── Tcs/Count.lean         # Generic `List.countP` lemmas
+├── Tcs/Perm.lean          # Swap → `Perm` bridge for in-place algorithms
+├── Tcs/Select.lean        # Rank and selection specs (k-th smallest key)
+├── Tcs/Sort.lean          # `bubble_sort` contract (core `mergeSort`)
+├── Tcs/Cyclesort.lean     # Verified cycle sort
+├── Tcs/Bfprt.lean         # Verified BFPRT selection
+├── Tcs/Merge.lean         # rotate, `merge_with_swap`, `inplace_merge_with_rotation`
+├── Tcs/UnstableMerge.lean # block selection/merge and `inplace_unstable_merge`
+├── lakefile.toml          # Lake package definition
+├── lean-toolchain         # Pinned Lean toolchain
+└── check.sh               # Proof-completeness audit (no sorry / sorryAx)
 ```

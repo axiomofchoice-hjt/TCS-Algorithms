@@ -3,5 +3,8 @@ import Tcs.Order
 import Tcs.Count
 import Tcs.Perm
 import Tcs.Select
+import Tcs.Sort
 import Tcs.Cyclesort
 import Tcs.Bfprt
+import Tcs.Merge
+import Tcs.UnstableMerge
