@@ -98,6 +98,7 @@ TCS-Algorithms/
 ├── proof/                  # Lean 4 formalization (independent lake project)
 │   ├── Tcs/Spec.lean       # Specification vocabulary (Sorted / Permutes / IsSort)
 │   ├── Tcs/Perm.lean       # Swap → Perm bridge for in-place algorithms
+│   ├── Tcs/Cyclesort.lean  # Verified cycle sort (see below)
 │   ├── lakefile.toml       # Lake package definition
 │   ├── lean-toolchain      # Pinned Lean toolchain
 │   └── check.sh            # Proof-completeness audit (no sorry / sorryAx)
@@ -111,6 +112,12 @@ TCS-Algorithms/
 The `proof/` directory is deliberately **not** wired into the xmake build: it is
 a self-contained Lean 4 project with its own `lakefile.toml` and pinned
 `lean-toolchain`, and it is built with `lake` alone (no CMake, no Makefile).
+
+So far `tcs::cyclesort::cyclesort` is formally verified end to end
+(`Tcs/Cyclesort.lean`, no `sorry`, no `Classical.choice`): the result is a
+permutation of the input and is sorted by `proj`. The proof also covers the
+memory-safety property the C++ relies on implicitly — that `std::find_if` in the
+inner loop can never run past the destination range — as `exists_partner`.
 
 ## 5. Dependencies
 
