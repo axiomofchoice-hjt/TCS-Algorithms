@@ -277,12 +277,20 @@ Conventions shared by every proof module (`Tcs/Spec.lean` states them):
 - the cost model's charging rules are the C++ operations' own (see "Running time");
   `Nat.sqrt` bounds are reproved constructively in `Cost/UnstableMerge.lean`, because
   core's `Nat.sqrt_le` and `Nat.lt_succ_sqrt` both pull in `Classical.choice` — as do
-  `List.take_add` (why `Cost/Bfprt.lean` keeps its own `take_add_groups`) and
+  `List.take_add` (why `Cost/Bfprt.lean` keeps its own `take_add_groups`),
   `Nat.lt_of_mul_lt_mul_left`/`_right` (why `Cost/UnstableMerge.lean` keeps
-  `um_mul_lt_cancel_right`). A further trap is that `omega` applied to a goal whose
-  context still holds list hypotheses can pick up `Classical.choice`; the arithmetic is
-  therefore factored into pure-`Nat` helper lemmas, and the axiom audit below is run
-  after every change;
+  `um_mul_lt_cancel_right`), and `List.drop_take` (why `Tcs/StableMerge.lean` spells the
+  prefix/drop manipulation it needs with `List.drop_drop` and `congrArg` instead). A
+  further trap is that `omega` applied to a goal whose context still holds list
+  hypotheses can pick up `Classical.choice`; the arithmetic is therefore factored into
+  pure-`Nat` helper lemmas, and the axiom audit below is run after every change;
+- because core lemmas are not uniformly choice-free, a *core* lemma is worth checking
+  with `#print axioms` before a proof is built on it, not after: both `List.drop_take`
+  and `List.take_add` look like pure list plumbing. And since `AxiomAudit.lean` reports
+  the offending declaration in `check.sh`'s output, the audit is read from
+  `check.sh`'s **exit code** rather than from a filtered view of its output — a piped
+  `check.sh | grep` reports `grep`'s status and has already let one tainted commit
+  through;
 - beyond the proofs, the models were cross-checked behaviourally against the C++
   implementations: exhaustive sweeps over all small inputs and random larger ones
   (two independent oracles: a sorted copy and a direct count); for BFPRT, 400 shared
