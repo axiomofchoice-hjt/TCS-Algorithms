@@ -411,6 +411,65 @@ auto projection = utest::register_test([] {
     }
 });
 
+// -------------------------------------------------------- index-based placement
+
+void placement_test(PositionsParam param) {
+    const int64_t n = param.n;
+    std::vector<uint8_t> bits = make_pattern(n, [](int64_t i) { return i % kProjectionStep == 0; });
+    Reference ref(bits);
+    for (int64_t w : widths_for(n)) {
+        auto cbv = CompactBitVector::create(n, [&bits](int64_t i) { return bits[i] != 0; }, w);
+        for (int64_t i = 0; i < n; i++) {
+            utest::assert_or_throw(cbv.get(i) == (bits[i] != 0),
+                std::format("placement get({}) = {}, expected {}", i, cbv.get(i), bits[i] != 0));
+        }
+        for (int64_t i = 0; i <= n; i++) {
+            utest::assert_or_throw(cbv.rank(i) == ref.rank(i),
+                std::format("placement rank({}) = {}, expected {}", i, cbv.rank(i), ref.rank(i)));
+        }
+        for (int64_t k = 0; k < ref.count(); k++) {
+            utest::assert_or_throw(cbv.select(k) == ref.select(k),
+                std::format(
+                    "placement select({}) = {}, expected {}", k, cbv.select(k), ref.select(k)));
+        }
+    }
+
+    // An empty result must never consult the placement.
+    auto empty = CompactBitVector::create(
+        0,
+        [](int64_t) -> bool {
+            utest::assert_or_throw(false, "placement called for size 0");
+            return false;
+        },
+        kExtraWidthA);
+    utest::assert_or_throw(empty.rank(0) == 0, "placement empty rank(0) must be 0");
+    utest::assert_or_throw(
+        throws([&] { CompactBitVector::create(-1, [](int64_t) { return false; }, kExtraWidthA); }),
+        "negative size must throw");
+
+    // The BitVector overload takes its size from the bit vector itself.
+    auto raw = BitVector::create(kExtraWidthA);
+    for (uint8_t bit : bits) {
+        raw.push_back(bit != 0);
+    }
+    auto rebuilt = CompactBitVector::create(raw, kExtraWidthA);
+    for (int64_t i = 0; i <= n; i++) {
+        utest::assert_or_throw(rebuilt.rank(i) == ref.rank(i),
+            std::format("bit vector rank({}) = {}, expected {}", i, rebuilt.rank(i), ref.rank(i)));
+    }
+    for (int64_t k = 0; k < ref.count(); k++) {
+        utest::assert_or_throw(rebuilt.select(k) == ref.select(k),
+            std::format(
+                "bit vector select({}) = {}, expected {}", k, rebuilt.select(k), ref.select(k)));
+    }
+}
+
+auto placement = utest::register_test([] {
+    for (int64_t n : {1, 8, 33, 1000}) {
+        utest::test("compact_bit_vector", "placement", placement_test, PositionsParam{.n = n});
+    }
+});
+
 // ------------------------------------------------------ BitVector / PackedVector
 
 void bit_vector_test(int64_t n_word_bits) {

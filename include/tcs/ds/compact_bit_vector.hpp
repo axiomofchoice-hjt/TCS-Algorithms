@@ -19,6 +19,7 @@
 #include <source_location>
 #include <stdexcept>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 namespace tcs::ds::compact_bit_vector {
@@ -350,7 +351,22 @@ struct CompactBitVector {
             data.push_back(value);
             first++;
         }
+        return create(data, n_word_bits);
+    }
 
+    template <typename Placement>
+    static CompactBitVector create(int64_t size, Placement placement, int64_t n_word_bits) {
+        static_assert(std::is_invocable_r_v<bool, Placement&, int64_t>);
+        assert_or_throw(size >= 0, "create: size must not be negative");
+        auto data = BitVector::create(n_word_bits);
+        for (int64_t i = 0; i < size; i++) {
+            data.push_back(placement(i));
+        }
+        return create(data, n_word_bits);
+    }
+
+    static CompactBitVector create(const BitVector& data, int64_t n_word_bits) {
+        int64_t size = data.size_;
         int64_t logn = std::max(ceil_log2(std::max(size, int64_t{1})), int64_t{1});
         int64_t n_block_bits = std::max(logn / 2, int64_t{1});
         auto popcount_table = PackedVector::create(logn, n_word_bits);
