@@ -1843,4 +1843,49 @@ theorem mergeByRotationStable_drop_self (proj : α → β) {l : List α} {m mid 
     List.nil_append]
   exact take_prefix_of_length hlen
 
+/-- **`align_blocks_limit` keeps every `k`-subsequence.** Both of its steps are
+`inplace_merge_with_rotation` on pieces of the caller's runs (sorted by `sorted_subrun`),
+and `keyFilter_mergeByRotationStable` says such a step cannot change a `k`-subsequence;
+the untouched prefix and suffix keep theirs. -/
+theorem alignBlocksLimit_keyFilter (proj : α → β) {bs nb : Nat} {l : List α}
+    {first mid last : Nat} (h1 : first ≤ mid) (h2 : mid ≤ last) (h3 : last ≤ l.length)
+    (hA : Sorted (KeyLe proj) ((l.drop first).take (mid - first)))
+    (hB : Sorted (KeyLe proj) ((l.drop mid).take (last - mid))) (k : β) :
+    keyFilter proj k (alignBlocksLimit proj bs nb l first mid last).1 = keyFilter proj k l := by
+  dsimp only [alignBlocksLimit]
+  generalize hm : first + ((mid - first) / bs * bs) = m
+  generalize hl2 : first + bs * nb = l2
+  have hm_mid : m ≤ mid := by
+    rw [← hm]
+    exact Nat.le_trans (Nat.add_le_add_left (Nat.div_mul_le_self (mid - first) bs) first)
+      (Nat.le_of_eq (Nat.add_sub_of_le h1))
+  have hf_m : first ≤ m := by rw [← hm]; exact Nat.le_add_right first _
+  have hf_l2 : first ≤ l2 := by rw [← hl2]; exact Nat.le_add_right first _
+  have hml : m ≤ l.length := Nat.le_trans hm_mid (Nat.le_trans h2 h3)
+  have hA' : Sorted (KeyLe proj) ((l.drop m).take (mid - m)) :=
+    sorted_subrun hf_m hm_mid (Nat.le_refl mid) hA
+  have hk1 := keyFilter_mergeByRotationStable (proj := proj) (l := l) (first := m) (mid := mid)
+    (last := last) hm_mid h2 hA' hB k
+  by_cases hbr : l2 < m
+  · rw [ite_eq_left hbr]
+    have hl2m : l2 ≤ m := Nat.le_of_lt hbr
+    have hA2 : Sorted (KeyLe proj)
+        (((mergeByRotationStable proj l m mid last).drop l2).take (m - l2)) := by
+      have hsplit := mergeByRotationStable_drop_prefix (proj := proj) (l := l) (m := m)
+        (mid := mid) (last := last) (l2 := l2) (hm_len := hml) (hA := hA') (hB := hB)
+      rw [hsplit]
+      exact sorted_subrun (h1 := hf_l2) (h2 := hl2m) (h3 := hm_mid) (hs := hA)
+    have hB2 : Sorted (KeyLe proj)
+        (((mergeByRotationStable proj l m mid last).drop m).take (last - m)) := by
+      have hsplit := mergeByRotationStable_drop_self (proj := proj) (l := l) (m := m)
+        (mid := mid) (last := last) (hm_mid := hm_mid) (h2 := h2) (h3 := h3) (hA := hA') (hB := hB)
+      rw [hsplit]
+      exact mergeTwo_sorted proj _ _ hA' hB
+    have hk2 := keyFilter_mergeByRotationStable (proj := proj)
+      (l := mergeByRotationStable proj l m mid last) (first := l2) (mid := m) (last := last)
+      (h1 := hl2m) (h2 := Nat.le_trans hm_mid h2) (hA := hA2) (hB := hB2) (k := k)
+    rw [hk2, hk1]
+  · rw [ite_eq_right hbr]
+    exact hk1
+
 end Tcs
