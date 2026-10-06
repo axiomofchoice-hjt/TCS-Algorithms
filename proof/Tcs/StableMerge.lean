@@ -1952,4 +1952,22 @@ theorem alignBlocksLimit_perm (proj : α → β) {bs nb : Nat} {l : List α}
   · rw [ite_eq_right hbr]
     exact hp1
 
+/-! ## Blocks
+
+`block_selection_sort` and the two merge phases work one block at a time, with the buffer's
+elements carried along as lane labels, so the first thing they need is the decomposition of
+a range into consecutive blocks and the fact that the blocks concatenate back to it. -/
+
+/-- Split `l` into consecutive blocks of `bs` elements (the last may be shorter). -/
+def blocksOfAux : Nat → Nat → List α → List (List α)
+  | 0, _, _ => []
+  | fuel + 1, bs, l =>
+      match l with
+      | [] => []
+      | a :: t => (a :: t).take bs :: blocksOfAux fuel bs ((a :: t).drop bs)
+
+/-- The blocks of `bs` consecutive elements of `l`. -/
+def blocksOf (bs : Nat) (l : List α) : List (List α) :=
+  blocksOfAux (l.length / bs + 1) bs l
+
 end Tcs
