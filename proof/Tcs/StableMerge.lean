@@ -1003,4 +1003,92 @@ theorem mergeTwo_append_right_suffix {proj : α → β} {B2 : List α} (B1 : Lis
       rw [List.cons_append]
       exact main A h
 
+/-- Split `R` at the maximal prefix whose keys equal the key of `R`'s head - the C++'s
+`last--; while (mid < last && proj(*last) == proj(*(last - 1))) last--;` seen from the
+reversed side. The C++ compares with the *previous* element, which under sortedness is
+the same as comparing with the head. -/
+def splitEqualHead (proj : α → β) : List α → List α × List α
+  | [] => ([], [])
+  | y :: ys => splitEqualRev proj (proj y) (y :: ys)
+
+theorem splitEqualHead_nil (proj : α → β) : splitEqualHead proj [] = ([], []) := rfl
+
+theorem splitEqualHead_cons (proj : α → β) (y : α) (ys : List α) :
+    splitEqualHead proj (y :: ys) = splitEqualRev proj (proj y) (y :: ys) := rfl
+
+theorem splitEqualHead_append (proj : α → β) (R : List α) :
+    (splitEqualHead proj R).1 ++ (splitEqualHead proj R).2 = R := by
+  match R with
+  | [] => simp [splitEqualHead_nil]
+  | y :: ys => rw [splitEqualHead_cons, splitEqualRev_append]
+
+theorem splitEqualHead_fst_beq (proj : α → β) (y : α) (ys : List α) :
+    ∀ x ∈ (splitEqualHead proj (y :: ys)).1, Cmp.beq (proj x) (proj y) = true := by
+  intro x hx
+  rw [splitEqualHead_cons] at hx
+  exact splitEqualRev_fst_beq proj (proj y) (y :: ys) x hx
+
+theorem splitEqualHead_fst_ne_nil (proj : α → β) (y : α) (ys : List α) :
+    (splitEqualHead proj (y :: ys)).1 ≠ [] := by
+  rw [splitEqualHead_cons]
+  exact splitEqualRev_fst_ne_nil (Cmp.beq_self (proj y))
+
+/-- One turn of C++'s `inplace_merge_with_rotation_scroll_left`, as a state update: the
+new left run, the new right run and the finished tail. `b` is the right region's last
+element, `leftSplit`'s second component the part of the left run strictly above its key,
+and the reversed region is split at its maximal head-keyed prefix. -/
+def scrollLeftTurn (proj : α → β) (A B Q : List α) : List α × List α × List α :=
+  match A, B.reverse with
+  | [], _ => (A, B, Q)
+  | _, [] => (A, B, Q)
+  | _, b :: Br =>
+      let sa := splitAbove proj (proj b) A
+      let se := splitEqualHead proj (sa.2.reverse ++ (b :: Br))
+      (sa.1, se.2.reverse, se.1.reverse ++ sa.2 ++ Q)
+
+/-- C++'s `inplace_merge_with_rotation_scroll_left`, run for `fuel` turns. A turn that
+has nothing to move leaves the state alone, so `fuel` only has to be large enough. -/
+def scrollLeft (proj : α → β) : Nat → List α → List α → List α → List α
+  | 0, A, B, Q => A ++ B ++ Q
+  | n + 1, A, B, Q =>
+      let t := scrollLeftTurn proj A B Q
+      scrollLeft proj n t.1 t.2.1 t.2.2
+
+theorem scrollLeft_zero (proj : α → β) (A B Q : List α) :
+    scrollLeft proj 0 A B Q = A ++ B ++ Q := rfl
+
+theorem scrollLeft_succ (proj : α → β) (n : Nat) (A B Q : List α) :
+    scrollLeft proj (n + 1) A B Q =
+      (let t := scrollLeftTurn proj A B Q; scrollLeft proj n t.1 t.2.1 t.2.2) := rfl
+
+theorem scrollLeftTurn_nil_left (proj : α → β) (B Q : List α) :
+    scrollLeftTurn proj [] B Q = ([], B, Q) := rfl
+
+theorem scrollLeftTurn_cons (proj : α → β) (a : α) (As : List α) (Br : List α) (b : α)
+    (Q : List α) :
+    scrollLeftTurn proj (a :: As) (Br ++ [b]) Q =
+      (match splitAbove proj (proj b) (a :: As) with
+       | (A1, A2) =>
+         match splitEqualHead proj (A2.reverse ++ (b :: Br.reverse)) with
+         | (B2r, B1r) => (A1, B1r.reverse, B2r.reverse ++ A2 ++ Q)) := by
+  unfold scrollLeftTurn
+  rw [show (Br ++ [b]).reverse = b :: Br.reverse from by
+    rw [List.reverse_append, List.reverse_singleton, List.singleton_append]]
+
+/-- **A left turn is a `mergeTwo` split.** If the left run ends in a part `A2` that is
+strictly above the right run, and the region `B ++ A2` splits into `B1 ++ B2` whose tail
+`B2` carries a key no key of `A1` exceeds, then the merge of `A1 ++ A2` with `B` is
+`mergeTwo A1 B1` followed by `B2`. Both halves of the turn - peeling `A2` off the back,
+then the equal-key run - are the two suffix facts, so no case analysis on `A2` is
+needed. -/
+theorem mergeTwo_split_tail {proj : α → β} {A1 A2 B B1 B2 : List α}
+    (hA2 : ∀ y ∈ A2, ∀ x ∈ B, Cmp.blt (proj x) (proj y) = true)
+    (hA1A2 : ∀ x ∈ A1, ∀ y ∈ A2, Cmp.ble (proj x) (proj y) = true)
+    (hregion : B ++ A2 = B1 ++ B2)
+    (hA1B2 : ∀ x ∈ A1, ∀ y ∈ B2, Cmp.ble (proj x) (proj y) = true) :
+    mergeTwo proj (A1 ++ A2) B = mergeTwo proj A1 B1 ++ B2 := by
+  rw [mergeTwo_append_left_suffix A1 B hA2,
+    ← mergeTwo_append_right_suffix B A1 hA1A2, hregion,
+    mergeTwo_append_right_suffix B1 A1 hA1B2]
+
 end Tcs
