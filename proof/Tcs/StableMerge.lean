@@ -1270,4 +1270,37 @@ theorem mergeByRotationStable_spec (proj : α → β) {l : List α} {first mid l
     rw [hs]
     simp only [List.append_assoc]
 
+/-- A successful pick puts `x`'s key strictly above every key already kept. -/
+theorem keepUnique_blt {proj : α → β} {max : Nat} {picked : List α} {x : α}
+    (hs : Sorted (KeyLe proj) picked) (hle : ∀ z ∈ picked, KeyLe proj z x)
+    (hk : keepUnique proj max picked x = true) :
+    ∀ z ∈ picked, Cmp.blt (proj z) (proj x) = true := by
+  intro z hz
+  cases hl : picked.getLast? with
+  | none =>
+      rw [List.getLast?_eq_none_iff] at hl
+      subst hl
+      simp at hz
+  | some y =>
+      have hbeq : Cmp.beq (proj y) (proj x) = false := by
+        cases hb : Cmp.beq (proj y) (proj x) with
+        | false => rfl
+        | true =>
+            simp only [keepUnique, hl] at hk
+            rw [hb] at hk
+            simp at hk
+      have hy_le : Cmp.ble (proj y) (proj x) = true :=
+        hle y (by
+          obtain ⟨ys, hys⟩ := List.getLast?_eq_some_iff.mp hl
+          rw [hys]
+          exact List.mem_append_right _ (by simp))
+      have hxy : Cmp.ble (proj x) (proj y) = false := by
+        cases hb : Cmp.ble (proj x) (proj y) with
+        | false => rfl
+        | true =>
+            simp [Cmp.beq, hy_le, hb] at hbeq
+      have hyx : Cmp.blt (proj y) (proj x) = true := by
+        simp [Cmp.blt, hy_le, hxy]
+      exact Cmp.blt_of_ble_of_blt (keyLe_getLast hs hl z hz) hyx
+
 end Tcs
