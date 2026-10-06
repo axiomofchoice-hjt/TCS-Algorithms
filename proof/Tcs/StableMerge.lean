@@ -1994,4 +1994,36 @@ theorem blocksOfAux_flatten : ∀ fuel bs (l : List α), l.length ≤ fuel * bs 
           simp only [blocksOfAux, List.flatten_cons]
           rw [ih bs ((a :: t).drop bs) hdrop, List.take_append_drop]
 
+/-- The same for `blocksOf`, which carries just enough fuel. -/
+theorem blocksOf_flatten {bs : Nat} (hb : 0 < bs) (l : List α) :
+    (blocksOf bs l).flatten = l := by
+  refine blocksOfAux_flatten (l.length / bs + 1) bs l ?_
+  calc l.length = bs * (l.length / bs) + l.length % bs := (Nat.div_add_mod l.length bs).symm
+    _ ≤ bs * (l.length / bs) + bs := Nat.add_le_add_left (Nat.le_of_lt (Nat.mod_lt l.length hb)) _
+    _ = (l.length / bs + 1) * bs := by
+          rw [Nat.mul_comm (l.length / bs + 1) bs, Nat.mul_succ]
+
+/-- Every block is at most `bs` long - the pairwise merge phases assume the blocks they
+move are exactly that size. -/
+theorem blocksOfAux_length_le :
+    ∀ fuel bs (l : List α), ∀ b ∈ blocksOfAux fuel bs l, b.length ≤ bs := by
+  intro fuel
+  induction fuel with
+  | zero => intro bs l b hb; simp [blocksOfAux] at hb
+  | succ f ih =>
+      intro bs l b hb
+      match l with
+      | [] => simp [blocksOfAux] at hb
+      | a :: t =>
+          simp only [blocksOfAux, List.mem_cons] at hb
+          rcases hb with rfl | hb'
+          · rw [List.length_take]
+            exact Nat.min_le_left _ _
+          · exact ih bs _ b hb'
+
+/-- Every block of a range is at most `bs` long. -/
+theorem blocksOf_length_le {bs : Nat} (l : List α) :
+    ∀ b ∈ blocksOf bs l, b.length ≤ bs :=
+  blocksOfAux_length_le (l.length / bs + 1) bs l
+
 end Tcs
