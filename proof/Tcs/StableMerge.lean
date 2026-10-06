@@ -1810,4 +1810,18 @@ theorem mergeByRotationStable_drop_prefix (proj : α → β) {l : List α} {m mi
       (l.drop l2).take (m - l2) :=
   drop_take_of_take_eq (mergeByRotationStable_take_self proj hm_len hA hB)
 
+/-- The two pieces of the rewritten range add up to the whole range. -/
+theorem mergeTwo_pieces_length (proj : α → β) {l : List α} {m mid last : Nat}
+    (hm_mid : m ≤ mid) (h2 : mid ≤ last) (h3 : last ≤ l.length) :
+    (mergeTwo proj ((l.drop m).take (mid - m)) ((l.drop mid).take (last - mid))).length =
+      last - m := by
+  have hml : mid ≤ l.length := Nat.le_trans h2 h3
+  have h1' : min (mid - m) (l.length - m) = mid - m :=
+    Nat.min_eq_left (@Nat.sub_le_sub_right mid l.length hml m)
+  have h2' : min (last - mid) (l.length - mid) = last - mid :=
+    Nat.min_eq_left (@Nat.sub_le_sub_right last l.length h3 mid)
+  rw [mergeTwo_length, List.length_take, List.length_take, List.length_drop, List.length_drop,
+    h1', h2', Nat.add_comm (mid - m) (last - mid), ← Nat.add_sub_assoc hm_mid,
+    Nat.sub_add_cancel h2]
+
 end Tcs
