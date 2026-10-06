@@ -2145,4 +2145,25 @@ theorem eq_mergeTwo_of_sorted_perm_keyFilter {proj : α → β} {L R l' : List �
   exact eq_of_sorted_keyFilter (l := mergeTwo proj L R) (l' := l') hm hs
     (fun k => (hk k).trans (hk' k).symm)
 
+/-- **The specification of a stable merge** of two runs: the result is sorted, it is a
+permutation of the two runs together, and it keeps every key's subsequence. The third part
+is what makes it *stable*: equal keys stay in their original relative order. -/
+def StableMergeSpec (proj : α → β) (L R l : List α) : Prop :=
+  Sorted (KeyLe proj) l ∧ l.Perm (L ++ R) ∧
+    ∀ k : β, keyFilter proj k l = keyFilter proj k (L ++ R)
+
+/-- The stable merge satisfies the specification. -/
+theorem mergeTwo_stableMergeSpec (proj : α → β) {L R : List α}
+    (hL : Sorted (KeyLe proj) L) (hR : Sorted (KeyLe proj) R) :
+    StableMergeSpec proj L R (mergeTwo proj L R) :=
+  ⟨mergeTwo_sorted proj L R hL hR, mergeTwo_perm proj L R,
+    fun k => (mergeTwo_keyFilter proj k L R hL hR).trans (keyFilter_append proj k L R).symm⟩
+
+/-- Conversely, anything meeting the specification *is* the stable merge: the three parts
+pin the result down uniquely. -/
+theorem eq_mergeTwo_of_stableMergeSpec {proj : α → β} {L R l : List α}
+    (hL : Sorted (KeyLe proj) L) (hR : Sorted (KeyLe proj) R)
+    (h : StableMergeSpec proj L R l) : l = mergeTwo proj L R :=
+  eq_mergeTwo_of_sorted_perm_keyFilter hL hR h.1 h.2.1 h.2.2
+
 end Tcs
