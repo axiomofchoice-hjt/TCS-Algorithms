@@ -2129,4 +2129,20 @@ theorem eq_of_sorted_keyFilter {proj : α → β} :
                   exact hk')
               rw [hat, htt]
 
+/-- **The stable merge is the only sorted, per-key-preserving rearrangement** of two sorted
+runs: if `l'` is sorted, a permutation of `L ++ R`, and keeps every `k`-subsequence, then
+`l'` is exactly `mergeTwo L R`. This is the interface the top-level theorem needs: it lets
+the assembly conclude correctness from `Perm` and per-key invariants alone, so the block
+phase only has to preserve those, not to place individual elements. -/
+theorem eq_mergeTwo_of_sorted_perm_keyFilter {proj : α → β} {L R l' : List α}
+    (hL : Sorted (KeyLe proj) L) (hR : Sorted (KeyLe proj) R)
+    (hs : Sorted (KeyLe proj) l') (_hp : l'.Perm (L ++ R))
+    (hk : ∀ k : β, keyFilter proj k l' = keyFilter proj k (L ++ R)) :
+    l' = mergeTwo proj L R := by
+  have hm : Sorted (KeyLe proj) (mergeTwo proj L R) := mergeTwo_sorted proj L R hL hR
+  have hk' : ∀ k : β, keyFilter proj k (mergeTwo proj L R) = keyFilter proj k (L ++ R) :=
+    fun k => (mergeTwo_keyFilter proj k L R hL hR).trans (keyFilter_append proj k L R).symm
+  exact eq_of_sorted_keyFilter (l := mergeTwo proj L R) (l' := l') hm hs
+    (fun k => (hk k).trans (hk' k).symm)
+
 end Tcs
