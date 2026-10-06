@@ -1768,4 +1768,25 @@ theorem sorted_subrun {proj : α → β} {l : List α} {first mid lo hi : Nat}
   have hfin := sorted_take (n := hi - lo) hstep
   rwa [List.take_take, Nat.min_eq_left hA] at hfin
 
+/-- The first `m` elements of `X ++ Y` are `X`, when `X` has exactly `m` elements. -/
+theorem take_prefix_of_length {X Y : List α} {m : Nat} (h : X.length = m) :
+    (X ++ Y).take m = X := by
+  rw [← h]
+  exact List.take_left
+
+/-- If `l₁` agrees with `l` on its first `m` elements, then so does the piece `[l₂, m)`.
+This is what keeps the second merge of `align_blocks_limit` fed with a piece of the
+caller's original sorted run: the first merge only rewrites the range from `m` on. -/
+theorem drop_take_of_take_eq {l l₁ : List α} {l₂ m : Nat} (hm : l₁.take m = l.take m) :
+    (l₁.drop l₂).take (m - l₂) = (l.drop l₂).take (m - l₂) := by
+  calc (l₁.drop l₂).take (m - l₂)
+      = (l₁.take m).drop l₂ := (drop_take' l₁ l₂ m).symm
+    _ = (l.take m).drop l₂ := by rw [hm]
+    _ = (l.drop l₂).take (m - l₂) := drop_take' l l₂ m
+
+/-- `mergeTwo` is as long as its two inputs together. -/
+theorem mergeTwo_length (proj : α → β) (A B : List α) :
+    (mergeTwo proj A B).length = A.length + B.length := by
+  rw [← List.length_append, ← (mergeTwo_perm proj A B).length_eq]
+
 end Tcs
