@@ -1695,4 +1695,52 @@ def alignBlocksLimit (proj : α → β) (bs nb : Nat) (l : List α) (first mid l
   let l2 := first + bs * nb
   if m > l2 then (mergeByRotationStable proj l1 l2 m last, l2, last) else (l1, m, l2)
 
+/-- `l.drop i` splits at `j` when `i ≤ j`. -/
+theorem drop_take_splice' {l : List α} : ∀ {i j : Nat}, i ≤ j →
+    l.drop i = (l.drop i).take (j - i) ++ l.drop j := by
+  induction l with
+  | nil => intro i j _; simp
+  | cons a as ih =>
+      intro i j h
+      cases i with
+      | zero => exact (List.take_append_drop j (a :: as)).symm
+      | succ i' =>
+          cases j with
+          | zero => exact absurd h (Nat.not_succ_le_zero i')
+          | succ j' =>
+              simp only [List.drop_succ_cons, Nat.succ_sub_succ_eq_sub]
+              exact ih (Nat.succ_le_succ_iff.mp h)
+
+/-- Splitting a list at three consecutive indices. -/
+theorem take_drop_splice3 {l : List α} {first mid last : Nat} (h1 : first ≤ mid)
+    (h2 : mid ≤ last) :
+    l = l.take first ++ (l.drop first).take (mid - first) ++
+      (l.drop mid).take (last - mid) ++ l.drop last := by
+  have htake : l.take first ++ (l.drop first).take (mid - first) = l.take mid := by
+    rw [← take_add' l first (mid - first), Nat.add_sub_of_le h1]
+  have hdrop : (l.drop mid).take (last - mid) ++ l.drop last = l.drop mid :=
+    (drop_take_splice' (l := l) (i := mid) (j := last) h2).symm
+  rw [htake]
+  simp only [List.append_assoc]
+  rw [hdrop, List.take_append_drop]
+
+/-- Merging the two halves of a range in place keeps every `k`-subsequence: the range's
+four-part decomposition is unchanged, only its two middle pieces are replaced by their
+stable merge. -/
+theorem keyFilter_mergeByRotationStable {proj : α → β} {l : List α} {first mid last : Nat}
+    (h1 : first ≤ mid) (h2 : mid ≤ last)
+    (hA : Sorted (KeyLe proj) ((l.drop first).take (mid - first)))
+    (hB : Sorted (KeyLe proj) ((l.drop mid).take (last - mid))) (k : β) :
+    keyFilter proj k (mergeByRotationStable proj l first mid last) = keyFilter proj k l := by
+  have hspec := mergeByRotationStable_spec (proj := proj) (l := l) (first := first)
+    (mid := mid) (last := last) hA hB
+  have hf : keyFilter proj k (l.take first ++ mergeTwo proj ((l.drop first).take (mid - first))
+        ((l.drop mid).take (last - mid)) ++ l.drop last) =
+      keyFilter proj k (l.take first ++ (l.drop first).take (mid - first) ++
+        (l.drop mid).take (last - mid) ++ l.drop last) := by
+    simp only [keyFilter_append]
+    rw [mergeTwo_keyFilter proj k _ _ hA hB]
+    simp only [List.append_assoc]
+  rw [hspec, hf, ← take_drop_splice3 (l := l) h1 h2]
+
 end Tcs
