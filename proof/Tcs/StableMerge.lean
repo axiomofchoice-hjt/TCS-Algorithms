@@ -1366,4 +1366,189 @@ theorem keyFilter_cons' (proj : α → β) (k : β) (x : α) (xs : List α) :
       rw [keyFilter_cons_of_beq hx, keyFilter_cons_of_beq hx, keyFilter_nil,
         List.singleton_append]
 
+/-- The elements the loop skips are a sublist of what it was given, so they keep their
+order. This needs no accumulator invariant: the loop only ever appends to the buffer or
+appends to the skipped part. -/
+theorem uniqueLimitAux_sublist (proj : α → β) (max : Nat) :
+    ∀ picked l : List α, List.Sublist (uniqueLimitAux proj max picked l).2 l := by
+  intro picked l
+  induction l generalizing picked with
+  | nil => rw [uniqueLimitAux_nil]; exact List.Sublist.slnil
+  | cons x xs ih =>
+      rw [uniqueLimitAux_cons]
+      by_cases hk : keepUnique proj max picked x = true
+      · rw [ite_eq_left hk]
+        exact List.Sublist.cons x (ih (picked ++ [x]))
+      · rw [ite_eq_right (by simpa using hk)]
+        dsimp only
+        exact List.Sublist.cons_cons x (ih picked)
+
+/-- Once the buffer has reached `max`, the loop moves nothing at all. -/
+theorem uniqueLimitAux_stop (proj : α → β) (max : Nat) :
+    ∀ picked l : List α, max ≤ picked.length →
+      (uniqueLimitAux proj max picked l).1 = picked ∧ (uniqueLimitAux proj max picked l).2 = l := by
+  intro picked l
+  induction l generalizing picked with
+  | nil => intro _; rw [uniqueLimitAux_nil]; exact ⟨rfl, rfl⟩
+  | cons x xs ih =>
+      intro hmax
+      have hk : keepUnique proj max picked x = false := by
+        rw [keepUnique]
+        simp [Nat.not_lt.mpr hmax]
+      rw [uniqueLimitAux_cons, ite_eq_right (by simpa using hk)]
+      dsimp only
+      obtain ⟨hb, hr⟩ := ih picked hmax
+      exact ⟨hb, by rw [hr]⟩
+
+/-- Keeping `x` maintains the accumulator invariant. -/
+theorem uniqueInv_keep {proj : α → β} (max : Nat) {picked l : List α} {x : α}
+    (h : UniqueInv proj picked (x :: l)) (hk : keepUnique proj max picked x = true) :
+    UniqueInv proj (picked ++ [x]) l := by
+  obtain ⟨hps, hpn, hls, hle⟩ := h
+  obtain ⟨hxle, hxs⟩ := (sorted_cons_iff (KeyLe proj) x l).mp hls
+  exact ⟨sorted_append hps (sorted_singleton _ _) (fun a ha b hb => by
+      rw [List.mem_singleton] at hb
+      rw [hb]
+      exact hle a ha x (by simp)),
+    keepUnique_keysNodup hps hpn (fun y hy => hle y hy x (by simp)) hk,
+    hxs,
+    fun y hy z hz => by
+      rcases List.mem_append.mp hy with hy' | hy'
+      · exact hle y hy' z (List.mem_cons_of_mem x hz)
+      · rw [List.mem_singleton] at hy'
+        rw [hy']
+        exact hxle z hz⟩
+
+/-- Skipping maintains the accumulator invariant. -/
+theorem uniqueInv_skip {proj : α → β} {picked l : List α} {x : α}
+    (h : UniqueInv proj picked (x :: l)) : UniqueInv proj picked l :=
+  ⟨h.1, h.2.1, ((sorted_cons_iff (KeyLe proj) x l).mp h.2.2.1).2,
+    fun y hy z hz => h.2.2.2 y hy z (List.mem_cons_of_mem x hz)⟩
+
+/-- **What the loop keeps.** The buffer is the accumulator followed by the elements it
+newly kept, and those new elements' keys are *strictly* above every key of the
+accumulator - which is what tells the two apart. -/
+theorem uniqueLimitAux_buffer_split (proj : α → β) (max : Nat) :
+    ∀ picked l : List α, UniqueInv proj picked l →
+      ∃ extra : List α, (uniqueLimitAux proj max picked l).1 = picked ++ extra ∧
+        ∀ y ∈ extra, ∀ z ∈ picked, Cmp.blt (proj z) (proj y) = true := by
+  intro picked l
+  induction l generalizing picked with
+  | nil =>
+      intro _
+      rw [uniqueLimitAux_nil]
+      refine ⟨[], ?_, by simp⟩
+      show picked = picked ++ []
+      exact (List.append_nil picked).symm
+  | cons x xs ih =>
+      intro h
+      rw [uniqueLimitAux_cons]
+      by_cases hk : keepUnique proj max picked x = true
+      · rw [ite_eq_left hk]
+        have hnew : ∀ z ∈ picked, Cmp.blt (proj z) (proj x) = true :=
+          keepUnique_blt h.1 (fun w hw => h.2.2.2 w hw x (by simp)) hk
+        obtain ⟨extra, hbuf, habove⟩ := ih (picked ++ [x]) (uniqueInv_keep max h hk)
+        refine ⟨x :: extra, ?_, ?_⟩
+        · rw [hbuf, List.append_assoc, List.singleton_append]
+        · intro y hy z hz
+          rcases List.mem_cons.mp hy with hyx | hy'
+          · rw [hyx]
+            exact hnew z hz
+          · exact habove y hy' z (List.mem_append_left [x] hz)
+      · rw [ite_eq_right (by simpa using hk)]
+        dsimp only
+        obtain ⟨extra, hbuf, habove⟩ := ih picked (uniqueInv_skip h)
+        exact ⟨extra, hbuf, habove⟩
+
+/-- **The loop keeps every equal-key subsequence**, in the sense that the buffer followed
+by the skipped elements has the same `k`-subsequence as the accumulator followed by the
+input. This is the property that makes the buffer usable as lane labels later on: it
+says that a key's first occurrence really does come first. -/
+theorem uniqueLimitAux_keyFilter (proj : α → β) (max : Nat) :
+    ∀ picked l : List α, UniqueInv proj picked l →
+      ∀ k : β, keyFilter proj k (uniqueLimitAux proj max picked l).1 ++
+          keyFilter proj k (uniqueLimitAux proj max picked l).2 =
+        keyFilter proj k (picked ++ l) := by
+  intro picked l
+  induction l generalizing picked with
+  | nil =>
+      intro _ k
+      rw [uniqueLimitAux_nil]
+      show keyFilter proj k picked ++ keyFilter proj k [] = keyFilter proj k (picked ++ [])
+      rw [keyFilter_nil, List.append_nil, List.append_nil]
+  | cons x xs ih =>
+      intro h k
+      rw [uniqueLimitAux_cons]
+      by_cases hk : keepUnique proj max picked x = true
+      · rw [ite_eq_left hk]
+        rw [ih (picked ++ [x]) (uniqueInv_keep max h hk) k, List.append_assoc,
+          List.singleton_append]
+      · rw [ite_eq_right (by simpa using hk)]
+        dsimp only
+        have hinv : UniqueInv proj picked xs := uniqueInv_skip h
+        obtain ⟨extra, hbuf, habove⟩ := uniqueLimitAux_buffer_split proj max picked xs hinv
+        have hkf := ih picked hinv k
+        rw [keyFilter_append (proj := proj) k picked (x :: xs)]
+        by_cases hx : Cmp.beq (proj x) k = true
+        · rcases keepUnique_eq_false (by simpa using hk) with hmax | ⟨y, hy, hbeq⟩
+          · obtain ⟨hb, hr⟩ := uniqueLimitAux_stop proj max picked xs hmax
+            rw [hb, hr]
+          · have hy_picked : y ∈ picked := by
+              obtain ⟨ys, hys⟩ := List.getLast?_eq_some_iff.mp hy
+              rw [hys]
+              exact List.mem_append_right _ (by simp)
+            have hyk : Cmp.beq (proj y) k = true := by
+              rw [Cmp.beq_eq hbeq, Cmp.beq_eq hx]
+              exact Cmp.beq_self k
+            have hExtra : keyFilter proj k extra = [] := by
+              refine keyFilter_eq_nil_of_all extra (fun w hw => ?_)
+              have hb' : Cmp.blt (proj y) (proj w) = true := habove w hw y hy_picked
+              rw [Cmp.beq_eq hyk] at hb'
+              rw [Cmp.beq_comm (proj w) k]
+              exact Cmp.not_beq_of_blt hb'
+            have hA : keyFilter proj k (uniqueLimitAux proj max picked xs).1 =
+                keyFilter proj k picked := by
+              rw [hbuf, keyFilter_append (proj := proj) k picked extra, hExtra, List.append_nil]
+            have hCan : keyFilter proj k (uniqueLimitAux proj max picked xs).2 =
+                keyFilter proj k xs := by
+              have hh := hkf
+              rw [keyFilter_append (proj := proj) k picked xs, hA] at hh
+              exact List.append_cancel_left hh
+            simp only [hA, hCan, keyFilter_cons_of_beq hx]
+        · simp only [keyFilter_cons_of_not_beq hx]
+          rw [hkf, keyFilter_append (proj := proj) k picked xs]
+
+theorem uniqueLimit_rest_sorted (proj : α → β) (max : Nat) {l : List α}
+    (hl : Sorted (KeyLe proj) l) : Sorted (KeyLe proj) (uniqueLimit proj max l).2 :=
+  sorted_of_sublist (uniqueLimitAux_sublist proj max [] l) hl
+
+theorem uniqueLimit_keyFilter (proj : α → β) (max : Nat) {l : List α}
+    (hl : Sorted (KeyLe proj) l) (k : β) :
+    keyFilter proj k (uniqueLimit proj max l).1 ++ keyFilter proj k (uniqueLimit proj max l).2 =
+      keyFilter proj k l := by
+  have h := uniqueLimitAux_keyFilter proj max [] l ⟨sorted_nil _, List.Pairwise.nil, hl, by simp⟩ k
+  show keyFilter proj k (uniqueLimitAux proj max [] l).1 ++
+      keyFilter proj k (uniqueLimitAux proj max [] l).2 = keyFilter proj k l
+  simpa using h
+
+/-- **The full contract of the three-argument `stable_unique_limit`** on a sorted range:
+the buffer is sorted with pairwise different keys, the skipped elements stay sorted and
+in order, the whole range is only permuted, and - the point of the routine - the buffer
+followed by the skipped elements has the same `k`-subsequence as the input, for every
+key. -/
+theorem uniqueLimit_spec (proj : α → β) (max : Nat) {l : List α} (hl : Sorted (KeyLe proj) l) :
+    Sorted (KeyLe proj) (uniqueLimit proj max l).1 ∧
+    KeysNodup proj (uniqueLimit proj max l).1 ∧
+    Sorted (KeyLe proj) (uniqueLimit proj max l).2 ∧
+    List.Sublist (uniqueLimit proj max l).2 l ∧
+    ((uniqueLimit proj max l).1 ++ (uniqueLimit proj max l).2).Perm l ∧
+    ∀ k : β, keyFilter proj k (uniqueLimit proj max l).1 ++
+        keyFilter proj k (uniqueLimit proj max l).2 = keyFilter proj k l :=
+  ⟨(uniqueLimit_sorted_keysNodup proj max hl).1,
+    (uniqueLimit_sorted_keysNodup proj max hl).2,
+    uniqueLimit_rest_sorted proj max hl,
+    uniqueLimitAux_sublist proj max [] l,
+    uniqueLimit_perm proj max l,
+    uniqueLimit_keyFilter proj max hl⟩
+
 end Tcs
