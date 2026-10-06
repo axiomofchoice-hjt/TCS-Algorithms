@@ -739,4 +739,196 @@ theorem scrollRight_eq_mergeTwo (proj : α → β) {A B : List α}
   have h := scrollRight_spec proj (A.length + B.length) [] A B (Nat.le_refl _) hA hB
   simpa using h
 
+/-! ## The scans of `inplace_merge_with_rotation_scroll_left`
+
+The left-scrolling pass walks both runs from the right, so its two scans are written on
+the *reversed* runs, where they are once again ordinary recursions. Reversing back at
+the end keeps the statements in terms of the C++'s own runs. -/
+
+/-- The A-side scan of `inplace_merge_with_rotation_scroll_left`, on the reversed `A`:
+the prefix of keys strictly above `b`. The C++ walks `split_left` back while
+`proj(*(split_left - 1)) > proj(*(last - 1))`. -/
+def splitAboveRev (proj : α → β) (b : β) : List α → List α × List α
+  | [] => ([], [])
+  | y :: ys =>
+      if Cmp.blt b (proj y) then
+        let r := splitAboveRev proj b ys
+        (y :: r.1, r.2)
+      else ([], y :: ys)
+
+/-- The B-side scan of the same pass, on the reversed `B`: the prefix of keys equal to
+`b`. The C++ walks `last` back while `proj(*last) == proj(*(last - 1))`. -/
+def splitEqualRev (proj : α → β) (b : β) : List α → List α × List α
+  | [] => ([], [])
+  | y :: ys =>
+      if Cmp.beq (proj y) b then
+        let r := splitEqualRev proj b ys
+        (y :: r.1, r.2)
+      else ([], y :: ys)
+
+theorem splitAboveRev_nil (proj : α → β) (b : β) : splitAboveRev proj b [] = ([], []) := rfl
+theorem splitEqualRev_nil (proj : α → β) (b : β) : splitEqualRev proj b [] = ([], []) := rfl
+
+theorem splitAboveRev_cons (proj : α → β) (b : β) (y : α) (ys : List α) :
+    splitAboveRev proj b (y :: ys) =
+      if Cmp.blt b (proj y) then (let r := splitAboveRev proj b ys; (y :: r.1, r.2))
+      else ([], y :: ys) := rfl
+
+theorem splitEqualRev_cons (proj : α → β) (b : β) (y : α) (ys : List α) :
+    splitEqualRev proj b (y :: ys) =
+      if Cmp.beq (proj y) b then (let r := splitEqualRev proj b ys; (y :: r.1, r.2))
+      else ([], y :: ys) := rfl
+
+theorem splitAboveRev_append (proj : α → β) (b : β) (Ar : List α) :
+    (splitAboveRev proj b Ar).1 ++ (splitAboveRev proj b Ar).2 = Ar := by
+  induction Ar with
+  | nil => simp [splitAboveRev_nil]
+  | cons y ys ih =>
+      rw [splitAboveRev_cons]
+      by_cases h : Cmp.blt b (proj y) = true
+      · rw [ite_eq_left h]; dsimp only; rw [List.cons_append, ih]
+      · rw [ite_eq_right (by simpa using h)]; simp
+
+theorem splitEqualRev_append (proj : α → β) (b : β) (Br : List α) :
+    (splitEqualRev proj b Br).1 ++ (splitEqualRev proj b Br).2 = Br := by
+  induction Br with
+  | nil => simp [splitEqualRev_nil]
+  | cons y ys ih =>
+      rw [splitEqualRev_cons]
+      by_cases h : Cmp.beq (proj y) b = true
+      · rw [ite_eq_left h]; dsimp only; rw [List.cons_append, ih]
+      · rw [ite_eq_right (by simpa using h)]; simp
+
+/-- Everything the left scan takes is strictly above `b`. -/
+theorem splitAboveRev_fst_blt (proj : α → β) (b : β) (Ar : List α) :
+    ∀ y ∈ (splitAboveRev proj b Ar).1, Cmp.blt b (proj y) = true := by
+  induction Ar with
+  | nil => intro y hy; rw [splitAboveRev_nil] at hy; simp at hy
+  | cons z zs ih =>
+      intro y hy
+      rw [splitAboveRev_cons] at hy
+      by_cases h : Cmp.blt b (proj z) = true
+      · rw [ite_eq_left h] at hy
+        dsimp only at hy
+        rcases List.mem_cons.mp hy with hy' | hy'
+        · rw [hy']; exact h
+        · exact ih y hy'
+      · rw [ite_eq_right (by simpa using h)] at hy
+        simp at hy
+
+/-- Everything the equal scan takes has key exactly `b`. -/
+theorem splitEqualRev_fst_beq (proj : α → β) (b : β) (Br : List α) :
+    ∀ y ∈ (splitEqualRev proj b Br).1, Cmp.beq (proj y) b = true := by
+  induction Br with
+  | nil => intro y hy; rw [splitEqualRev_nil] at hy; simp at hy
+  | cons z zs ih =>
+      intro y hy
+      rw [splitEqualRev_cons] at hy
+      by_cases h : Cmp.beq (proj z) b = true
+      · rw [ite_eq_left h] at hy
+        dsimp only at hy
+        rcases List.mem_cons.mp hy with hy' | hy'
+        · rw [hy']; exact h
+        · exact ih y hy'
+      · rw [ite_eq_right (by simpa using h)] at hy
+        simp at hy
+
+/-- Where the left scan stops, the key is no longer strictly above `b`, so it is at most
+`b`. -/
+theorem splitAboveRev_snd_head_ble {proj : α → β} {b : β} :
+    ∀ {Ar : List α} {y : α} {ys : List α}, (splitAboveRev proj b Ar).2 = y :: ys →
+      Cmp.ble (proj y) b = true := by
+  intro Ar
+  induction Ar with
+  | nil => intro y ys h; rw [splitAboveRev_nil] at h; simp at h
+  | cons z zs ih =>
+      intro y ys h
+      rw [splitAboveRev_cons] at h
+      by_cases hz : Cmp.blt b (proj z) = true
+      · rw [ite_eq_left hz] at h
+        dsimp only at h
+        exact ih h
+      · rw [ite_eq_right (by simpa using hz)] at h
+        injection h with h1 _
+        rw [← h1]
+        exact Cmp.blt_eq_false_iff.mp (by simpa using hz)
+
+/-- The equal scan takes at least the head when the head's key is `b`, which is what
+makes every left turn advance. -/
+theorem splitEqualRev_fst_ne_nil {proj : α → β} {b : β} {y : α} {ys : List α}
+    (h : Cmp.beq (proj y) b = true) : (splitEqualRev proj b (y :: ys)).1 ≠ [] := by
+  rw [splitEqualRev_cons, ite_eq_left h]
+  simp
+
+/-- `A`'s maximal suffix of keys strictly above `b`, and what stays in front of it. -/
+def splitAbove (proj : α → β) (b : β) (A : List α) : List α × List α :=
+  let r := splitAboveRev proj b A.reverse
+  (r.2.reverse, r.1.reverse)
+
+/-- `B`'s maximal suffix of keys equal to `b`, and what stays in front of it. -/
+def splitEqual (proj : α → β) (b : β) (B : List α) : List α × List α :=
+  let r := splitEqualRev proj b B.reverse
+  (r.2.reverse, r.1.reverse)
+
+theorem splitAbove_append (proj : α → β) (b : β) (A : List α) :
+    (splitAbove proj b A).1 ++ (splitAbove proj b A).2 = A := by
+  show (splitAboveRev proj b A.reverse).2.reverse ++
+      (splitAboveRev proj b A.reverse).1.reverse = A
+  rw [← List.reverse_append, splitAboveRev_append, List.reverse_reverse]
+
+theorem splitEqual_append (proj : α → β) (b : β) (B : List α) :
+    (splitEqual proj b B).1 ++ (splitEqual proj b B).2 = B := by
+  show (splitEqualRev proj b B.reverse).2.reverse ++
+      (splitEqualRev proj b B.reverse).1.reverse = B
+  rw [← List.reverse_append, splitEqualRev_append, List.reverse_reverse]
+
+/-- The suffix the left scan peels off is strictly above `b`. -/
+theorem splitAbove_snd_blt (proj : α → β) (b : β) (A : List α) :
+    ∀ y ∈ (splitAbove proj b A).2, Cmp.blt b (proj y) = true := by
+  intro y hy
+  have hy' : y ∈ (splitAboveRev proj b A.reverse).1 := by
+    have := List.mem_reverse.mp hy
+    simpa [splitAbove] using this
+  exact splitAboveRev_fst_blt proj b A.reverse y hy'
+
+/-- The suffix the equal scan peels off has key exactly `b`. -/
+theorem splitEqual_snd_beq (proj : α → β) (b : β) (B : List α) :
+    ∀ y ∈ (splitEqual proj b B).2, Cmp.beq (proj y) b = true := by
+  intro y hy
+  have hy' : y ∈ (splitEqualRev proj b B.reverse).1 := by
+    have := List.mem_reverse.mp hy
+    simpa [splitEqual] using this
+  exact splitEqualRev_fst_beq proj b B.reverse y hy'
+
+/-- Decomposing the front of `A` at the left scan's stopping point gives the last key it
+kept, which is at most `b`. -/
+theorem splitAbove_fst_le_last {proj : α → β} {b : β} {A ys : List α} {z : α}
+    (h : (splitAbove proj b A).1 = ys ++ [z]) : Cmp.ble (proj z) b = true := by
+  have h2 : (splitAboveRev proj b A.reverse).2 = z :: ys.reverse := by
+    have hcongr := congrArg List.reverse h
+    simpa [splitAbove, List.reverse_append] using hcongr
+  exact splitAboveRev_snd_head_ble h2
+
+/-- The last key the left scan keeps, when the scan keeps anything. -/
+theorem splitAbove_fst_le_of_getLast {proj : α → β} {b : β} {A : List α} {z : α}
+    (hz : (splitAbove proj b A).1.getLast? = some z) : Cmp.ble (proj z) b = true := by
+  obtain ⟨ys, hys⟩ := List.getLast?_eq_some_iff.mp hz
+  exact splitAbove_fst_le_last hys
+
+/-- The equal scan of `B0 ++ [z]` peels off something as soon as `z`'s key is `b`. -/
+theorem splitEqual_snd_ne_nil {proj : α → β} {b : β} {B0 : List α} {z : α}
+    (h : Cmp.beq (proj z) b = true) : (splitEqual proj b (B0 ++ [z])).2 ≠ [] := by
+  have hrev : (splitEqualRev proj b (B0 ++ [z]).reverse).1 ≠ [] := by
+    have hr : (B0 ++ [z]).reverse = z :: B0.reverse := by
+      rw [List.reverse_append, List.reverse_singleton, List.singleton_append]
+    rw [hr]
+    exact splitEqualRev_fst_ne_nil h
+  intro hnil
+  have hz0 : (splitEqualRev proj b (B0 ++ [z]).reverse).1 = [] := by
+    have h1 : (splitEqualRev proj b (B0 ++ [z]).reverse).1.reverse = [] := by
+      simpa [splitEqual] using hnil
+    rw [← List.reverse_reverse (splitEqualRev proj b (B0 ++ [z]).reverse).1, h1,
+      List.reverse_nil]
+  exact hrev hz0
+
 end Tcs
