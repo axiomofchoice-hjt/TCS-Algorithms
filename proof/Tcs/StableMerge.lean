@@ -1230,4 +1230,44 @@ theorem scrollLeft_spec (proj : α → β) (fuel : Nat) :
                       (B2 := B2r.reverse) hA2gtB' hA1B2]
                   simp only [List.append_assoc]
 
+/-! ## `inplace_merge_with_rotation` -/
+
+/-- C++'s `inplace_merge_with_rotation`: merge the adjacent runs `[first, mid)` and
+`[mid, last)` of `l`, choosing the scrolling direction by which run is shorter - the
+left one scrolls right when it is shorter, otherwise the right one scrolls left. -/
+def mergeByRotationStable (proj : α → β) (l : List α) (first mid last : Nat) : List α :=
+  let A := (l.drop first).take (mid - first)
+  let B := (l.drop mid).take (last - mid)
+  let P := l.take first
+  let Q := l.drop last
+  if mid - first < last - mid then scrollRight proj (A.length + B.length) P A B ++ Q
+  else P ++ scrollLeft proj (A.length + B.length) A B Q
+
+/-- **`inplace_merge_with_rotation` is the stable merge of its two runs**: the range
+`[first, last)` comes out as `mergeTwo` of the two runs, and everything outside it is
+untouched. Whichever direction the C++ picks, the result is the same. -/
+theorem mergeByRotationStable_spec (proj : α → β) {l : List α} {first mid last : Nat}
+    (hA : Sorted (KeyLe proj) ((l.drop first).take (mid - first)))
+    (hB : Sorted (KeyLe proj) ((l.drop mid).take (last - mid))) :
+    mergeByRotationStable proj l first mid last
+      = l.take first ++ mergeTwo proj ((l.drop first).take (mid - first))
+          ((l.drop mid).take (last - mid)) ++ l.drop last := by
+  unfold mergeByRotationStable
+  by_cases h : mid - first < last - mid
+  · rw [ite_eq_left h]
+    have hs := scrollRight_spec proj
+      (((l.drop first).take (mid - first)).length +
+        ((l.drop mid).take (last - mid)).length)
+      (l.take first) ((l.drop first).take (mid - first))
+      ((l.drop mid).take (last - mid)) (Nat.le_refl _) hA hB
+    rw [hs]
+  · rw [ite_eq_right (by simpa using h)]
+    have hs := scrollLeft_spec proj
+      (((l.drop first).take (mid - first)).length +
+        ((l.drop mid).take (last - mid)).length)
+      ((l.drop first).take (mid - first)) ((l.drop mid).take (last - mid))
+      (l.drop last) (Nat.le_refl _) hA hB
+    rw [hs]
+    simp only [List.append_assoc]
+
 end Tcs
