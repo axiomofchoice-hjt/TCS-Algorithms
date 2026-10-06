@@ -229,4 +229,185 @@ theorem mergeTwo_stableSort (proj : α → β) {A B : List α}
   ⟨mergeTwo_sorted proj A B hA hB, mergeTwo_perm proj A B, fun k => by
     rw [mergeTwo_keyFilter proj k A B hA hB, keyFilter_append]⟩
 
+/-! ## `stable_unique_limit`
+
+The C++ routine has two overloads. The three-argument one reorders a *sorted* range so
+that the first occurrence of each distinct key comes first, up to a limit; the
+four-argument one does the same for two adjacent sorted runs at once, using
+`inplace_merge_with_rotation` in the middle.
+
+The model is the loop itself. `picked` is the buffer of kept elements, which the C++
+holds contiguously immediately before the position it scans (so `*(right - 1)` is the
+last kept element), and the closing `rotate(first, left, right)` brings that buffer to
+the front - which is why the model returns it first, followed by the skipped elements
+in their relative order. -/
+
+/-- The pick test of C++'s `stable_unique_limit` loop: keep `x` while fewer than `max`
+elements have been kept and `x`'s key differs from the key of the last kept element -
+the C++ test `len < max && (left == right || proj(*(right - 1)) != proj(*iter))`, with
+`left == right` (an empty buffer) read off `getLast?`. -/
+def keepUnique (proj : α → β) (max : Nat) (picked : List α) (x : α) : Bool :=
+  (picked.length < max) && (match picked.getLast? with
+    | none => true
+    | some y => !Cmp.beq (proj y) (proj x))
+
+/-- C++'s `stable_unique_limit(first, last, max)` loop. -/
+def uniqueLimitAux (proj : α → β) (max : Nat) : List α → List α → List α × List α
+  | picked, [] => (picked, [])
+  | picked, x :: xs =>
+      if keepUnique proj max picked x then
+        uniqueLimitAux proj max (picked ++ [x]) xs
+      else
+        let r := uniqueLimitAux proj max picked xs
+        (r.1, x :: r.2)
+
+theorem uniqueLimitAux_nil (proj : α → β) (max : Nat) (picked : List α) :
+    uniqueLimitAux proj max picked [] = (picked, []) := rfl
+
+theorem uniqueLimitAux_cons (proj : α → β) (max : Nat) (picked : List α) (x : α)
+    (xs : List α) :
+    uniqueLimitAux proj max picked (x :: xs) =
+      if keepUnique proj max picked x then uniqueLimitAux proj max (picked ++ [x]) xs
+      else (let r := uniqueLimitAux proj max picked xs; (r.1, x :: r.2)) := rfl
+
+/-- C++'s `stable_unique_limit(first, last, max)` on a sorted range: the kept elements
+followed by the skipped ones. -/
+def uniqueLimit (proj : α → β) (max : Nat) (l : List α) : List α × List α :=
+  uniqueLimitAux proj max [] l
+
+/-- The keys of a list are pairwise different. -/
+def KeysNodup (proj : α → β) (l : List α) : Prop :=
+  l.Pairwise fun x y => Cmp.beq (proj x) (proj y) = false
+
+/-- In a sorted list nothing exceeds the last element. -/
+theorem keyLe_getLast {proj : α → β} {l : List α} {z : α}
+    (hs : Sorted (KeyLe proj) l) (hz : l.getLast? = some z) : ∀ y ∈ l, KeyLe proj y z := by
+  obtain ⟨ys, rfl⟩ := List.getLast?_eq_some_iff.mp hz
+  intro y hy
+  have hs' : (ys ++ [z]).Pairwise (KeyLe proj) := hs
+  rw [List.pairwise_append] at hs'
+  rcases List.mem_append.mp hy with hy' | hy'
+  · exact hs'.2.2 y hy' z (by simp)
+  · rw [List.mem_singleton] at hy'
+    subst hy'
+    exact Cmp.ble_refl _
+
+/-- A successful pick test keeps the buffer's keys pairwise different. Under
+sortedness the last kept element already compares *strictly* below `x`, so testing
+`beq` against the last element is not only necessary but sufficient - which is exactly
+why the C++ loop may compare against `*(right - 1)` alone. -/
+theorem keepUnique_keysNodup {proj : α → β} {max : Nat} {picked : List α} {x : α}
+    (hs : Sorted (KeyLe proj) picked) (hn : KeysNodup proj picked)
+    (hle : ∀ y ∈ picked, KeyLe proj y x) (hk : keepUnique proj max picked x = true) :
+    KeysNodup proj (picked ++ [x]) := by
+  have hnot : ∀ y, picked.getLast? = some y → Cmp.beq (proj y) (proj x) = false := by
+    intro y hy
+    cases hb : Cmp.beq (proj y) (proj x) with
+    | false => rfl
+    | true =>
+        rw [keepUnique] at hk
+        simp only [hy] at hk
+        rw [hb] at hk
+        simp at hk
+  rw [KeysNodup, List.pairwise_append]
+  refine ⟨hn, List.pairwise_singleton _ _, ?_⟩
+  intro a ha b hb
+  rw [List.mem_singleton] at hb
+  rw [hb]
+  cases hl : picked.getLast? with
+  | none =>
+      rw [List.getLast?_eq_none_iff] at hl
+      subst hl
+      simp at ha
+  | some y =>
+      have hy : y ∈ picked := by
+        obtain ⟨ys, hys⟩ := List.getLast?_eq_some_iff.mp hl
+        rw [hys]
+        exact List.mem_append_right _ (by simp)
+      have hay : Cmp.ble (proj a) (proj y) = true := keyLe_getLast hs hl a ha
+      have hyx : Cmp.ble (proj y) (proj x) = true := hle y hy
+      have hxy : Cmp.ble (proj x) (proj y) = false := by
+        cases h : Cmp.ble (proj x) (proj y) with
+        | false => rfl
+        | true =>
+            have hb : Cmp.beq (proj y) (proj x) = true := by simp [Cmp.beq, hyx, h]
+            rw [hnot y hl] at hb
+            exact absurd hb (by simp)
+      have hxa : Cmp.ble (proj x) (proj a) = false := by
+        cases h : Cmp.ble (proj x) (proj a) with
+        | false => rfl
+        | true =>
+            have hxy' : Cmp.ble (proj x) (proj y) = true := Cmp.ble_trans h hay
+            rw [hxy] at hxy'
+            exact absurd hxy' (by simp)
+      simp [Cmp.beq, hxa]
+
+/-- The accumulator invariant of the loop: the buffer is sorted and has pairwise
+different keys, the part still to be scanned is sorted, and no kept key exceeds a key
+still to be scanned. The last component is what makes `*(right - 1)` sufficient. -/
+def UniqueInv (proj : α → β) (picked l : List α) : Prop :=
+  Sorted (KeyLe proj) picked ∧ KeysNodup proj picked ∧ Sorted (KeyLe proj) l ∧
+    ∀ y ∈ picked, ∀ z ∈ l, KeyLe proj y z
+
+/-- **The buffer `stable_unique_limit` builds is sorted and its keys are pairwise
+different** - which is what lets the rest of the pipeline use it as lane labels. -/
+theorem uniqueLimitAux_sorted_keysNodup (proj : α → β) (max : Nat) :
+    ∀ picked l : List α, UniqueInv proj picked l →
+      Sorted (KeyLe proj) (uniqueLimitAux proj max picked l).1 ∧
+        KeysNodup proj (uniqueLimitAux proj max picked l).1 := by
+  intro picked l
+  induction l generalizing picked with
+  | nil => intro h; rw [uniqueLimitAux_nil]; exact ⟨h.1, h.2.1⟩
+  | cons x xs ih =>
+      intro h
+      obtain ⟨hps, hpn, hls, hle⟩ := h
+      obtain ⟨hxle, hxs⟩ := (sorted_cons_iff (KeyLe proj) x xs).mp hls
+      rw [uniqueLimitAux_cons]
+      by_cases hk : keepUnique proj max picked x = true
+      · rw [ite_eq_left hk]
+        refine ih (picked ++ [x]) ⟨?_, ?_, hxs, ?_⟩
+        · exact sorted_append hps (sorted_singleton _ _)
+            (fun a ha b hb => by
+              rw [List.mem_singleton] at hb; rw [hb]; exact hle a ha x (by simp))
+        · exact keepUnique_keysNodup hps hpn (fun y hy => hle y hy x (by simp)) hk
+        · intro y hy z hz
+          rcases List.mem_append.mp hy with hy' | hy'
+          · exact hle y hy' z (List.mem_cons_of_mem x hz)
+          · rw [List.mem_singleton] at hy'
+            subst hy'
+            exact hxle z hz
+      · rw [ite_eq_right (by simpa using hk)]
+        dsimp only
+        exact ih picked ⟨hps, hpn, hxs, fun y hy z hz => hle y hy z (List.mem_cons_of_mem x hz)⟩
+
+/-- The loop neither loses nor invents elements. -/
+theorem uniqueLimitAux_perm (proj : α → β) (max : Nat) :
+    ∀ picked l : List α,
+      ((uniqueLimitAux proj max picked l).1 ++ (uniqueLimitAux proj max picked l).2).Perm
+        (picked ++ l) := by
+  intro picked l
+  induction l generalizing picked with
+  | nil => rw [uniqueLimitAux_nil]
+  | cons x xs ih =>
+      rw [uniqueLimitAux_cons]
+      by_cases hk : keepUnique proj max picked x = true
+      · rw [ite_eq_left hk]
+        have h := ih (picked ++ [x])
+        rwa [List.append_assoc, List.singleton_append] at h
+      · rw [ite_eq_right (by simpa using hk)]
+        dsimp only
+        exact (List.perm_middle (l₁ := (uniqueLimitAux proj max picked xs).1)
+            (l₂ := (uniqueLimitAux proj max picked xs).2)).trans
+          ((List.Perm.cons x (ih picked)).trans
+            (List.perm_middle (l₁ := picked) (a := x) (l₂ := xs)).symm)
+
+theorem uniqueLimit_perm (proj : α → β) (max : Nat) (l : List α) :
+    ((uniqueLimit proj max l).1 ++ (uniqueLimit proj max l).2).Perm l :=
+  (uniqueLimitAux_perm proj max [] l).trans (by rw [List.nil_append])
+
+theorem uniqueLimit_sorted_keysNodup (proj : α → β) (max : Nat) {l : List α}
+    (hl : Sorted (KeyLe proj) l) :
+    Sorted (KeyLe proj) (uniqueLimit proj max l).1 ∧ KeysNodup proj (uniqueLimit proj max l).1 :=
+  uniqueLimitAux_sorted_keysNodup proj max [] l ⟨sorted_nil _, List.Pairwise.nil, hl, by simp⟩
+
 end Tcs

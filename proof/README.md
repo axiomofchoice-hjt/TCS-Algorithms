@@ -105,10 +105,31 @@ Proved so far:
   branch for every input of length ≤ 24).
 * `mergeTwo_stableSort` — the reference merge `mergeTwo` satisfies the same
   contract on two sorted runs, i.e. it takes from the left run exactly on ties.
+* `uniqueLimit_sorted_keysNodup` — the buffer the three-argument
+  `stable_unique_limit` builds is sorted and its keys are pairwise different, and
+  `uniqueLimit_perm` says nothing is lost. The model (`keepUnique`/`uniqueLimitAux`/
+  `uniqueLimit`) is the C++ loop, with the buffer held in the accumulator that the
+  C++ keeps contiguously just before the scanned position: `UniqueInv` records that
+  the buffer's last key is the largest kept key, which is what makes the C++
+  comparison against `*(right - 1)` sufficient.
 
-Still to model: `stable_unique_limit`, `align_blocks_limit`, the label-carrying
-`block_selection_sort`/`block_merge_pairwise`/`inplace_merge_with_rotation_indexed`
-phases, and the assembly.
+Cross-checked against the C++ (element-wise, with original indices attached):
+
+* the three-argument overload's net effect is exactly "the first occurrence of each
+  of the first `max` distinct keys, then the skipped elements in order" — 0 violations
+  in 19,680 randomized sorted runs;
+* the four-argument overload returns the same buffer, but its remainder is *not* in
+  the stable order (9,280/19,680 differ), so the later stages do real work rather than
+  a formality;
+* per-key order is preserved by `stable_unique_limit`, `align_blocks_limit`,
+  `block_merge_pairwise`, `bubble_sort` and both rotation merges, and only
+  `block_selection_sort` reorders equal keys (9,145/26,400 cases), which the pairwise
+  merge then repairs — so the invariant to carry through the block phase is exactly
+  `∀ k, keyFilter proj k state = keyFilter proj k input`.
+
+Still to model: the four-argument `stable_unique_limit`, `align_blocks_limit`, the
+label-carrying `block_selection_sort`/`block_merge_pairwise`/
+`inplace_merge_with_rotation_indexed` phases, and the assembly.
 
 ## Running time
 
