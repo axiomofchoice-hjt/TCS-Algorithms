@@ -45,58 +45,33 @@ theorem um_am_gm : {a b : Nat} → 4 * a * b ≤ (a + b) * (a + b)
       Nat.mul_one, Nat.add_assoc, Nat.add_left_comm, Nat.add_le_add_iff_left]
       using Nat.add_le_add_right (@um_am_gm a b) 4
 
-/-- Cancel a positive common factor on the right. -/
-theorem um_mul_lt_cancel_right {a b c : Nat} (h : b * a < c * a) : b < c := by
-  rw [Nat.mul_comm b a, Nat.mul_comm c a] at h
-  by_cases ha : a = 0
-  · subst a
-    simp only [Nat.zero_mul] at h
-    exact absurd h (Nat.lt_irrefl 0)
-  · exact Nat.lt_of_not_le (fun hcb => absurd (Nat.mul_le_mul_left a hcb) (Nat.not_le_of_lt h))
+/-- Cancel a common factor on the right.  This is a constructive replacement for core's
+`Nat.lt_of_mul_lt_mul_right`, which depends on `Classical.choice`. -/
+theorem um_mul_lt_cancel_right {a b c : Nat} (h : b * a < c * a) : b < c :=
+  Nat.lt_of_not_le fun hcb => absurd (Nat.mul_le_mul_right a hcb) (Nat.not_le_of_lt h)
 
 /-- One Newton step from a positive guess already lands above `sqrt n`.  This is the
 invariant that keeps the iteration from undershooting. -/
 theorem um_lt_sq_div {g n m s : Nat} (hg : 0 < g) (hm : m = s / 2) (hs : s = g + n / g) :
     n < (m + 1) * (m + 1) := by
-  have hmod : s % 2 ≤ 1 := by
-    have h := Nat.mod_lt s (by decide : 0 < 2)
-    omega
-  have hdm : 2 * (s / 2) + s % 2 = s := Nat.div_add_mod s 2
-  have h1 : s + 1 ≤ 2 * (m + 1) := by
-    rw [hm]
-    omega
-  have h2 : g * (s + 1) ≤ g * (2 * (m + 1)) := Nat.mul_le_mul_left g h1
-  have h3 : g * (s + 1) = g * g + g * (n / g) + g := by
-    rw [hs]
-    simp only [Nat.mul_add, Nat.mul_one]
   have h4 : n < g * (n / g) + g := by
     have h := Nat.lt_mul_div_succ n hg
     rw [Nat.mul_add, Nat.mul_one] at h
     exact h
-  have h5 : g * g + n < g * (s + 1) := by
-    rw [h3]
-    omega
-  have h6 : g * (2 * (m + 1)) = (m + 1) * (2 * g) := by
-    simp only [Nat.mul_left_comm, Nat.mul_comm]
   have hstep : g * g + n < (m + 1) * (2 * g) := by
-    rw [← h6]
-    exact Nat.lt_of_lt_of_le h5 h2
-  have ham := um_am_gm (a := g * g) (b := n)
-  have hsq := Nat.mul_self_lt_mul_self hstep
-  have h22 : (2 * g) * (2 * g) = 4 * (g * g) := by
-    rw [Nat.mul_assoc, Nat.mul_left_comm g 2 g, ← Nat.mul_assoc 2 2 (g * g)]
+    calc g * g + n < g * (s + 1) := by
+          rw [hs]; simp only [Nat.mul_add, Nat.mul_one]; omega
+      _ ≤ g * (2 * (m + 1)) := Nat.mul_le_mul_left g (by omega)
+      _ = (m + 1) * (2 * g) := by simp only [Nat.mul_left_comm, Nat.mul_comm]
   have hk : n * ((2 * g) * (2 * g)) ≤ (g * g + n) * (g * g + n) := by
     have heq : n * ((2 * g) * (2 * g)) = 4 * (g * g) * n := by
-      rw [h22, Nat.mul_comm]
+      rw [Nat.mul_mul_mul_comm 2 g 2 g, Nat.mul_comm n]
     rw [heq]
-    exact ham
+    exact um_am_gm (a := g * g) (b := n)
   have hgoal : n * ((2 * g) * (2 * g)) < ((m + 1) * (m + 1)) * ((2 * g) * (2 * g)) := by
     refine Nat.lt_of_le_of_lt hk ?_
-    have heq : ((m + 1) * (2 * g)) * ((m + 1) * (2 * g)) =
-        ((m + 1) * (m + 1)) * ((2 * g) * (2 * g)) :=
-      Nat.mul_mul_mul_comm (m + 1) (2 * g) (m + 1) (2 * g)
-    rw [← heq]
-    exact hsq
+    rw [← Nat.mul_mul_mul_comm (m + 1) (2 * g) (m + 1) (2 * g)]
+    exact Nat.mul_self_lt_mul_self hstep
   exact um_mul_lt_cancel_right hgoal
 
 /-- The Newton iteration never overshoots `n`. -/
@@ -701,38 +676,20 @@ theorem um_sq_succ (bs : Nat) : (bs + 1) * (bs + 1) = bs * (bs + 2) + 1 := by
   rw [Nat.add_mul, Nat.mul_add bs bs 1, Nat.mul_one, Nat.one_mul, Nat.mul_add bs bs 2]
   omega
 
-/-- `(bs + 2) ^ 2 = bs * bs + 4 * bs + 4`. -/
-theorem um_sq_add_two (bs : Nat) : (bs + 2) * (bs + 2) = bs * bs + 4 * bs + 4 := by
-  rw [Nat.add_mul, Nat.mul_add bs bs 2, Nat.mul_add 2 bs 2]
-  omega
-
-/-- `(3 * bs + 1) ^ 2 = 9 * (bs * bs) + 6 * bs + 1`. -/
-theorem um_sq_three_add_one (bs : Nat) :
-    (3 * bs + 1) * (3 * bs + 1) = 9 * (bs * bs) + 6 * bs + 1 := by
-  rw [Nat.add_mul, Nat.mul_add (3 * bs) (3 * bs) 1, Nat.mul_one, Nat.one_mul,
-    Nat.mul_mul_mul_comm 3 bs 3 bs]
-  omega
-
-/-- `(3 * bs) ^ 2 = 9 * (bs * bs)`. -/
-theorem um_sq_three (bs : Nat) : (3 * bs) * (3 * bs) = 9 * (bs * bs) :=
-  Nat.mul_mul_mul_comm 3 bs 3 bs
-
 theorem um_sq_add_two_le {bs n : Nat} (hbs : 1 ≤ bs) (h1 : bs * bs ≤ n) (h2 : bs ≤ n) :
     (bs + 2) * (bs + 2) ≤ 9 * n := by
-  rw [um_sq_add_two]
-  have h4 : 4 * bs ≤ 4 * n := Nat.mul_le_mul_left 4 h2
+  rw [Nat.add_mul, Nat.mul_add bs bs 2, Nat.mul_add 2 bs 2]
   omega
 
 theorem um_sq_three_add_one_le {bs n : Nat} (hbs : 1 ≤ bs) (h1 : bs * bs ≤ n) :
     (3 * bs + 1) * (3 * bs + 1) ≤ 16 * n := by
-  rw [um_sq_three_add_one]
-  have hbssq : bs ≤ bs * bs := by
-    have h := Nat.mul_le_mul_left bs hbs
-    simpa using h
+  rw [Nat.add_mul, Nat.mul_add (3 * bs) (3 * bs) 1, Nat.mul_one, Nat.one_mul,
+    Nat.mul_mul_mul_comm 3 bs 3 bs]
+  have := Nat.le_mul_self bs
   omega
 
 theorem um_sq_three_le {bs n : Nat} (h1 : bs * bs ≤ n) : (3 * bs) * (3 * bs) ≤ 9 * n := by
-  rw [um_sq_three]
+  rw [Nat.mul_mul_mul_comm 3 bs 3 bs]
   exact Nat.mul_le_mul_left 9 h1
 
 set_option maxHeartbeats 1000000 in

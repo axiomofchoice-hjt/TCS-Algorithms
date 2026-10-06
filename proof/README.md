@@ -209,10 +209,18 @@ Conventions shared by every proof module (`Tcs/Spec.lean` states them):
 - `#print axioms` for every public theorem reports only `[propext, Quot.sound]`,
   with no `Classical.choice`;
 - `check.sh` demands a clean rebuild, a per-file type check with
-  `-DwarningAsError=true`, and no `sorryAx` in the environment;
+  `-DwarningAsError=true`, no `sorryAx` in the environment, and — via
+  `AxiomAudit.lean` — that no declaration in the `Tcs` namespace reaches
+  `Classical.choice`;
 - the cost model's charging rules are the C++ operations' own (see "Running time");
   `Nat.sqrt` bounds are reproved constructively in `Cost/UnstableMerge.lean`, because
-  core's `Nat.sqrt_le` and `Nat.lt_succ_sqrt` both pull in `Classical.choice`;
+  core's `Nat.sqrt_le` and `Nat.lt_succ_sqrt` both pull in `Classical.choice` — as do
+  `List.take_add` (why `Cost/Bfprt.lean` keeps its own `take_add_groups`) and
+  `Nat.lt_of_mul_lt_mul_left`/`_right` (why `Cost/UnstableMerge.lean` keeps
+  `um_mul_lt_cancel_right`). A further trap is that `omega` applied to a goal whose
+  context still holds list hypotheses can pick up `Classical.choice`; the arithmetic is
+  therefore factored into pure-`Nat` helper lemmas, and the axiom audit below is run
+  after every change;
 - beyond the proofs, the models were cross-checked behaviourally against the C++
   implementations: exhaustive sweeps over all small inputs and random larger ones
   (two independent oracles: a sorted copy and a direct count); for BFPRT, 400 shared
@@ -241,7 +249,8 @@ proof/
 ├── Tcs/Cost/Bfprt.lean         # Cost of BFPRT, including linearity
 ├── Tcs/Cost/Merge.lean         # Cost of the merge primitives
 ├── Tcs/Cost/UnstableMerge.lean # Cost of the whole merge pipeline
+├── AxiomAudit.lean             # `#print axioms` sweep over all `Tcs` declarations
 ├── lakefile.toml               # Lake package definition
 ├── lean-toolchain              # Pinned Lean toolchain
-└── check.sh                    # Proof-completeness audit (no sorry / sorryAx)
+└── check.sh                    # Audit: rebuild, per-file strict check, no sorry, no choice
 ```

@@ -34,16 +34,8 @@ def rot (l : List α) (k : Nat) : List α := l.drop k ++ l.take k
 theorem rot_perm (l : List α) (k : Nat) : (rot l k).Perm l :=
   (List.perm_append_comm).trans (List.Perm.of_eq (List.take_append_drop k l))
 
-theorem rot_length (l : List α) (k : Nat) : (rot l k).length = l.length :=
-  (rot_perm l k).length_eq
 
-theorem rot_zero (l : List α) : rot l 0 = l := by simp [rot]
 
-/-- Rotating a concatenation at the join simply swaps the two halves. This is the
-alignment step of `inplace_merge_with_rotation`: the block of right-run elements
-below the current left-run element is rotated in front of that element. -/
-theorem rot_concat (A B : List α) : rot (A ++ B) A.length = B ++ A := by
-  rw [rot, List.drop_append_length, List.take_append_length]
 
 /-- `std::ranges::rotate(first + lo, first + mid, first + hi)` inside a list: only
 the sub-range `[lo, hi)` is touched, and it is rotated left by `mid - lo`. -/
@@ -77,28 +69,7 @@ theorem rotRange_append (X A B Y : List α) :
       List.take_append_of_le_length (l₁ := A ++ B) (l₂ := Y) (i := A.length) (by simp),
       List.take_append_length]
 
-/-- Rotating with the split at the left end changes nothing. -/
-theorem rotRange_self_left {l : List α} {lo hi : Nat} (hlo : lo ≤ hi) (_hlen : hi ≤ l.length) :
-    rotRange l lo lo hi = l := by
-  have h : (l.drop lo).take (hi - lo) ++ l.drop hi = l.drop lo := by
-    have h1 : (l.drop lo).drop (hi - lo) = l.drop hi := by
-      rw [List.drop_drop, Nat.add_sub_of_le hlo]
-    rw [← h1]
-    exact List.take_append_drop (hi - lo) (l.drop lo)
-  unfold rotRange
-  rw [Nat.sub_self, List.take_zero, List.append_nil, List.append_assoc, h, List.take_append_drop]
 
-/-- Rotating with the split at the right end changes nothing. -/
-theorem rotRange_self_right {l : List α} {lo hi : Nat} (hlo : lo ≤ hi) (_hlen : hi ≤ l.length) :
-    rotRange l lo hi hi = l := by
-  have h : (l.drop lo).take (hi - lo) ++ l.drop hi = l.drop lo := by
-    have h1 : (l.drop lo).drop (hi - lo) = l.drop hi := by
-      rw [List.drop_drop, Nat.add_sub_of_le hlo]
-    rw [← h1]
-    exact List.take_append_drop (hi - lo) (l.drop lo)
-  unfold rotRange
-  rw [Nat.sub_self, List.take_zero, List.append_nil, List.append_assoc, h,
-    List.take_append_drop]
 
 /-- Constructive replacement for core's `drop_take'`, whose proof uses
 `Classical.choice`: dropping `i` from the first `j` elements is the same as taking
@@ -154,6 +125,7 @@ concatenation. -/
 def AllLe {α : Type u} (R : α → α → Prop) (xs ys : List α) : Prop :=
   ∀ x ∈ xs, ∀ y ∈ ys, R x y
 
+
 theorem allLe_append_right {R : α → α → Prop} {xs ys zs : List α} :
     AllLe R xs (ys ++ zs) ↔ AllLe R xs ys ∧ AllLe R xs zs := by
   unfold AllLe
@@ -178,29 +150,7 @@ theorem allLe_append_left {R : α → α → Prop} {xs ys zs : List α} :
     · exact h₁ x hx' y hy
     · exact h₂ x hx' y hy
 
-theorem allLe_cons_left {R : α → α → Prop} {x : α} {xs zs : List α} :
-    AllLe R (x :: xs) zs ↔ (∀ y ∈ zs, R x y) ∧ AllLe R xs zs := by
-  unfold AllLe
-  constructor
-  · intro h
-    exact ⟨fun y hy => h x (List.mem_cons_self) y hy,
-      fun z hz y hy => h z (List.mem_cons_of_mem _ hz) y hy⟩
-  · rintro ⟨h₁, h₂⟩ z hz y hy
-    rcases List.mem_cons.mp hz with rfl | hz'
-    · exact h₁ y hy
-    · exact h₂ z hz' y hy
 
-theorem allLe_cons_right {R : α → α → Prop} {x : α} {ys zs : List α} :
-    AllLe R ys (x :: zs) ↔ (∀ z ∈ ys, R z x) ∧ AllLe R ys zs := by
-  unfold AllLe
-  constructor
-  · intro h
-    exact ⟨fun z hz => h z hz x (List.mem_cons_self),
-      fun z hz y hy => h z hz y (List.mem_cons_of_mem _ hy)⟩
-  · rintro ⟨h₁, h₂⟩ z hz y hy
-    rcases List.mem_cons.mp hy with rfl | hy'
-    · exact h₁ z hz
-    · exact h₂ z hz y hy'
 
 theorem allLe_nil_left {R : α → α → Prop} {ys : List α} : AllLe R [] ys :=
   fun _ hx => absurd hx List.not_mem_nil
@@ -208,10 +158,6 @@ theorem allLe_nil_left {R : α → α → Prop} {ys : List α} : AllLe R [] ys :
 theorem allLe_nil_right {R : α → α → Prop} {xs : List α} : AllLe R xs [] :=
   fun _ _ _ hy => absurd hy List.not_mem_nil
 
-theorem allLe_of_sorted_append {R : α → α → Prop} {xs ys : List α}
-    (h : Sorted R (xs ++ ys)) : AllLe R xs ys := by
-  unfold Sorted at h
-  exact (List.pairwise_append.mp h).2.2
 
 theorem sorted_append_iff {R : α → α → Prop} {xs ys : List α} :
     Sorted R (xs ++ ys) ↔ Sorted R xs ∧ Sorted R ys ∧ AllLe R xs ys := by
@@ -222,13 +168,7 @@ theorem sorted_append {R : α → α → Prop} {xs ys : List α} (hx : Sorted R 
     (hxy : AllLe R xs ys) : Sorted R (xs ++ ys) :=
   sorted_append_iff.mpr ⟨hx, hy, hxy⟩
 
-theorem sorted_of_sorted_append_left {R : α → α → Prop} {xs ys : List α}
-    (h : Sorted R (xs ++ ys)) : Sorted R xs :=
-  (sorted_append_iff.mp h).1
 
-theorem sorted_of_sorted_append_right {R : α → α → Prop} {xs ys : List α}
-    (h : Sorted R (xs ++ ys)) : Sorted R ys :=
-  (sorted_append_iff.mp h).2.1
 
 /-! ## Range predicates -/
 
@@ -236,9 +176,6 @@ theorem sorted_of_sorted_append_right {R : α → α → Prop} {xs ys : List α}
 def SortedOn (proj : α → β) (l : List α) (lo hi : Nat) : Prop :=
   Sorted (KeyLe proj) ((l.drop lo).take (hi - lo))
 
-/-- Every element of `[lo, hi)` is at least `proj x`. -/
-def LeOn (proj : α → β) (l : List α) (lo hi : Nat) (x : α) : Prop :=
-  ∀ y ∈ (l.drop lo).take (hi - lo), KeyLe proj x y
 
 /-! ## The pure two-run merge -/
 
@@ -287,15 +224,7 @@ theorem mergeTwo_all (proj : α → β) {P : α → Prop} :
     · exact hy z (List.mem_cons_self)
     · exact ih hx (fun w hw => hy w (List.mem_cons_of_mem _ hw)) z hz'
 
-theorem mergeTwo_allLe_right {proj : α → β} {R : α → α → Prop} {zs xs ys : List α}
-    (hx : AllLe R zs xs) (hy : AllLe R zs ys) : AllLe R zs (mergeTwo proj xs ys) :=
-  fun z hz w hw =>
-    mergeTwo_all proj xs ys (fun w hw => hx z hz w hw) (fun w hw => hy z hz w hw) w hw
 
-theorem mergeTwo_allLe_left {proj : α → β} {R : α → α → Prop} {xs ys zs : List α}
-    (hx : AllLe R xs zs) (hy : AllLe R ys zs) : AllLe R (mergeTwo proj xs ys) zs :=
-  fun w hw z hz =>
-    mergeTwo_all proj xs ys (fun w hw => hx w hw z hz) (fun w hw => hy w hw z hz) w hw
 
 theorem mergeTwo_sorted (proj : α → β) :
     ∀ xs ys : List α, Sorted (KeyLe proj) xs → Sorted (KeyLe proj) ys →
@@ -797,32 +726,18 @@ theorem mergeSwapLoop_inv (proj : α → β) (l0 : List α) (output first mid la
               have hc : left - output = (left - first) + (right - mid) := by
                 have hh := hcounteq
                 rwa [hout] at hh
-              have hcancel : output + (right - mid) = first := by
-                have h1 : output + ((left - first) + (right - mid)) = left := by
-                  have hh := (Nat.sub_eq_iff_eq_add ho).mp hc
-                  rw [Nat.add_comm] at hh
-                  exact hh.symm
-                have h2 : left = first + (left - first) := (Nat.add_sub_of_le hfirstle).symm
-                have h3 : output + ((left - first) + (right - mid)) = first + (left - first) :=
-                  h1.trans h2
-                have h4 : (output + (right - mid)) + (left - first) = first + (left - first) := by
-                  calc (output + (right - mid)) + (left - first)
-                      = output + ((right - mid) + (left - first)) := Nat.add_assoc _ _ _
-                    _ = output + ((left - first) + (right - mid)) := by
-                          rw [Nat.add_comm (right - mid) (left - first)]
-                    _ = first + (left - first) := h3
-                exact Nat.add_right_cancel h4
-              have hle : last - mid ≤ right - mid := by
-                have hh : output + (last - mid) ≤ output + (right - mid) := by
-                  rw [hcancel]
-                  exact hbufeq
+              have hsum : output + (left - output) = left := Nat.add_sub_of_le ho
+              have hle : left = first + (left - first) := (Nat.add_sub_of_le hfirstle).symm
+              have hge : output + (right - mid) ≤ first := by omega
+              have hlast : last - mid ≤ right - mid := by
+                have hh : output + (last - mid) ≤ output + (right - mid) := by omega
                 exact Nat.add_le_add_iff_left.mp hh
               have hgt : right - mid < last - mid := by
                 have h1 : (right - mid) + 1 ≤ last - mid := by
                   rw [← Nat.sub_add_comm hmidrightle]
                   exact Nat.sub_le_sub_right (Nat.succ_le_of_lt hright) mid
                 exact Nat.lt_of_succ_le h1
-              exact absurd hle (Nat.not_le.mpr hgt)
+              exact absurd hlast (Nat.not_le.mpr hgt)
           have hleftrun : ((Bfprt.swapAt l out right).drop left).take (mid - left) =
               A0.drop (left - first) := by
             rw [Bfprt.swapAt_drop_take_of_lt_of_le (l := l) (i := out) (j := right)
@@ -1156,17 +1071,6 @@ variable {α : Type u} {β : Type v} [Cmp β]
 
 /-! ## Block helpers for the rotation merge -/
 
-/-- From `not (a < b)` conclude `b ≤ a`. The scan of the right-turning branch
-stops on this form. -/
-theorem ble_of_not_blt {a b : β} (h : Cmp.blt a b = false) : Cmp.ble b a = true := by
-  rcases Cmp.ble_total a b with hab | hba
-  · by_cases hba' : Cmp.ble b a = true
-    · exact hba'
-    · have hba'' : Cmp.ble b a = false := by
-        cases hb : Cmp.ble b a <;> simp_all
-      exact absurd (Cmp.blt_of_ble_of_not_ble hab hba'') (by rw [h]; exact Bool.false_ne_true)
-  · exact hba
-
 /-- Extracting a block from a three-part decomposition. -/
 theorem drop_take_of_append {X S Y : List α} {lo hi : Nat} (hX : X.length = lo)
     (hS : S.length = hi - lo) : ((X ++ S ++ Y).drop lo).take (hi - lo) = S := by
@@ -1196,17 +1100,11 @@ theorem allLe_take_right {R : α → α → Prop} {X Y : List α} {n : Nat} (h :
     AllLe R X (Y.take n) :=
   fun x hx z hz => h x hx z (List.mem_of_mem_take hz)
 
-theorem allLe_take_left {R : α → α → Prop} {X Y : List α} {n : Nat} (h : AllLe R X Y) :
-    AllLe R (X.take n) Y :=
-  fun x hx z hz => h x (List.mem_of_mem_take hx) z hz
 
 theorem allLe_drop_right {R : α → α → Prop} {X Y : List α} {n : Nat} (h : AllLe R X Y) :
     AllLe R X (Y.drop n) :=
   fun x hx z hz => h x hx z (mem_of_mem_drop hz)
 
-theorem allLe_drop_left {R : α → α → Prop} {X Y : List α} {n : Nat} (h : AllLe R X Y) :
-    AllLe R (X.drop n) Y :=
-  fun x hx z hz => h x (mem_of_mem_drop hx) z hz
 
 /-- The scan of the left-turning branch, in block form: every element of the first
 `m` elements of the right run is strictly below the pivot. -/
@@ -1341,10 +1239,6 @@ theorem allLe_take_drop_of_sorted {R : α → α → Prop} {B : List α} {m : Na
     List.Pairwise.rel_getElem_of_lt (by omega) (by omega) hs (by omega)
   rwa [hx', hy'] at hrel
 
-/-- Extracting a block with one trailing block. -/
-theorem drop_take_of_append1 {X S Y1 : List α} {lo hi : Nat} (hX : X.length = lo)
-    (hS : S.length = hi - lo) : (((X ++ S) ++ Y1).drop lo).take (hi - lo) = S :=
-  drop_take_of_append (X := X) (S := S) (Y := Y1) (lo := lo) (hi := hi) hX hS
 
 /-- Extracting a block with two trailing blocks. -/
 theorem drop_take_of_append2 {X S Y1 Y2 : List α} {lo hi : Nat} (hX : X.length = lo)
@@ -1545,7 +1439,7 @@ theorem rotInv_step_left {proj : α → β} {l0 l : List α} {first0 last0 first
         exact (Option.some.inj h1).symm
       have hle : KeyLe proj a (l[sp]'(by omega)) := by
         rw [haeq]
-        exact ble_of_not_blt (hstop hsp)
+        exact Cmp.ble_of_not_blt (hstop hsp)
       intro z hz
       have hle' : KeyLe proj a (B[sp - mid]'(by omega)) := by rw [← hBm] at hle; exact hle
       exact allLe_head_drop hsortB (by omega) hle' a (List.mem_singleton_self a) z hz
@@ -1780,7 +1674,7 @@ theorem rotInv_step_right {proj : α → β} {l0 l : List α} {first0 last0 firs
     by_cases hsp : first < sp
     · have hle : KeyLe proj (A[sp - first - 1]'(by omega)) (l[last - 1]'(by omega)) := by
         rw [hAeq hsp]
-        exact ble_of_not_blt (hstop hsp)
+        exact Cmp.ble_of_not_blt (hstop hsp)
       exact allLe_take_last_le hsortA (Nat.sub_pos_of_lt hsp) hmA hle z hz
         (l[last - 1]'(by omega)) (List.mem_singleton_self _)
     · have hsp_eq : sp = first := Nat.le_antisymm (Nat.le_of_not_lt hsp) hsp1

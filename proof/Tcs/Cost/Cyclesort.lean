@@ -38,17 +38,6 @@ open Cyclesort
 
 variable {α : Type u} {β : Type v} [Cmp β]
 
-/-! ## Key comparisons on `Cmp` keys -/
-
-namespace Cmp
-
-/-- A successful strict test excludes equality, so the second branch of
-`destination_range` never fires after the first one did. -/
-theorem beq_eq_false_of_blt {a b : β} (h : blt a b = true) : beq a b = false := by
-  simp [beq, (blt_iff.mp h).2]
-
-end Cmp
-
 /-! ## `destination_range` -/
 
 /-- `destination_range` carrying its cost: `(gt, eq)` are the two counters of the C++
@@ -95,7 +84,7 @@ theorem destRangeC_fst (proj : α → β) : ∀ (l : List α) (k : β),
       · rw [ite_eq_left h]
         dsimp only
         rw [destRangeC_fst proj xs k]
-        have hb : Cmp.beq (proj x) k = false := Cmp.beq_eq_false_of_blt h
+        have hb : Cmp.beq (proj x) k = false := Cmp.not_beq_of_blt h
         rw [List.countP_cons_of_pos (p := fun x => Cmp.blt (proj x) k) h,
           List.countP_cons_of_neg (p := fun x => Cmp.beq (proj x) k) (by simp [hb])]
       · rw [ite_eq_right h]
@@ -363,20 +352,7 @@ theorem innerAuxC_fst (proj : α → β) (n : Nat) :
 
 theorem innerAuxC_size (proj : α → β) (n : Nat) (a : Array α) (it : Nat) (hit : it < a.size) :
     (innerAuxC proj n a it hit).1.size = a.size := by
-  induction n generalizing a it hit with
-  | zero => rfl
-  | succ n ih =>
-      rw [innerAuxC_succ]
-      dsimp only
-      by_cases hIn : InBlock proj a it (proj (a[it]'hit))
-      · rw [dite_eq_left hIn]
-      · rw [dite_eq_right hIn]
-        split
-        · rename_i hfn
-          rfl
-        · rename_i p hfn
-          dsimp only
-          rw [ih, Array.size_swap]
+  rw [innerAuxC_fst, innerAux_size]
 
 /-- One swap drops `unsettledCount` by at least one: `unsettledCount_swap_lt`
 specialised to the partner that the `find_if` scan returns. -/
@@ -531,10 +507,6 @@ abbrev innerC (proj : α → β) (a : Array α) (it : Nat) (hit : it < a.size) :
 theorem innerC_fst (proj : α → β) (a : Array α) (it : Nat) (hit : it < a.size) :
     (innerC proj a it hit).1 = inner proj a it hit :=
   innerAuxC_fst proj (unsettledCount proj a) a it hit
-
-theorem innerC_size (proj : α → β) (a : Array α) (it : Nat) (hit : it < a.size) :
-    (innerC proj a it hit).1.size = a.size :=
-  innerAuxC_size proj (unsettledCount proj a) a it hit
 
 /-! ## The outer `for` -/
 

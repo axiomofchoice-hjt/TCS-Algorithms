@@ -51,6 +51,7 @@
 import Tcs.Cost
 import Tcs.Cost.Sort
 import Tcs.Bfprt
+import Tcs.Merge
 
 namespace Tcs
 namespace Bfprt
@@ -239,32 +240,6 @@ theorem swapAt_getElem?_left (l : List α) {i j : Nat} (hij : i ≠ j) (hi : i <
   rw [dite_eq_left ⟨hi, hj⟩, List.getElem?_set_ne (show j ≠ i by omega),
     List.getElem?_set_self hi, List.getElem?_eq_getElem hj]
 
-/-- Reading a swap away from both indices. -/
-theorem swapAt_getElem?_ne (l : List α) {i j k : Nat} (hi : i < l.length) (hj : j < l.length)
-    (hki : k ≠ i) (hkj : k ≠ j) : (swapAt l i j)[k]? = l[k]? := by
-  unfold swapAt
-  rw [dite_eq_left ⟨hi, hj⟩, List.getElem?_set_ne (show j ≠ k by omega),
-    List.getElem?_set_ne (show i ≠ k by omega)]
-
-/-- A swap of two positions at or above `n` leaves the prefix of length `n` alone. -/
-theorem cost_swapAt_take_of_le (l : List α) {i j n : Nat} (hi : i < l.length) (hj : j < l.length)
-    (hin : n ≤ i) (hjn : n ≤ j) : (swapAt l i j).take n = l.take n := by
-  apply List.ext_getElem?
-  intro k
-  rw [List.getElem?_take, List.getElem?_take]
-  by_cases hk : k < n
-  · rw [ite_eq_left hk, ite_eq_left hk]
-    exact swapAt_getElem?_ne l hi hj (by omega) (by omega)
-  · rw [ite_eq_right hk, ite_eq_right hk]
-
-/-- A swap of two positions below `n` leaves the suffix from `n` alone. -/
-theorem cost_swapAt_drop_of_lt (l : List α) {i j n : Nat} (hi : i < l.length) (hj : j < l.length)
-    (hin : i < n) (hjn : j < n) : (swapAt l i j).drop n = l.drop n := by
-  apply List.ext_getElem?
-  intro k
-  rw [List.getElem?_drop, List.getElem?_drop]
-  exact swapAt_getElem?_ne l hi hj (by omega) (by omega)
-
 /-! ## What one `placeMedian` does -/
 
 /-- `placeMedian` unfolds to the swap of the sorted-group block. -/
@@ -273,12 +248,6 @@ theorem placeMedian_eq (proj : α → β) (i : Nat) (l : List α) :
       swapAt (l.take (5 * i) ++ bubbleSort proj ((l.drop (5 * i)).take 5) ++ l.drop (5 * i + 5))
         i (5 * i + 2) :=
   rfl
-
-/-- A prefix of `5 * i` elements has length `5 * i`. -/
-theorem take_five_mul_length (l : List α) (i : Nat) (h : 5 * i ≤ l.length) :
-    (l.take (5 * i)).length = 5 * i := by
-  rw [List.length_take]
-  omega
 
 /-- A full group of five, sorted, still has length five. -/
 theorem sorted_group_length (proj : α → β) (l : List α) (i : Nat) (h : 5 * i + 5 ≤ l.length) :
@@ -291,41 +260,31 @@ theorem placeMedian_aux_length (proj : α → β) {i : Nat} {l : List α}
     (h : 5 * i + 5 ≤ l.length) :
     (l.take (5 * i) ++ bubbleSort proj ((l.drop (5 * i)).take 5) ++ l.drop (5 * i + 5)).length
       = l.length := by
-  rw [List.length_append, List.length_append, take_five_mul_length l i (by omega),
+  rw [List.length_append, List.length_append, List.length_take_of_le (by omega),
     sorted_group_length proj l i h, List.length_drop]
   omega
 
 /-- `placeMedian` leaves positions below `i` alone. -/
 theorem placeMedian_take (proj : α → β) (i : Nat) (l : List α) (h : 5 * i + 5 ≤ l.length) :
     (placeMedian proj i l).take i = l.take i := by
-  have hlen := placeMedian_aux_length proj (i := i) (l := l) h
-  have hi : i < (l.take (5 * i) ++ bubbleSort proj ((l.drop (5 * i)).take 5)
-      ++ l.drop (5 * i + 5)).length := by rw [hlen]; omega
-  have hj : 5 * i + 2 < (l.take (5 * i) ++ bubbleSort proj ((l.drop (5 * i)).take 5)
-      ++ l.drop (5 * i + 5)).length := by rw [hlen]; omega
   have hswap : (placeMedian proj i l).take i =
       (swapAt (l.take (5 * i) ++ bubbleSort proj ((l.drop (5 * i)).take 5)
         ++ l.drop (5 * i + 5)) i (5 * i + 2)).take i := by rw [placeMedian_eq]
-  rw [hswap, cost_swapAt_take_of_le _ hi hj (Nat.le_refl i) (by omega),
-    List.take_append_of_le_length (by rw [List.length_append, take_five_mul_length l i (by omega),
+  rw [hswap, swapAt_take_of_le (Nat.le_refl i) (by omega),
+    List.take_append_of_le_length (by rw [List.length_append, List.length_take_of_le (by omega),
       sorted_group_length proj l i h]; omega),
-    List.take_append_of_le_length (by rw [take_five_mul_length l i (by omega)]; omega),
+    List.take_append_of_le_length (by rw [List.length_take_of_le (by omega)]; omega),
     List.take_take, Nat.min_eq_left (by omega)]
 
 /-- `placeMedian` leaves the suffix from `5 * i + 5` alone. -/
 theorem placeMedian_drop (proj : α → β) (i : Nat) (l : List α) (h : 5 * i + 5 ≤ l.length) :
     (placeMedian proj i l).drop (5 * i + 5) = l.drop (5 * i + 5) := by
-  have hlen := placeMedian_aux_length proj (i := i) (l := l) h
-  have hi : i < (l.take (5 * i) ++ bubbleSort proj ((l.drop (5 * i)).take 5)
-      ++ l.drop (5 * i + 5)).length := by rw [hlen]; omega
-  have hj : 5 * i + 2 < (l.take (5 * i) ++ bubbleSort proj ((l.drop (5 * i)).take 5)
-      ++ l.drop (5 * i + 5)).length := by rw [hlen]; omega
   have hAB : (l.take (5 * i) ++ bubbleSort proj ((l.drop (5 * i)).take 5)).length = 5 * i + 5 := by
-    rw [List.length_append, take_five_mul_length l i (by omega), sorted_group_length proj l i h]
+    rw [List.length_append, List.length_take_of_le (by omega), sorted_group_length proj l i h]
   have hswap : (placeMedian proj i l).drop (5 * i + 5) =
       (swapAt (l.take (5 * i) ++ bubbleSort proj ((l.drop (5 * i)).take 5)
         ++ l.drop (5 * i + 5)) i (5 * i + 2)).drop (5 * i + 5) := by rw [placeMedian_eq]
-  rw [hswap, cost_swapAt_drop_of_lt _ hi hj (by omega) (by omega),
+  rw [hswap, swapAt_drop_of_lt (by omega) (by omega),
     List.drop_append_of_le_length (by omega), List.drop_eq_nil_of_le (by omega)]
   rfl
 
@@ -339,8 +298,8 @@ theorem placeMedian_getElem_self (proj : α → β) (i : Nat) (l : List α)
   have hj : 5 * i + 2 < (l.take (5 * i) ++ bubbleSort proj ((l.drop (5 * i)).take 5)
       ++ l.drop (5 * i + 5)).length := by rw [hlen]; omega
   have hAB : (l.take (5 * i) ++ bubbleSort proj ((l.drop (5 * i)).take 5)).length = 5 * i + 5 := by
-    rw [List.length_append, take_five_mul_length l i (by omega), sorted_group_length proj l i h]
-  have hA : (l.take (5 * i)).length = 5 * i := take_five_mul_length l i (by omega)
+    rw [List.length_append, List.length_take_of_le (by omega), sorted_group_length proj l i h]
+  have hA : (l.take (5 * i)).length = 5 * i := List.length_take_of_le (by omega)
   have hswap : (placeMedian proj i l)[i]? =
       (swapAt (l.take (5 * i) ++ bubbleSort proj ((l.drop (5 * i)).take 5)
         ++ l.drop (5 * i + 5)) i (5 * i + 2))[i]? := by rw [placeMedian_eq]
@@ -393,10 +352,7 @@ theorem not_blt_eq_ble (proj : α → β) (pv x : α) :
     (!(Cmp.blt (proj x) (proj pv))) = Cmp.ble (proj pv) (proj x) := by
   by_cases h : Cmp.blt (proj x) (proj pv) = true
   · rw [h]; simp [Cmp.not_ble_of_blt h]
-  · have h' : Cmp.blt (proj x) (proj pv) = false := by
-      cases hb : Cmp.blt (proj x) (proj pv) with
-      | false => rfl
-      | true => exact absurd hb h
+  · have h' : Cmp.blt (proj x) (proj pv) = false := Bool.eq_false_iff.mpr h
     rw [h']; simp [Cmp.ble_of_not_blt h']
 
 /-- `key < pv` and `pv <= key` split a list. -/
@@ -413,12 +369,6 @@ theorem countP_ble_eq_blt_add_beq (proj : α → β) (l : List α) (pv : α) :
         l.countP (fun x => Cmp.beq (proj x) (proj pv)) := by
   rw [countP_congr (fun x => Cmp.ble_eq_blt_or_beq (proj x) (proj pv)) l]
   exact countP_or (fun x h => Cmp.not_blt_and_beq (proj x) (proj pv) h) l
-
-/-- Elements strictly below a key are not equal to it. -/
-theorem not_beq_of_blt {a b : β} (h : Cmp.blt a b = true) : Cmp.beq a b = false := by
-  cases hb : Cmp.beq a b with
-  | false => rfl
-  | true => exact absurd ⟨h, hb⟩ (Cmp.not_blt_and_beq a b)
 
 /-! ## Three elements per median
 
@@ -440,33 +390,10 @@ theorem countP_take_le {γ : Type w} (p : γ → Bool) (l : List γ) (m : Nat) :
 /-- A list of length five is five elements. -/
 theorem length_five_iff {G : List α} (h : G.length = 5) :
     ∃ a b c d e, G = [a, b, c, d, e] := by
-  cases G with
-  | nil => simp at h
-  | cons a G1 =>
-    cases G1 with
-    | nil => simp at h
-    | cons b G2 =>
-      cases G2 with
-      | nil => simp at h
-      | cons c G3 =>
-        cases G3 with
-        | nil => simp at h
-        | cons d G4 =>
-          cases G4 with
-          | nil => simp at h
-          | cons e G5 =>
-            cases G5 with
-            | nil => exact ⟨a, b, c, d, e, rfl⟩
-            | cons f G6 => simp at h
-
-/-- A singleton `countP`. -/
-theorem countP_singleton_of_pos {P : α → Bool} {x : α} (h : P x = true) :
-    [x].countP P = 1 := by
-  rw [List.countP_cons_of_pos (p := P) h, List.countP_nil]
-
-theorem countP_singleton_of_neg {P : α → Bool} {x : α} (h : P x = false) :
-    [x].countP P = 0 := by
-  rw [List.countP_cons_of_neg (p := P) (by rw [h]; exact Bool.false_ne_true), List.countP_nil]
+  match G with
+  | [a, b, c, d, e] => exact ⟨a, b, c, d, e, rfl⟩
+  | [] | [_] | [_, _] | [_, _, _] | [_, _, _, _] => simp at h
+  | _ :: _ :: _ :: _ :: _ :: _ :: _ => simp at h
 
 /-- In a sorted group of five, if the index-`2` element is `<= t` then three
 elements of the group are `<= t`. -/
@@ -515,7 +442,7 @@ theorem sorted_five_count_ge (proj : α → β) {G : List α} {c t : α}
 /-- `l.take (5 * t + 5)` is the first `t` groups followed by group `t`. -/
 theorem take_add_groups (l : List α) (t : Nat) (h : 5 * t ≤ l.length) :
     l.take (5 * t + 5) = l.take (5 * t) ++ (l.drop (5 * t)).take 5 := by
-  have hlen : (l.take (5 * t)).length = 5 * t := take_five_mul_length l t h
+  have hlen : (l.take (5 * t)).length = 5 * t := List.length_take_of_le h
   apply List.ext_getElem?
   intro k
   by_cases hk : k < 5 * t
@@ -560,12 +487,12 @@ theorem three_mul_medians_count (proj : α → β) (l : List α) (g : Nat) (hg :
           have h3 := hgroup t htg hb
           rw [medians_succ, List.countP_append,
             show 5 * (t + 1) = 5 * t + 5 by omega, htake, List.countP_append,
-            countP_singleton_of_pos (P := P) hb]
+            List.countP_singleton, ite_eq_left hb]
           omega
       | false =>
           rw [medians_succ, List.countP_append,
             show 5 * (t + 1) = 5 * t + 5 by omega, htake, List.countP_append,
-            countP_singleton_of_neg (P := P) hb]
+            List.countP_singleton, ite_eq_right (by rw [hb]; exact Bool.false_ne_true)]
           omega
 
 /-- Three elements per median, `<=` direction. -/
@@ -637,7 +564,7 @@ theorem partition_lengths_le_of_counts (proj : α → β) {l l₁ mm l₂ : List
           List.countP_append]
       have hzero : (partition (fun x => Cmp.blt (proj x) (proj pv)) l₂).1.countP
           (fun x => Cmp.beq (proj x) (proj pv)) = 0 :=
-        countP_eq_zero_of_all (fun x hx => not_beq_of_blt
+        countP_eq_zero_of_all (fun x hx => Cmp.not_beq_of_blt
           (partition_fst_all (p := fun x => Cmp.blt (proj x) (proj pv)) (l := l₂) x hx))
       omega
     have hcount : l₂.countP (fun x => Cmp.ble (proj x) (proj pv)) =
@@ -830,61 +757,28 @@ theorem partition_lengths_le_of_rank (proj : α → β) {l l₁ mm l₂ : List �
       (partition (fun x => Cmp.beq (proj x) (proj pv))
           (partition (fun x => Cmp.blt (proj x) (proj pv)) l₂).2).2.length
         ≤ l.length - (g / 2 + 1) := by
+  have _ := hgg
   have hl₂perm : l₂.Perm l₁ := by
     rw [hl₂]
     exact (List.Perm.append_right _ hmm).trans (List.Perm.of_eq (List.take_append_drop g l₁))
-  have hl₂len : l₂.length = l.length := by
-    rw [hl₂perm.length_eq, hl₁.length_eq]
   have htake_le : ∀ Q : α → Bool,
       (l₁.take g).countP Q ≤ l₂.countP Q := by
     intro Q
     exact Nat.le_trans (countP_take_le Q l₁ g)
       (by rw [← countP_eq_of_perm hl₂perm]; exact Nat.le_refl _)
-  constructor
-  · rw [partition_fst_length]
-    have hcomp := countP_blt_add_ble proj l₂ pv
-    rw [hl₂len] at hcomp
-    have hge : g - g / 2 ≤ l₂.countP (fun x => Cmp.ble (proj pv) (proj x)) := by
+  refine partition_lengths_le_of_counts proj hl₁ hmm hl₂ ?_ ?_
+  · have h₁ : g / 2 + 1 ≤ (l₁.take g).countP (fun x => Cmp.ble (proj x) (proj pv)) := by
+      have h := hrank.2
+      unfold uptoCount at h
+      exact h
+    exact Nat.le_trans h₁ (htake_le _)
+  · have h₁ : g - g / 2 ≤ (l₁.take g).countP (fun x => Cmp.ble (proj pv) (proj x)) := by
       have hc := countP_blt_add_ble proj (l₁.take g) pv
       rw [htake] at hc
-      have h₁ : g - g / 2 ≤ (l₁.take g).countP (fun x => Cmp.ble (proj pv) (proj x)) := by
-        have hbl := hrank.1
-        unfold belowCount at hbl
-        omega
-      exact Nat.le_trans h₁ (htake_le _)
-    omega
-  · have hbeq : l₂.countP (fun x => Cmp.beq (proj x) (proj pv)) =
-        (partition (fun x => Cmp.blt (proj x) (proj pv)) l₂).2.countP
-          (fun x => Cmp.beq (proj x) (proj pv)) := by
-      have hsplit : l₂.countP (fun x => Cmp.beq (proj x) (proj pv)) =
-          (partition (fun x => Cmp.blt (proj x) (proj pv)) l₂).1.countP
-            (fun x => Cmp.beq (proj x) (proj pv)) +
-          (partition (fun x => Cmp.blt (proj x) (proj pv)) l₂).2.countP
-            (fun x => Cmp.beq (proj x) (proj pv)) := by
-        rw [← countP_eq_of_perm (partition_perm (fun x => Cmp.blt (proj x) (proj pv)) l₂),
-          List.countP_append]
-      have hzero : (partition (fun x => Cmp.blt (proj x) (proj pv)) l₂).1.countP
-          (fun x => Cmp.beq (proj x) (proj pv)) = 0 :=
-        countP_eq_zero_of_all (fun x hx => not_beq_of_blt
-          (partition_fst_all (p := fun x => Cmp.blt (proj x) (proj pv)) (l := l₂) x hx))
+      have hbl := hrank.1
+      unfold belowCount at hbl
       omega
-    have hcount : l₂.countP (fun x => Cmp.ble (proj x) (proj pv)) =
-        (partition (fun x => Cmp.blt (proj x) (proj pv)) l₂).1.length +
-          (partition (fun x => Cmp.beq (proj x) (proj pv))
-            (partition (fun x => Cmp.blt (proj x) (proj pv)) l₂).2).1.length := by
-      rw [countP_ble_eq_blt_add_beq, ← partition_fst_length
-          (fun x => Cmp.blt (proj x) (proj pv)) l₂, hbeq,
-        ← partition_fst_length (fun x => Cmp.beq (proj x) (proj pv))
-          (partition (fun x => Cmp.blt (proj x) (proj pv)) l₂).2]
-    have hsum := partition_lengths_sum (fun x => Cmp.blt (proj x) (proj pv))
-      (fun x => Cmp.beq (proj x) (proj pv)) l₂
-    have hle : g / 2 + 1 ≤ l₂.countP (fun x => Cmp.ble (proj x) (proj pv)) := by
-      have h₁ : g / 2 + 1 ≤ (l₁.take g).countP (fun x => Cmp.ble (proj x) (proj pv)) := by
-        have h := hrank.2
-        unfold uptoCount at h
-        omega
-      exact Nat.le_trans h₁ (htake_le _)
-    omega
+    exact Nat.le_trans h₁ (htake_le _)
 /-! ## The quadratic bound
 
 The group pass is charged `10 * g` comparisons and `33 * g` moves, the two
@@ -921,16 +815,11 @@ theorem cost_196_100 (X : Nat) : 196 * (100 * X) = 19600 * X := (Nat.mul_assoc 1
 
 theorem cost_196_87 (X : Nat) : 196 * (87 * X) = 17052 * X := (Nat.mul_assoc 196 87 X).symm
 
-/-- `n` is at most `14 * ceil(g/2)` for `g = n / 5`. -/
-theorem cost_n_le_14_half (n : Nat) (hn : 5 ≤ n) :
-    n ≤ 14 * ((n / 5) - (n / 5) / 2) := by
-  omega
-
 /-- Hence `B = n - ceil(g/2)` is at most `(13/14) * n`. -/
 theorem cost_B_le (n : Nat) (hn : 5 ≤ n) :
     14 * (n - ((n / 5) - (n / 5) / 2)) ≤ 13 * n := by
   rw [Nat.mul_sub_left_distrib]
-  have h : n ≤ 14 * ((n / 5) - (n / 5) / 2) := cost_n_le_14_half n hn
+  have h : n ≤ 14 * ((n / 5) - (n / 5) / 2) := by omega
   omega
 
 /-- `100 * (n/5)^2 <= 4 * n^2`. -/
@@ -967,11 +856,7 @@ theorem cost_quad_arith (n : Nat) (hn : 5 ≤ n) :
   have h1 := cost_g_sq n
   have h2 := cost_B_sq n hn
   have hlin : 33 * (n / 5) + (1 + 8 * n) ≤ 9 * (n * n) := by
-    have hd : 33 * (n / 5) ≤ 33 * n := Nat.mul_le_mul_left 33 (Nat.div_le_self n 5)
     have h5n : 5 * n ≤ n * n := Nat.mul_le_mul_right n hn
-    have h45 : 45 * n ≤ 9 * (n * n) := by
-      have h := Nat.mul_le_mul_left 9 h5n
-      rwa [show 9 * (5 * n) = 45 * n by rw [← Nat.mul_assoc]] at h
     omega
   omega
 
@@ -981,11 +866,12 @@ least `g/2 + 1` elements are `<=` it and at least `g - g/2` are `>=` it, so the
 recursive sides have length at most `g` and `B = n - (g - g/2)`, and
 `g^2 + B^2 <= (85/100) n^2 < n^2`.
 
-The *linear* bound would need `g + B < n`, i.e. the three-elements-per-median rank
-lemma. That lemma is not available for this model: `groupPass` applies the group
-operations in *decreasing* index order, so a later `placeMedian i` sorts a group
-whose slots have already been overwritten. See the report and the counterexample
-`groupPass` on `[5,4,3,2,1,10,9,8,7,6,15,14,13,12,11]`. -/
+This proof uses only the rank of the pivot in the first `g` slots; the sharper
+`g + B < n` estimate needs the three-elements-per-median rank lemma, which is what
+the *linear* bound below (`bfprtAuxC_le_linear`) uses instead. That lemma needs
+`groupPass` to process the groups in *increasing* order, exactly as the C++ loop
+does; `Tcs.Bfprt.groupPass` was aligned with it and `groupPass_take_eq_medians`
+records the fact. -/
 theorem bfprtAuxC_le_quadratic (proj : α → β) (fuel : Nat) :
     ∀ k (l : List α), l.length ≤ fuel →
       (bfprtAuxC proj fuel k l).2 ≤ Cost.const (100 * (l.length * l.length)) := by
@@ -1024,34 +910,20 @@ theorem bfprtAuxC_le_quadratic (proj : α → β) (fuel : Nat) :
         have hgrp5 : 5 * g ≤ l.length := by rw [← hg]; exact Nat.mul_div_le _ _
         have hq := cost_quad_arith l.length (by omega)
         rw [hg] at hq
-        have hgc : (groupPassC proj g l).2 ≤ Cost.const (33 * g) := by
-          refine Cost.le_const ?_ ?_
-          · have h := groupPassC_cmp_le proj g l hgrp5; omega
-          · have h := groupPassC_mv_le proj g l hgrp5; omega
-        have hgc_cmp : (groupPassC proj g l).2.cmp ≤ 33 * g := by
-          have h := Cost.cmp_le_of_le hgc; rwa [Cost.cmp_const] at h
-        have hgc_mv : (groupPassC proj g l).2.mv ≤ 33 * g := by
-          have h := Cost.mv_le_of_le hgc; rwa [Cost.mv_const] at h
-        have hmc : (bfprtAuxC proj fuel (g / 2) (l₁.take g)).2 ≤ Cost.const (100 * (g * g)) := by
-          have h := ih (g / 2) (l₁.take g) hgfuel
-          rwa [htake] at h
+        have hgc_cmp : (groupPassC proj g l).2.cmp ≤ 10 * g := groupPassC_cmp_le proj g l hgrp5
+        have hgc_mv : (groupPassC proj g l).2.mv ≤ 33 * g := groupPassC_mv_le proj g l hgrp5
         have hmc_cmp : (bfprtAuxC proj fuel (g / 2) (l₁.take g)).2.cmp ≤ 100 * (g * g) := by
-          have h := Cost.cmp_le_of_le hmc; rwa [Cost.cmp_const] at h
+          have h := (ih (g / 2) (l₁.take g) hgfuel).1; rwa [htake] at h
         have hmc_mv : (bfprtAuxC proj fuel (g / 2) (l₁.take g)).2.mv ≤ 100 * (g * g) := by
-          have h := Cost.mv_le_of_le hmc; rwa [Cost.mv_const] at h
-        have hpc : (Cost.cmp1 + (Cost.cmpN l₂.length + Cost.mvN (4 * l₂.length)) +
-            (Cost.cmpN l₂.length + Cost.mvN (4 * l₂.length))) ≤ Cost.const (1 + 8 * l.length) := by
-          refine Cost.le_const ?_ ?_
-          · simp only [Cost.cmp_add, Cost.cmp_cmp1, Cost.cmp_cmpN, Cost.cmp_mvN, hl₂len]
-            omega
-          · simp only [Cost.mv_add, Cost.mv_cmp1, Cost.mv_cmpN, Cost.mv_mvN, hl₂len]
-            omega
+          have h := (ih (g / 2) (l₁.take g) hgfuel).2; rwa [htake] at h
         have hpc_cmp : (Cost.cmp1 + (Cost.cmpN l₂.length + Cost.mvN (4 * l₂.length)) +
             (Cost.cmpN l₂.length + Cost.mvN (4 * l₂.length))).cmp ≤ 1 + 8 * l.length := by
-          have h := Cost.cmp_le_of_le hpc; rwa [Cost.cmp_const] at h
+          simp only [Cost.cmp_add, Cost.cmp_cmp1, Cost.cmp_cmpN, Cost.cmp_mvN, hl₂len]
+          omega
         have hpc_mv : (Cost.cmp1 + (Cost.cmpN l₂.length + Cost.mvN (4 * l₂.length)) +
             (Cost.cmpN l₂.length + Cost.mvN (4 * l₂.length))).mv ≤ 1 + 8 * l.length := by
-          have h := Cost.mv_le_of_le hpc; rwa [Cost.mv_const] at h
+          simp only [Cost.mv_add, Cost.mv_cmp1, Cost.mv_cmpN, Cost.mv_mvN, hl₂len]
+          omega
         cases hsome : l₂[g / 2]? with
         | none =>
             refine Cost.le_const ?_ ?_
@@ -1093,29 +965,22 @@ theorem bfprtAuxC_le_quadratic (proj : α → β) (fuel : Nat) :
             have hAfuel : A.length ≤ fuel := by omega
             have hCfuel : C.length ≤ fuel := by omega
             have hCB : C.length ≤ l.length - (g - g / 2) := by have h := hpart.2; omega
-            have hAcost : (bfprtAuxC proj fuel k A).2 ≤
-                Cost.const (100 * ((l.length - (g - g / 2)) * (l.length - (g - g / 2)))) := by
-              have h := ih k A hAfuel
-              have hle : A.length ≤ l.length - (g - g / 2) := hpart.1
-              exact Cost.le_trans h (Cost.const_le_const
-                (Nat.mul_le_mul_left 100 (Nat.mul_le_mul hle hle)))
-            have hCcost : (bfprtAuxC proj fuel (k - A.length - B.length) C).2 ≤
-                Cost.const (100 * ((l.length - (g - g / 2)) * (l.length - (g - g / 2)))) := by
-              have h := ih (k - A.length - B.length) C hCfuel
-              exact Cost.le_trans h (Cost.const_le_const
-                (Nat.mul_le_mul_left 100 (Nat.mul_le_mul hCB hCB)))
             have hAcost_cmp : (bfprtAuxC proj fuel k A).2.cmp ≤
-                100 * ((l.length - (g - g / 2)) * (l.length - (g - g / 2))) := by
-              have h := Cost.cmp_le_of_le hAcost; rwa [Cost.cmp_const] at h
+                100 * ((l.length - (g - g / 2)) * (l.length - (g - g / 2))) :=
+              Nat.le_trans (ih k A hAfuel).1
+                (Nat.mul_le_mul_left 100 (Nat.mul_le_mul hpart.1 hpart.1))
             have hAcost_mv : (bfprtAuxC proj fuel k A).2.mv ≤
-                100 * ((l.length - (g - g / 2)) * (l.length - (g - g / 2))) := by
-              have h := Cost.mv_le_of_le hAcost; rwa [Cost.mv_const] at h
+                100 * ((l.length - (g - g / 2)) * (l.length - (g - g / 2))) :=
+              Nat.le_trans (ih k A hAfuel).2
+                (Nat.mul_le_mul_left 100 (Nat.mul_le_mul hpart.1 hpart.1))
             have hCcost_cmp : (bfprtAuxC proj fuel (k - A.length - B.length) C).2.cmp ≤
-                100 * ((l.length - (g - g / 2)) * (l.length - (g - g / 2))) := by
-              have h := Cost.cmp_le_of_le hCcost; rwa [Cost.cmp_const] at h
+                100 * ((l.length - (g - g / 2)) * (l.length - (g - g / 2))) :=
+              Nat.le_trans (ih (k - A.length - B.length) C hCfuel).1
+                (Nat.mul_le_mul_left 100 (Nat.mul_le_mul hCB hCB))
             have hCcost_mv : (bfprtAuxC proj fuel (k - A.length - B.length) C).2.mv ≤
-                100 * ((l.length - (g - g / 2)) * (l.length - (g - g / 2))) := by
-              have h := Cost.mv_le_of_le hCcost; rwa [Cost.mv_const] at h
+                100 * ((l.length - (g - g / 2)) * (l.length - (g - g / 2))) :=
+              Nat.le_trans (ih (k - A.length - B.length) C hCfuel).2
+                (Nat.mul_le_mul_left 100 (Nat.mul_le_mul hCB hCB))
             by_cases h1 : k < A.length
             · simp only [h1, ite_true]
               refine Cost.le_const ?_ ?_
@@ -1141,16 +1006,14 @@ theorem bfprtAuxC_le_quadratic (proj : α → β) (fuel : Nat) :
 /-- Quadratic comparison bound. -/
 theorem bfprtAuxC_cmp_le_quadratic (proj : α → β) (fuel k : Nat) (l : List α)
     (hl : l.length ≤ fuel) :
-    (bfprtAuxC proj fuel k l).2.cmp ≤ 100 * (l.length * l.length) := by
-  have h := Cost.cmp_le_of_le (bfprtAuxC_le_quadratic proj fuel k l hl)
-  rwa [Cost.cmp_const] at h
+    (bfprtAuxC proj fuel k l).2.cmp ≤ 100 * (l.length * l.length) :=
+  (bfprtAuxC_le_quadratic proj fuel k l hl).1
 
 /-- Quadratic move bound. -/
 theorem bfprtAuxC_mv_le_quadratic (proj : α → β) (fuel k : Nat) (l : List α)
     (hl : l.length ≤ fuel) :
-    (bfprtAuxC proj fuel k l).2.mv ≤ 100 * (l.length * l.length) := by
-  have h := Cost.mv_le_of_le (bfprtAuxC_le_quadratic proj fuel k l hl)
-  rwa [Cost.mv_const] at h
+    (bfprtAuxC proj fuel k l).2.mv ≤ 100 * (l.length * l.length) :=
+  (bfprtAuxC_le_quadratic proj fuel k l hl).2
 
 /-- The counting selection is `O(n^2)` in both units (uniform bound, constant 100). -/
 theorem bfprtAuxC_bigO_quadratic (proj : α → β) (k : Nat) :
@@ -1174,14 +1037,6 @@ example : (bubbleSort (fun n : Nat => n) [10, 9, 8, 7, 6])[2]? = some 8 := rfl
 
 example : (bubbleSort (fun n : Nat => n) [15, 14, 13, 12, 11])[2]? = some 13 := rfl
 
-/-- The arithmetic of the linear recurrence: the work at a node of size `n` plus
-`400 * (g + B)` with `g = n / 5` and `B = n - 3 * (g - g / 2)` fits into `400 * n`. -/
-theorem cost_linear_arith (n : Nat) (hn : 5 ≤ n) :
-    33 * (n / 5) + 400 * (n / 5) + (1 + 8 * n) +
-      400 * (n - 3 * ((n / 5) - (n / 5) / 2)) ≤ 400 * n := by
-  omega
-
-
 /-- **Linear cost bound.** The counting selection spends at most `400 * n` in both
 units. The two recursive sides have length at most `g = n / 5` and
 `B = n - 3 * (g - g / 2)`, whose sum is at most `(9/10) * n`. -/
@@ -1195,16 +1050,14 @@ theorem bfprtAuxC_le_linear (proj : α → β) (fuel : Nat) :
       rw [bfprtAuxC]
       by_cases hsmall : l.length < 5
       · simp only [hsmall, ite_true]
+        have hsq : l.length * l.length ≤ 4 * l.length :=
+          Nat.mul_le_mul_right l.length (by omega)
         refine Cost.le_const ?_ ?_
         · rw [bubbleSortC_cmp]
           have htri := tri_pred_le_sq l.length
-          have hsq : l.length * l.length ≤ 4 * l.length :=
-            Nat.mul_le_mul_right l.length (by omega)
           omega
         · have hm := bubbleSortC_mv_le proj l
           have htri := tri_pred_le_sq l.length
-          have hsq : l.length * l.length ≤ 4 * l.length :=
-            Nat.mul_le_mul_right l.length (by omega)
           omega
       · simp only [hsmall, ite_false]
         rw [groupPassC_fst]
@@ -1225,36 +1078,22 @@ theorem bfprtAuxC_le_linear (proj : α → β) (fuel : Nat) :
             List.length_drop, hl₁len]
           omega
         have hgrp5 : 5 * g ≤ l.length := by rw [← hg]; exact Nat.mul_div_le _ _
-        have hq := cost_linear_arith l.length (by omega)
-        rw [hg] at hq
-        have hgc : (groupPassC proj g l).2 ≤ Cost.const (33 * g) := by
-          refine Cost.le_const ?_ ?_
-          · have h := groupPassC_cmp_le proj g l hgrp5; omega
-          · have h := groupPassC_mv_le proj g l hgrp5; omega
-        have hgc_cmp : (groupPassC proj g l).2.cmp ≤ 33 * g := by
-          have h := Cost.cmp_le_of_le hgc; rwa [Cost.cmp_const] at h
-        have hgc_mv : (groupPassC proj g l).2.mv ≤ 33 * g := by
-          have h := Cost.mv_le_of_le hgc; rwa [Cost.mv_const] at h
-        have hmc : (bfprtAuxC proj fuel (g / 2) (l₁.take g)).2 ≤ Cost.const (400 * g) := by
-          have h := ih (g / 2) (l₁.take g) hgfuel
-          rwa [htake] at h
+        have hq : 33 * g + 400 * g + (1 + 8 * l.length) +
+            400 * (l.length - 3 * (g - g / 2)) ≤ 400 * l.length := by omega
+        have hgc_cmp : (groupPassC proj g l).2.cmp ≤ 10 * g := groupPassC_cmp_le proj g l hgrp5
+        have hgc_mv : (groupPassC proj g l).2.mv ≤ 33 * g := groupPassC_mv_le proj g l hgrp5
         have hmc_cmp : (bfprtAuxC proj fuel (g / 2) (l₁.take g)).2.cmp ≤ 400 * g := by
-          have h := Cost.cmp_le_of_le hmc; rwa [Cost.cmp_const] at h
+          have h := (ih (g / 2) (l₁.take g) hgfuel).1; rwa [htake] at h
         have hmc_mv : (bfprtAuxC proj fuel (g / 2) (l₁.take g)).2.mv ≤ 400 * g := by
-          have h := Cost.mv_le_of_le hmc; rwa [Cost.mv_const] at h
-        have hpc : (Cost.cmp1 + (Cost.cmpN l₂.length + Cost.mvN (4 * l₂.length)) +
-            (Cost.cmpN l₂.length + Cost.mvN (4 * l₂.length))) ≤ Cost.const (1 + 8 * l.length) := by
-          refine Cost.le_const ?_ ?_
-          · simp only [Cost.cmp_add, Cost.cmp_cmp1, Cost.cmp_cmpN, Cost.cmp_mvN, hl₂len]
-            omega
-          · simp only [Cost.mv_add, Cost.mv_cmp1, Cost.mv_cmpN, Cost.mv_mvN, hl₂len]
-            omega
+          have h := (ih (g / 2) (l₁.take g) hgfuel).2; rwa [htake] at h
         have hpc_cmp : (Cost.cmp1 + (Cost.cmpN l₂.length + Cost.mvN (4 * l₂.length)) +
             (Cost.cmpN l₂.length + Cost.mvN (4 * l₂.length))).cmp ≤ 1 + 8 * l.length := by
-          have h := Cost.cmp_le_of_le hpc; rwa [Cost.cmp_const] at h
+          simp only [Cost.cmp_add, Cost.cmp_cmp1, Cost.cmp_cmpN, Cost.cmp_mvN, hl₂len]
+          omega
         have hpc_mv : (Cost.cmp1 + (Cost.cmpN l₂.length + Cost.mvN (4 * l₂.length)) +
             (Cost.cmpN l₂.length + Cost.mvN (4 * l₂.length))).mv ≤ 1 + 8 * l.length := by
-          have h := Cost.mv_le_of_le hpc; rwa [Cost.mv_const] at h
+          simp only [Cost.mv_add, Cost.mv_cmp1, Cost.mv_cmpN, Cost.mv_mvN, hl₂len]
+          omega
         cases hsome : l₂[g / 2]? with
         | none =>
             refine Cost.le_const ?_ ?_
@@ -1302,29 +1141,18 @@ theorem bfprtAuxC_le_linear (proj : α → β) (fuel : Nat) :
               have hle3 : 3 * (g - g / 2) ≤ 3 * (g / 2 + 1) :=
                 Nat.mul_le_mul_left 3 (by omega)
               exact Nat.le_trans hpart.2 (Nat.sub_le_sub_left hle3 l.length)
-            have hAcost : (bfprtAuxC proj fuel k A).2 ≤
-                Cost.const (400 * (l.length - 3 * (g - g / 2))) := by
-              have h := ih k A hAfuel
-              have hle : A.length ≤ l.length - 3 * (g - g / 2) := hpart.1
-              exact Cost.le_trans h (Cost.const_le_const
-                (Nat.mul_le_mul_left 400 hle))
-            have hCcost : (bfprtAuxC proj fuel (k - A.length - B.length) C).2 ≤
-                Cost.const (400 * (l.length - 3 * (g - g / 2))) := by
-              have h := ih (k - A.length - B.length) C hCfuel
-              exact Cost.le_trans h (Cost.const_le_const
-                (Nat.mul_le_mul_left 400 hCB))
             have hAcost_cmp : (bfprtAuxC proj fuel k A).2.cmp ≤
-                400 * (l.length - 3 * (g - g / 2)) := by
-              have h := Cost.cmp_le_of_le hAcost; rwa [Cost.cmp_const] at h
+                400 * (l.length - 3 * (g - g / 2)) :=
+              Nat.le_trans (ih k A hAfuel).1 (Nat.mul_le_mul_left 400 hpart.1)
             have hAcost_mv : (bfprtAuxC proj fuel k A).2.mv ≤
-                400 * (l.length - 3 * (g - g / 2)) := by
-              have h := Cost.mv_le_of_le hAcost; rwa [Cost.mv_const] at h
+                400 * (l.length - 3 * (g - g / 2)) :=
+              Nat.le_trans (ih k A hAfuel).2 (Nat.mul_le_mul_left 400 hpart.1)
             have hCcost_cmp : (bfprtAuxC proj fuel (k - A.length - B.length) C).2.cmp ≤
-                400 * (l.length - 3 * (g - g / 2)) := by
-              have h := Cost.cmp_le_of_le hCcost; rwa [Cost.cmp_const] at h
+                400 * (l.length - 3 * (g - g / 2)) :=
+              Nat.le_trans (ih (k - A.length - B.length) C hCfuel).1 (Nat.mul_le_mul_left 400 hCB)
             have hCcost_mv : (bfprtAuxC proj fuel (k - A.length - B.length) C).2.mv ≤
-                400 * (l.length - 3 * (g - g / 2)) := by
-              have h := Cost.mv_le_of_le hCcost; rwa [Cost.mv_const] at h
+                400 * (l.length - 3 * (g - g / 2)) :=
+              Nat.le_trans (ih (k - A.length - B.length) C hCfuel).2 (Nat.mul_le_mul_left 400 hCB)
             by_cases h1 : k < A.length
             · simp only [h1, ite_true]
               refine Cost.le_const ?_ ?_
@@ -1349,15 +1177,13 @@ theorem bfprtAuxC_le_linear (proj : α → β) (fuel : Nat) :
 
 
 theorem bfprtAuxC_cmp_le (proj : α → β) (fuel k : Nat) (l : List α) (hl : l.length ≤ fuel) :
-    (bfprtAuxC proj fuel k l).2.cmp ≤ 400 * l.length := by
-  have h := Cost.cmp_le_of_le (bfprtAuxC_le_linear proj fuel k l hl)
-  rwa [Cost.cmp_const] at h
+    (bfprtAuxC proj fuel k l).2.cmp ≤ 400 * l.length :=
+  (bfprtAuxC_le_linear proj fuel k l hl).1
 
 /-- **Linear move bound** (`bfprtAuxC_mv_le`). -/
 theorem bfprtAuxC_mv_le (proj : α → β) (fuel k : Nat) (l : List α) (hl : l.length ≤ fuel) :
-    (bfprtAuxC proj fuel k l).2.mv ≤ 400 * l.length := by
-  have h := Cost.mv_le_of_le (bfprtAuxC_le_linear proj fuel k l hl)
-  rwa [Cost.mv_const] at h
+    (bfprtAuxC proj fuel k l).2.mv ≤ 400 * l.length :=
+  (bfprtAuxC_le_linear proj fuel k l hl).2
 
 /-- **The counting selection is `O(n)`** (uniform bound, constant 400). -/
 theorem bfprtAuxC_bigO (proj : α → β) (k : Nat) :

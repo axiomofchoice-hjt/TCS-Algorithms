@@ -63,16 +63,14 @@ theorem bubbleUpRC_fst (proj : α → β) (a : α) :
     ∀ l : List α, (bubbleUpRC proj a l).1 = bubbleUpR proj a l
   | [] => by simp [bubbleUpRC_nil, bubbleUpR]
   | b :: bs => by
-      have ih₁ := bubbleUpRC_fst proj a bs
-      have ih₂ := bubbleUpRC_fst proj b bs
       by_cases h : Cmp.blt (proj b) (proj a) = true
       · rw [bubbleUpRC_cons_of_blt h, bubbleUpR_cons_of_blt h]
         dsimp only
-        rw [ih₁]
+        rw [bubbleUpRC_fst proj a bs]
       · rw [bubbleUpRC_cons_of_not_blt (by simpa using h),
           bubbleUpR_cons_of_not_blt (by simpa using h)]
         dsimp only
-        rw [ih₂]
+        rw [bubbleUpRC_fst proj b bs]
 
 theorem bubbleUpRC_length (proj : α → β) (a : α) :
     ∀ l : List α, (bubbleUpRC proj a l).1.1.length = l.length
@@ -236,8 +234,6 @@ theorem bubbleSortC_bigO (proj : α → β) :
   have hmv := bubbleSortC_mv_le proj l
   have htri := tri_pred_le_sq l.length
   show (bubbleSortC proj l).2 ≤ Cost.const (3 * (l.length * l.length))
-  refine Cost.le_const ?_ ?_
-  · omega
-  · omega
+  refine Cost.le_const ?_ ?_ <;> omega
 
 end Tcs

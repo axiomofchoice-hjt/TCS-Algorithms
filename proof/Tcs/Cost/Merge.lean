@@ -87,15 +87,6 @@ theorem mergeSwapLoopC_fst' (proj : α → β) :
           · rw [dite_eq_right hl, dite_eq_right hl]
       · rw [dite_eq_right hg, dite_eq_right hg]
 
-/-- The agreement theorem in the shape of the brief: `l.length ≤ fuel` is enough (in
-fact it is not used, see `mergeSwapLoopC_fst'`). -/
-theorem mergeSwapLoopC_fst (proj : α → β) (fuel : Nat) (l : List α)
-    (out left mid right last : Nat) :
-    l.length ≤ fuel →
-    (mergeSwapLoopC proj fuel l out left mid right last).1 =
-      mergeSwapLoop proj fuel l out left mid right last :=
-  fun _ => mergeSwapLoopC_fst' proj fuel l out left mid right last
-
 /-- C++'s `merge_with_swap` with its cost. -/
 def mergeWithSwapC (proj : α → β) (l : List α) (output first mid last : Nat) :
     List α × Cost :=
@@ -357,50 +348,6 @@ theorem scanLeftC_fst (proj : α → β) (y : α) :
           · rw [ite_eq_right h3, ite_eq_right h3]
         · rw [dite_eq_right h2, dite_eq_right h2]
       · rw [dite_eq_right h1, dite_eq_right h1]
-
-/-- At most one comparison per step of the forward scan. -/
-theorem scanRightC_cmp_le (proj : α → β) (x : α) :
-    ∀ fuel l sp last, (scanRightC proj x fuel l sp last).2.cmp ≤ fuel := by
-  intro fuel
-  induction fuel with
-  | zero => intro l sp last; rw [scanRightC.eq_1]; simp
-  | succ fuel ih =>
-      intro l sp last
-      rw [scanRightC.eq_2]
-      by_cases h1 : sp < last
-      · rw [dite_eq_left h1]
-        by_cases h2 : sp < l.length
-        · rw [dite_eq_left h2]
-          by_cases h3 : Cmp.blt (proj l[sp]) (proj x) = true
-          · rw [ite_eq_left h3]
-            have h := ih l (sp + 1) last
-            simp
-            omega
-          · rw [ite_eq_right h3]; simp
-        · rw [dite_eq_right h2]; simp
-      · rw [dite_eq_right h1]; simp
-
-/-- At most one comparison per step of the backward scan. -/
-theorem scanLeftC_cmp_le (proj : α → β) (y : α) :
-    ∀ fuel l sp first, (scanLeftC proj y fuel l sp first).2.cmp ≤ fuel := by
-  intro fuel
-  induction fuel with
-  | zero => intro l sp first; rw [scanLeftC.eq_1]; simp
-  | succ fuel ih =>
-      intro l sp first
-      rw [scanLeftC.eq_2]
-      by_cases h1 : first < sp
-      · rw [dite_eq_left h1]
-        by_cases h2 : sp - 1 < l.length
-        · rw [dite_eq_left h2]
-          by_cases h3 : Cmp.blt (proj y) (proj l[sp - 1]) = true
-          · rw [ite_eq_left h3]
-            have h := ih l (sp - 1) first
-            simp
-            omega
-          · rw [ite_eq_right h3]; simp
-        · rw [dite_eq_right h2]; simp
-      · rw [dite_eq_right h1]; simp
 
 /-- Sharper scan accounting: the forward scan stops inside `[sp, last]` and performs at
 most `(result - sp) + 1` comparisons (one per step taken plus the final failing one). -/
@@ -670,17 +617,6 @@ theorem mergeByRotationC_mv_le (proj : α → β) (l : List α) (first mid last 
       2 * (tri (min (mid - first) (last - mid)) + (last - first)) :=
   (mergeLoopC_cost_le proj (last - first) l first mid last).2
 
-
-/-- `tri n ≤ n * n` (sharper than `tri_le_sq`). -/
-theorem tri_le_mul_self (n : Nat) : tri n ≤ n * n := by
-  induction n with
-  | zero => simp [tri]
-  | succ n ih =>
-      rw [tri_succ]
-      have h : (n + 1) * (n + 1) = n * n + n + (n + 1) := by
-        rw [Nat.mul_succ, Nat.add_mul, Nat.one_mul]
-      rw [h]
-      omega
 
 /-- With two non-empty runs, `tri (min a b) + (a + b) ≤ (a + b) * (a + b)`: this is
 the `O(n^2)` bound of the rotation loop. -/

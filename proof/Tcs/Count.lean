@@ -11,10 +11,8 @@ namespace Tcs
 /-! ## Generic `countP` lemmas -/
 
 theorem countP_congr {γ : Type w} {p q : γ → Bool} (h : ∀ x, p x = q x) (l : List γ) :
-    l.countP p = l.countP q := by
-  induction l with
-  | nil => simp
-  | cons x xs ih => rw [List.countP_cons, List.countP_cons, h x, ih]
+    l.countP p = l.countP q :=
+  List.countP_congr (fun x _ => by rw [h x])
 
 theorem countP_or {γ : Type w} {p q : γ → Bool} (h : ∀ x, ¬(p x = true ∧ q x = true))
     (l : List γ) : l.countP (fun x => p x || q x) = l.countP p + l.countP q := by
@@ -23,23 +21,14 @@ theorem countP_or {γ : Type w} {p q : γ → Bool} (h : ∀ x, ¬(p x = true �
   | cons x xs ih =>
     rw [List.countP_cons, List.countP_cons, List.countP_cons, ih]
     by_cases hp : p x = true
-    · have hq : q x = false := by
-        cases hqx : q x with
-        | false => rfl
-        | true => exact absurd ⟨hp, hqx⟩ (h x)
+    · have hq : q x = false := Bool.eq_false_iff.mpr (fun hqx => h x ⟨hp, hqx⟩)
       rw [hp, hq]
       simp <;> omega
-    · have hp' : p x = false := by
-        cases hpx : p x with
-        | false => rfl
-        | true => exact absurd hpx hp
+    · have hp' : p x = false := Bool.eq_false_iff.mpr hp
       by_cases hq : q x = true
       · rw [hp', hq]
         simp <;> omega
-      · have hq' : q x = false := by
-          cases hqx : q x with
-          | false => rfl
-          | true => exact absurd hqx hq
+      · have hq' : q x = false := Bool.eq_false_iff.mpr hq
         rw [hp', hq']
         simp <;> omega
 
@@ -53,17 +42,11 @@ theorem countP_le_of_imp {γ : Type w} {p q : γ → Bool} (h : ∀ x, p x = tru
     · have hq : q x = true := h x hp
       rw [hp, hq]
       simp <;> omega
-    · have hp' : p x = false := by
-        cases hpx : p x with
-        | false => rfl
-        | true => exact absurd hpx hp
+    · have hp' : p x = false := Bool.eq_false_iff.mpr hp
       by_cases hq : q x = true
       · rw [hp', hq]
         simp <;> omega
-      · have hq' : q x = false := by
-          cases hqx : q x with
-          | false => rfl
-          | true => exact absurd hqx hq
+      · have hq' : q x = false := Bool.eq_false_iff.mpr hq
         rw [hp', hq']
         simp <;> omega
 
@@ -74,12 +57,8 @@ theorem countP_eq_of_perm {γ : Type w} {p : γ → Bool} {l₁ l₂ : List γ} 
 
 theorem countP_eq_length_of_all {γ : Type w} {p : γ → Bool} {l : List γ}
     (h : ∀ x ∈ l, p x = true) : l.countP p = l.length := by
-  induction l with
-  | nil => simp
-  | cons x xs ih =>
-    rw [List.countP_cons, h x (List.mem_cons_self),
-      ih (fun y hy => h y (List.mem_cons_of_mem x hy))]
-    simp
+  rw [List.countP_eq_length_filter, List.length_filter_eq_length_iff]
+  exact h
 
 theorem countP_pos_of_mem {γ : Type w} {p : γ → Bool} {x : γ} {l : List γ} (hx : x ∈ l)
     (hp : p x = true) : 0 < l.countP p := by
@@ -94,15 +73,8 @@ theorem countP_pos_of_mem {γ : Type w} {p : γ → Bool} {x : γ} {l : List γ}
       by_cases hy : p y = true
       · rw [hy]
         simp <;> omega
-      · have hy' : p y = false := by
-          cases hpy : p y with
-          | false => rfl
-          | true => exact absurd hpy hy
-        have h0 : (if p y = true then 1 else 0) = 0 := by
-          rw [hy']
-          simp
-        rw [h0]
-        omega
+      · rw [Bool.eq_false_iff.mpr hy]
+        exact hys
 
 theorem countP_lt_of_imp_of_witness {γ : Type w} {p q : γ → Bool}
     (h : ∀ x, q x = true → p x = true) {l : List γ} {y : γ} (hy : y ∈ l) (hp : p y = true)
@@ -120,20 +92,11 @@ theorem countP_lt_of_imp_of_witness {γ : Type w} {p q : γ → Bool}
       · by_cases hqx : q x = true
         · rw [hqx, hpx]
           simp <;> omega
-        · have hqx' : q x = false := by
-            cases hqx'' : q x with
-            | false => rfl
-            | true => exact absurd hqx'' hqx
+        · have hqx' : q x = false := Bool.eq_false_iff.mpr hqx
           rw [hqx', hpx]
           simp <;> omega
-      · have hpx' : p x = false := by
-          cases hpx'' : p x with
-          | false => rfl
-          | true => exact absurd hpx'' hpx
-        have hqx' : q x = false := by
-          cases hqx'' : q x with
-          | false => rfl
-          | true => exact absurd (h x hqx'') hpx
+      · have hpx' : p x = false := Bool.eq_false_iff.mpr hpx
+        have hqx' : q x = false := Bool.eq_false_iff.mpr (fun hqx'' => hpx (h x hqx''))
         rw [hqx', hpx']
         simp <;> omega
 
@@ -141,20 +104,8 @@ theorem countP_lt_of_imp_of_witness {γ : Type w} {p q : γ → Bool}
 This is what makes a partition strictly shrink its input. -/
 theorem countP_lt_length_of_mem_false {γ : Type w} {p : γ → Bool} {l : List γ} {y : γ}
     (hy : y ∈ l) (hp : p y = false) : l.countP p < l.length := by
-  induction l with
-  | nil => simp at hy
-  | cons x xs ih =>
-    rw [List.countP_cons]
-    rcases List.mem_cons.mp hy with rfl | hy'
-    · have := List.countP_le_length (l := xs) (p := p)
-      rw [hp]
-      simp
-      omega
-    · have h₁ := ih hy'
-      have h₂ := List.countP_le_length (l := xs) (p := p)
-      have h₃ : (if p x then 1 else 0) ≤ 1 := by split <;> omega
-      simp only [List.length_cons]
-      omega
+  rw [← countP_eq_length_of_all (p := fun _ => true) (l := l) (fun _ _ => rfl)]
+  exact countP_lt_of_imp_of_witness (p := fun _ => true) (q := p) (fun _ _ => rfl) hy rfl hp
 
 /-- A predicate that fails everywhere counts nothing. Constructive counterpart of
 core's `List.countP_eq_zero`, whose proof pulls in `Classical.choice`. -/
@@ -163,8 +114,6 @@ theorem countP_eq_zero_of_all {γ : Type w} {p : γ → Bool} {l : List γ}
   induction l with
   | nil => simp
   | cons x xs ih =>
-    rw [List.countP_cons, h x (List.mem_cons_self),
-      ih (fun y hy => h y (List.mem_cons_of_mem x hy))]
-    simp
+    simp [h x (List.mem_cons_self), ih (fun y hy => h y (List.mem_cons_of_mem x hy))]
 
 end Tcs

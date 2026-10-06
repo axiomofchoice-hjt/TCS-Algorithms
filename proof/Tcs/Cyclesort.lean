@@ -71,33 +71,14 @@ theorem inBlock_unique {proj : α → β} {a : Array α} {p : Nat} {k k' : β}
   rcases Cmp.ble_total k k' with h | h
   · by_cases h' : Cmp.ble k' k = true
     · simp [Cmp.beq, h, h']
-    · have hbf : Cmp.ble k' k = false := by
-        cases hbk : Cmp.ble k' k with
-        | false => rfl
-        | true => exact absurd hbk h'
+    · have hbf : Cmp.ble k' k = false := Bool.eq_false_iff.mpr h'
       have := key (Cmp.blt_of_ble_of_not_ble h hbf)
       omega
   · by_cases h' : Cmp.ble k k' = true
     · simp [Cmp.beq, h, h']
-    · have hbf : Cmp.ble k k' = false := by
-        cases hbk : Cmp.ble k k' with
-        | false => rfl
-        | true => exact absurd hbk h'
+    · have hbf : Cmp.ble k k' = false := Bool.eq_false_iff.mpr h'
       have := key (Cmp.blt_of_ble_of_not_ble h hbf)
       omega
-
-theorem not_inBlock_of_beq_false {proj : α → β} {a : Array α} {p : Nat} {k k' : β}
-    (h₁ : InBlock proj a p k) (h₂ : Cmp.beq k k' = false) : ¬InBlock proj a p k' := by
-  intro h₂'
-  have := inBlock_unique h₁ h₂'
-  rw [h₂] at this
-  exact Bool.false_ne_true this
-
-theorem eqCount_pos_of_inBlock {proj : α → β} {a : Array α} {p : Nat} {k : β}
-    (h : InBlock proj a p k) : 0 < eqCount proj a k := by
-  have h₁ : ltCount proj a k ≤ p := h.1
-  have h₂ : p < ltCount proj a k + eqCount proj a k := h.2
-  omega
 
 /-! ## Swaps do not change the counts -/
 
@@ -107,10 +88,6 @@ theorem ltCount_swap (proj : α → β) (a : Array α) (i j : Nat) (hi : i < a.s
 
 theorem eqCount_swap (proj : α → β) (a : Array α) (i j : Nat) (hi : i < a.size)
     (hj : j < a.size) (k : β) : eqCount proj (a.swap i j hi hj) k = eqCount proj a k :=
-  countP_eq_of_perm (Array.swap_perm a i j hi hj)
-
-theorem leCount_swap (proj : α → β) (a : Array α) (i j : Nat) (hi : i < a.size)
-    (hj : j < a.size) (k : β) : leCount proj (a.swap i j hi hj) k = leCount proj a k :=
   countP_eq_of_perm (Array.swap_perm a i j hi hj)
 
 theorem inBlock_swap_iff {proj : α → β} {a : Array α} {i j : Nat} (hi : i < a.size)
@@ -609,39 +586,17 @@ theorem cyclesort_settled (proj : α → β) (a : Array α) :
 
 /-! ## All settled implies sorted -/
 
-theorem pairwise_of_getElem {γ : Type w} {R : γ → γ → Prop} {l : List γ}
-    (h : ∀ i j (hi : i < l.length) (hj : j < l.length), i < j → R (l[i]'hi) (l[j]'hj)) :
-    l.Pairwise R := by
-  induction l with
-  | nil => simp
-  | cons x xs ih =>
-    rw [List.pairwise_cons]
-    constructor
-    · intro y hy
-      rcases List.mem_iff_getElem.mp hy with ⟨j, hj, hjy⟩
-      subst hjy
-      have h0 := h 0 (j + 1) (by simp) (by simp; omega) (by omega)
-      rw [List.getElem_cons_zero, List.getElem_cons_succ] at h0
-      exact h0
-    · refine ih (fun i j hi hj hij => ?_)
-      have h1 := h (i + 1) (j + 1) (by simp; omega) (by simp; omega) (by omega)
-      rw [List.getElem_cons_succ, List.getElem_cons_succ] at h1
-      exact h1
-
 theorem sorted_of_all_settled {proj : α → β} {a : Array α}
     (h : ∀ q (hq : q < a.size), SettledAt proj a q hq) :
     Sorted (fun x y => Cmp.ble (proj x) (proj y) = true) a.toList := by
-  refine pairwise_of_getElem (fun i j hi hj hij => ?_)
+  refine List.pairwise_iff_getElem.mpr (fun i j hi hj hij => ?_)
   have hi' : i < a.size := by rwa [Array.length_toList] at hi
   have hj' : j < a.size := by rwa [Array.length_toList] at hj
   have hge : Cmp.ble (proj (a[i]'hi')) (proj (a[j]'hj')) = true := by
     by_cases hb : Cmp.ble (proj (a[i]'hi')) (proj (a[j]'hj')) = true
     · exact hb
     · exfalso
-      have hbf : Cmp.ble (proj (a[i]'hi')) (proj (a[j]'hj')) = false := by
-        cases hh : Cmp.ble (proj (a[i]'hi')) (proj (a[j]'hj')) with
-        | false => rfl
-        | true => exact absurd hh hb
+      have hbf : Cmp.ble (proj (a[i]'hi')) (proj (a[j]'hj')) = false := Bool.eq_false_iff.mpr hb
       have htot : Cmp.ble (proj (a[j]'hj')) (proj (a[i]'hi')) = true := by
         rcases Cmp.ble_total (proj (a[j]'hj')) (proj (a[i]'hi')) with hh | hh
         · exact hh

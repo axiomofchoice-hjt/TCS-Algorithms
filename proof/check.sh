@@ -26,15 +26,17 @@ LOG="$PWD/.audit.log"
 trap 'rm -f "$LOG"' EXIT
 FAIL=0
 
-echo ">>> 1/3 full rebuild (clearing olean cache)"
+echo ">>> 1/4 full rebuild (clearing olean cache)"
 rm -rf .lake/build/lib/lean
 lake build 2>&1 | tee "$LOG" | grep -E "error|warning|Build completed" || true
 grep -q "Build completed successfully" "$LOG" || FAIL=1
 
 echo
-echo ">>> 2/3 strict per-file type check (-DwarningAsError=true)"
+echo ">>> 2/4 strict per-file type check (-DwarningAsError=true)"
 : > "$LOG"
-mapfile -t FILES < <(find . -name '*.lean' -not -path './.lake/*' | sort)
+# AxiomAudit.lean is a script, not a proof module: step 4 runs it separately.
+mapfile -t FILES < <(find . -name '*.lean' -not -path './.lake/*' \
+    -not -name 'AxiomAudit.lean' | sort)
 for f in "${FILES[@]}"; do
     out=$(lake env lean -DwarningAsError=true "$f" 2>&1)
     rc=$?
@@ -48,10 +50,22 @@ done
 echo "  scanned ${#FILES[@]} .lean file(s)"
 
 echo
-echo ">>> 3/3 axiom audit (no sorryAx)"
-if grep -q "sorryAx" "$LOG"; then
+echo ">>> 3/4 axiom audit (no sorryAx)"
+if grep "sorryAx" "$LOG" | grep -qv "summary:"; then
     echo "  x a theorem depends on sorryAx:"
     grep -n "sorryAx" "$LOG" | sed 's/^/     /'
+    FAIL=1
+fi
+
+echo
+echo ">>> 4/4 choice-freeness audit (no Classical.choice)"
+AXIOMS=$(lake env lean -DwarningAsError=true AxiomAudit.lean 2>&1)
+rc=$?
+printf '%s\n' "$AXIOMS" | grep -E '^(CHOICE|SORRY|  axioms|axiom audit|summary)' | sed 's/^/  /'
+printf '%s\n' "$AXIOMS" >> "$LOG"
+if [ "$rc" -ne 0 ] || printf '%s\n' "$AXIOMS" | grep -q "^CHOICE "; then
+    echo "  x a theorem depends on Classical.choice:"
+    printf '%s\n' "$AXIOMS" | grep "^CHOICE " | head -20 | sed 's/^/     /'
     FAIL=1
 fi
 

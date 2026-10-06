@@ -44,9 +44,8 @@ theorem blt_of_not_blt_of_not_beq {a b : β} (h₁ : Cmp.blt a b = false)
   exact Cmp.blt_of_ble_of_not_ble h' h
 
 /-- Elements with equal keys are not strictly below each other. -/
-theorem blt_eq_false_of_beq {a b : β} (h : Cmp.beq a b = true) : Cmp.blt a b = false := by
-  have h' := Cmp.beq_iff.mp h
-  simp [Cmp.blt, h'.1, h'.2]
+theorem blt_eq_false_of_beq {a b : β} (h : Cmp.beq a b = true) : Cmp.blt a b = false :=
+  Cmp.blt_eq_false_iff.mpr (Cmp.beq_iff.mp h).2
 
 /-- Rank transfers along a permutation. -/
 theorem isKthSmallest_of_perm {proj : α → β} {l₁ l₂ : List α} {k : Nat} {x : α}
@@ -351,24 +350,16 @@ theorem bfprtAux_spec (proj : α → β) (fuel : Nat) :
         generalize hR : (partition (fun x => Cmp.blt (proj x) (proj pv)) l₂).snd = R
         generalize hB : (partition (fun x => Cmp.beq (proj x) (proj pv)) R).fst = B
         generalize hC : (partition (fun x => Cmp.beq (proj x) (proj pv)) R).snd = C
-        have hAperm : (A ++ R).Perm l₂ := by
-          rw [← hA, ← hR]
-          exact partition_perm _ l₂
-        have hRperm : (B ++ C).Perm R := by
-          rw [← hB, ← hC]
-          exact partition_perm _ R
+        have hAperm : (A ++ R).Perm l₂ := by rw [← hA, ← hR]; exact partition_perm _ l₂
+        have hRperm : (B ++ C).Perm R := by rw [← hB, ← hC]; exact partition_perm _ R
         have hAall : ∀ x ∈ A, Cmp.blt (proj x) (proj pv) = true := by
-          rw [← hA]
-          exact partition_fst_all
+          rw [← hA]; exact partition_fst_all
         have hRall : ∀ x ∈ R, Cmp.blt (proj x) (proj pv) = false := by
-          rw [← hR]
-          exact partition_snd_all
+          rw [← hR]; exact partition_snd_all
         have hBall : ∀ x ∈ B, Cmp.beq (proj x) (proj pv) = true := by
-          rw [← hB]
-          exact partition_fst_all
+          rw [← hB]; exact partition_fst_all
         have hCall : ∀ x ∈ C, Cmp.beq (proj x) (proj pv) = false := by
-          rw [← hC]
-          exact partition_snd_all
+          rw [← hC]; exact partition_snd_all
         have hBblt : ∀ x ∈ B, Cmp.blt (proj x) (proj pv) = false :=
           fun x hx => blt_eq_false_of_beq (hBall x hx)
         have hpvmem : pv ∈ l₂ := List.mem_iff_getElem?.mpr ⟨g / 2, hsome⟩
@@ -388,8 +379,7 @@ theorem bfprtAux_spec (proj : α → β) (fuel : Nat) :
           · have hp := hCall pv h'
             rw [hQpv] at hp
             cases hp
-        have hCR : ∀ x ∈ C, x ∈ R := fun x hx =>
-          hRperm.mem_iff.mp (List.mem_append_right B hx)
+        have hCR : ∀ x ∈ C, x ∈ R := fun x hx => hRperm.mem_iff.mp (List.mem_append_right B hx)
         have hCblt : ∀ x ∈ C, Cmp.blt (proj pv) (proj x) = true := fun x hx =>
           blt_of_not_blt_of_not_beq (hRall x (hCR x hx)) (hCall x hx)
         have hCble : ∀ x ∈ C, Cmp.ble (proj x) (proj pv) = false := fun x hx =>
@@ -437,7 +427,6 @@ theorem bfprtAux_spec (proj : α → β) (fuel : Nat) :
         · simp only [h1, ite_false]
           by_cases h2 : A.length + B.length ≤ k
           · simp only [h2, ite_true]
-            have hAle : A.length ≤ k := by omega
             refine ⟨?_, ?_⟩
             · exact ((List.Perm.append_left (A ++ B) (ih (k - A.length - B.length) C hCfuel).1).trans
                 ((List.Perm.of_eq (List.append_assoc A B C)).trans hAC)).trans hl₂perm

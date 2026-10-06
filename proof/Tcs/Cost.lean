@@ -54,31 +54,24 @@ theorem le_trans {a b c : Cost} (h₁ : a ≤ b) (h₂ : b ≤ c) : a ≤ c :=
 theorem zero_le (a : Cost) : (0 : Cost) ≤ a := ⟨Nat.zero_le _, Nat.zero_le _⟩
 
 theorem add_assoc (a b c : Cost) : a + b + c = a + (b + c) := by
-  rcases a with ⟨a₁, a₂⟩
-  rcases b with ⟨b₁, b₂⟩
-  rcases c with ⟨c₁, c₂⟩
-  change (⟨a₁, a₂⟩ : Cost) + ⟨b₁, b₂⟩ + ⟨c₁, c₂⟩ = ⟨a₁, a₂⟩ + (⟨b₁, b₂⟩ + ⟨c₁, c₂⟩)
+  cases a; cases b; cases c
   simp only [HAdd.hAdd, Add.add, Cost.mk.injEq]
-  exact ⟨Nat.add_assoc a₁ b₁ c₁, Nat.add_assoc a₂ b₂ c₂⟩
+  exact ⟨Nat.add_assoc .., Nat.add_assoc ..⟩
 
 theorem add_comm (a b : Cost) : a + b = b + a := by
-  rcases a with ⟨a₁, a₂⟩
-  rcases b with ⟨b₁, b₂⟩
-  change (⟨a₁, a₂⟩ : Cost) + ⟨b₁, b₂⟩ = ⟨b₁, b₂⟩ + ⟨a₁, a₂⟩
+  cases a; cases b
   simp only [HAdd.hAdd, Add.add, Cost.mk.injEq]
-  exact ⟨Nat.add_comm a₁ b₁, Nat.add_comm a₂ b₂⟩
+  exact ⟨Nat.add_comm .., Nat.add_comm ..⟩
 
 theorem zero_add (a : Cost) : 0 + a = a := by
-  rcases a with ⟨a₁, a₂⟩
-  change (⟨0, 0⟩ : Cost) + ⟨a₁, a₂⟩ = ⟨a₁, a₂⟩
+  cases a
   simp only [HAdd.hAdd, Add.add, Cost.mk.injEq]
-  exact ⟨Nat.zero_add a₁, Nat.zero_add a₂⟩
+  exact ⟨Nat.zero_add .., Nat.zero_add ..⟩
 
 theorem add_zero (a : Cost) : a + 0 = a := by
-  rcases a with ⟨a₁, a₂⟩
-  change (⟨a₁, a₂⟩ : Cost) + ⟨0, 0⟩ = ⟨a₁, a₂⟩
+  cases a
   simp only [HAdd.hAdd, Add.add, Cost.mk.injEq]
-  exact ⟨Nat.add_zero a₁, Nat.add_zero a₂⟩
+  exact ⟨Nat.add_zero .., Nat.add_zero ..⟩
 
 theorem add_le_add {a b c d : Cost} (h₁ : a ≤ b) (h₂ : c ≤ d) : a + c ≤ b + d :=
   ⟨Nat.add_le_add h₁.1 h₂.1, Nat.add_le_add h₁.2 h₂.2⟩
@@ -190,29 +183,28 @@ theorem tri_zero : tri 0 = 0 := rfl
 
 theorem tri_one : tri 1 = 1 := rfl
 
-/-- A `tri` is at most the next square: `tri (m - 1) ≤ m * m`. -/
-theorem tri_le_sq (n : Nat) : tri n ≤ (n + 1) * (n + 1) := by
+/-- `tri n ≤ n * n`: the sharp form from which the two square bounds below follow. -/
+theorem tri_le_mul_self (n : Nat) : tri n ≤ n * n := by
   induction n with
   | zero => simp [tri]
   | succ n ih =>
-      have hexp : (n + 1) * (n + 2) = (n + 1) * (n + 1) + (n + 1) := by
-        rw [← Nat.mul_succ]
-      calc tri (n + 1) = (n + 1) + tri n := tri_succ n
-        _ ≤ (n + 1) + (n + 1) * (n + 1) := Nat.add_le_add_left ih _
-        _ = (n + 1) * (n + 2) := by rw [hexp]; exact Nat.add_comm _ _
-        _ ≤ (n + 2) * (n + 2) := Nat.mul_le_mul_right _ (Nat.le_succ _)
+      rw [tri_succ]
+      have h : (n + 1) * (n + 1) = n * n + n + (n + 1) := by
+        rw [Nat.mul_succ, Nat.add_mul, Nat.one_mul]
+      rw [h]
+      omega
+
+/-- A `tri` is at most the next square. -/
+theorem tri_le_sq (n : Nat) : tri n ≤ (n + 1) * (n + 1) :=
+  Nat.le_trans (tri_le_mul_self n) (Nat.mul_le_mul (Nat.le_succ n) (Nat.le_succ n))
 
 theorem two_mul_tri (n : Nat) : 2 * tri n = n * (n + 1) := by
   induction n with
   | zero => simp [tri]
   | succ n ih =>
-      calc 2 * tri (n + 1) = 2 * ((n + 1) + tri n) := by rw [tri_succ]
-        _ = 2 * (n + 1) + 2 * tri n := by rw [Nat.mul_add]
-        _ = 2 * (n + 1) + n * (n + 1) := by rw [ih]
-        _ = (n + 1) * (n + 1) + (n + 1) := by
-              rw [Nat.mul_succ 2 n, Nat.mul_succ (n + 1) n, Nat.mul_comm (n + 1) n]
-              omega
-        _ = (n + 1) * (n + 2) := by rw [← Nat.mul_succ]
+      rw [tri_succ, Nat.mul_add, ih, Nat.mul_succ 2 n, Nat.mul_succ (n + 1) (n + 1),
+        Nat.mul_succ (n + 1) n, Nat.mul_comm (n + 1) n]
+      omega
 
 theorem tri_eq_add_pred (n : Nat) : tri n = n + tri (n - 1) := by
   cases n with
@@ -221,25 +213,14 @@ theorem tri_eq_add_pred (n : Nat) : tri n = n + tri (n - 1) := by
 
 /-- `tri (m - 1) ≤ m * m`, the form used by the algorithms whose loops scan a
 suffix of length `m`. -/
-theorem tri_pred_le_sq (n : Nat) : tri (n - 1) ≤ n * n := by
-  cases n with
-  | zero => simp [tri]
-  | succ m => simpa using tri_le_sq m
+theorem tri_pred_le_sq (n : Nat) : tri (n - 1) ≤ n * n :=
+  Nat.le_trans (tri_le_mul_self (n - 1)) (Nat.mul_le_mul (Nat.pred_le n) (Nat.pred_le n))
 
-theorem tri_mono : ∀ {m n : Nat}, m ≤ n → tri m ≤ tri n
-  | m, n, h => by
-      induction n with
-      | zero =>
-          have : m = 0 := Nat.eq_zero_of_le_zero h
-          subst this
-          exact Nat.le_refl _
-      | succ n ih =>
-          rcases Nat.lt_or_ge m (n + 1) with hlt | hge
-          · exact Nat.le_trans (ih (Nat.lt_succ_iff.mp hlt))
-              (by rw [tri_succ]; exact Nat.le_add_left _ _)
-          · have : m = n + 1 := Nat.le_antisymm h hge
-            subst this
-            exact Nat.le_refl _
+theorem tri_mono {m n : Nat} (h : m ≤ n) : tri m ≤ tri n := by
+  induction h with
+  | refl => exact Nat.le_refl _
+  | step _ ih =>
+      exact Nat.le_trans ih (by rw [tri_succ]; exact Nat.le_add_left _ _)
 
 /-! ## Uniform big-O -/
 

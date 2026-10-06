@@ -584,10 +584,7 @@ theorem mem_blkMerge {proj : α → β} {b : List α} {xs ys : List (List α)}
       · exact List.mem_cons_of_mem x (ih (Or.inl h))
     · exact List.mem_cons_of_mem x (ih (Or.inr h))
   | case4 x xs y ys hnot ih =>
-    have hfalse : PairLe proj x y = false := by
-      cases hxy : PairLe proj x y with
-      | false => rfl
-      | true => exact absurd hxy hnot
+    have hfalse : PairLe proj x y = false := Bool.eq_false_iff.mpr hnot
     rw [blkMerge_cons_cons_of_not_le hfalse]
     rcases h with h | h
     · exact List.mem_cons_of_mem y (ih (Or.inl h))
@@ -749,10 +746,7 @@ theorem blkMerge_take_succ (proj : α → β) :
     intro j hj
     cases j with
     | zero =>
-      have hfalse : PairLe proj x y = false := by
-        cases hxy : PairLe proj x y with
-        | false => rfl
-        | true => exact absurd hxy h
+      have hfalse : PairLe proj x y = false := Bool.eq_false_iff.mpr h
       refine ⟨0, 0, by simp, by simp, by simp, ?_, Or.inr ⟨y, ?_, ?_, ?_⟩⟩
       · simp [blkMerge_cons_cons_of_not_le hfalse, blkMerge_nil_left]
       · rw [List.getElem?_cons_zero]
@@ -762,10 +756,7 @@ theorem blkMerge_take_succ (proj : α → β) :
         rw [← Option.some.inj hc]
         exact hfalse
     | succ k =>
-      have hfalse : PairLe proj x y = false := by
-        cases hxy : PairLe proj x y with
-        | false => rfl
-        | true => exact absurd hxy h
+      have hfalse : PairLe proj x y = false := Bool.eq_false_iff.mpr h
       have hk : k < (blkMerge proj (x :: xs) ys).length := by
         simp [blkMerge_cons_cons_of_not_le hfalse] at hj; omega
       obtain ⟨p', q', hp', hq', hpq, htake, hdisj⟩ := ih k hk
@@ -811,28 +802,10 @@ def StraddleUnique (proj : α → β) (t : β) (l : List (List α)) : Prop :=
   ∀ (i j : Nat) (hi : i < l.length) (hj : j < l.length), i < j →
     ¬(Straddle proj t (l[i]'hi) ∧ Straddle proj t (l[j]'hj))
 
-/-- A key below another key is not strictly above it. -/
-theorem blt_false_of_ble {a b : β} (h : Cmp.ble a b = true) : Cmp.blt b a = false := by
-  simp [Cmp.blt, h]
-
 omit [Cmp β] in
 theorem keyFst_eq_some_of_head {proj : α → β} {c : List α} {x : α} (h : c.head? = some x) :
     keyFst proj c = some (proj x) := by
   simp [keyFst, h]
-
-omit [Cmp β] in
-theorem mem_of_head?_eq_some {c : List α} {x : α} (h : c.head? = some x) : x ∈ c := by
-  obtain ⟨ys, rfl⟩ := List.head?_eq_some_iff.mp h
-  exact List.mem_cons_self
-
-/-- If no block of `l` straddles `t`, no element of `l.flatten` is above `t`. -/
-theorem blt_eq_false_of_forall_not_straddle {proj : α → β} {t : β} {l : List (List α)}
-    (h : ∀ c ∈ l, ¬Straddle proj t c) : ∀ x ∈ l.flatten, Cmp.blt t (proj x) = false := by
-  intro x hx
-  obtain ⟨c, hc, hxc⟩ := List.mem_flatten.mp hx
-  cases hb : Cmp.blt t (proj x) with
-  | false => rfl
-  | true => exact absurd ⟨x, hxc, hb⟩ (h c hc)
 
 /-- A positive count exposes an element satisfying the predicate (constructively,
 unlike the contrapositive of `countP_eq_zero`). -/
@@ -923,7 +896,7 @@ theorem countP_blkMerge_take_le (proj : α → β) {bs : Nat} (hbs : 0 < bs)
       rw [hLseq]
       exact sorted_take hpair
     exact (sorted_append_iff.mp hsorted).2.2 c hc b (List.mem_singleton_self b)
-  have hamem : a ∈ b := mem_of_head?_eq_some ha
+  have hamem : a ∈ b := List.mem_of_mem_head? (by simp [ha])
   rw [htake, countP_eq_of_perm (blkMerge_flatten_perm proj (xs.take p) (ys.take q)),
     List.countP_append]
   rcases hdisj with ⟨b', hxb, hLb, hcond⟩ | ⟨b', hyb, hLb, hcond⟩
@@ -948,7 +921,7 @@ theorem countP_blkMerge_take_le (proj : α → β) {bs : Nat} (hbs : 0 < bs)
       have hall : AllLe (KeyLe proj) c b := by
         have h1 := hxr.allLe_getElem i p hi' hpx (by omega)
         rwa [hcieq, hxpeq] at h1
-      exact blt_false_of_ble (hall x hxc a hamem)
+      exact Cmp.blt_eq_false_iff.mpr (hall x hxc a hamem)
     have hycount : ((ys.take q).flatten).countP (fun x => Cmp.blt (proj a) (proj x)) ≤ bs := by
       refine countP_flatten_le_of_straddleUnique (fun c hc =>
         Nat.le_of_eq (hylen c (List.mem_of_mem_take hc))) ?_
@@ -1002,7 +975,7 @@ theorem countP_blkMerge_take_le (proj : α → β) {bs : Nat} (hbs : 0 < bs)
       have hall : AllLe (KeyLe proj) c b := by
         have h1 := hyr.allLe_getElem i q hi' hqy (by omega)
         rwa [hcieq, hyqeq] at h1
-      exact blt_false_of_ble (hall x hxc a hamem)
+      exact Cmp.blt_eq_false_iff.mpr (hall x hxc a hamem)
     have hxcount : ((xs.take p).flatten).countP (fun x => Cmp.blt (proj a) (proj x)) ≤ bs := by
       refine countP_flatten_le_of_straddleUnique (fun c hc =>
         Nat.le_of_eq (hxlen c (List.mem_of_mem_take hc))) ?_
@@ -1317,11 +1290,6 @@ theorem blockMergeStd_spec (proj : α → β) {bs : Nat} {blks xs ys : List (Lis
     rw [hnil] at hlen
     simp at hlen
     omega
-  have hpair : Sorted (fun x y => PairLe proj x y = true) blks := by
-    rw [hblks]
-    refine blkMerge_sorted proj xs ys ?_ ?_
-    · exact hxr.pairSorted (fun c hc hnil => by have := hxlen c hc; rw [hnil] at this; simp at this; omega)
-    · exact hyr.pairSorted (fun c hc hnil => by have := hylen c hc; rw [hnil] at this; simp at this; omega)
   intro fuel
   induction fuel with
   | zero => intro done D H suffix h2 hf _; exfalso; omega
@@ -1692,8 +1660,6 @@ theorem blockMergePairwise_flatten_perm (proj : α → β) (bs : Nat) (blks : Li
     cases rest with
     | nil => simp [blockMergePairwise, blockMergeStd]
     | cons H suffix =>
-      have hstart : ([] ++ b0 :: H :: suffix).flatten.Perm (b0 :: H :: suffix).flatten :=
-        List.Perm.refl _
       exact blockMergeStd_flatten_perm proj bs (H :: suffix).length [] b0 H suffix
         (b0 :: H :: suffix) (by simp)
 
@@ -1814,21 +1780,9 @@ theorem unstableMerge_sorted_and_perm (proj : α → β) (l : List α) {k : Nat}
         List.drop_eq_nil_of_le (by simp [hA1len, hB1len]), List.nil_append]
     -- sortedness of the aligned runs
     have hA1sort : Sorted (KeyLe proj) A1 := by
-      have h := hA
-      simp only [SortedOn, Nat.sub_zero, List.drop_zero] at h
-      have h' : Sorted (KeyLe proj) ((l.take k).take la) := sorted_take h
-      have heq : (l.take k).take la = l.take la := by
-        rw [List.take_take, Nat.min_eq_left hlak]
-      rw [heq] at h'
-      rwa [← hA1def]
+      simpa [List.take_take, Nat.min_eq_left hlak, ← hA1def] using sorted_take (n := la) hA
     have hB1sort : Sorted (KeyLe proj) B1 := by
-      have h := hB
-      simp only [SortedOn] at h
-      have h' : Sorted (KeyLe proj) (((l.drop k).take (l.length - k)).take ra) := sorted_take h
-      have heq : ((l.drop k).take (l.length - k)).take ra = (l.drop k).take ra := by
-        rw [List.take_take, Nat.min_eq_left hrale]
-      rw [heq] at h'
-      rwa [← hB1def]
+      simpa [List.take_take, Nat.min_eq_left hrale, ← hB1def] using sorted_take (n := ra) hB
     -- the block sort permutes and its blocks are sorted
     have hblks_perm : blks.flatten.Perm (A1 ++ B1) := by
       rw [← hblksdef]

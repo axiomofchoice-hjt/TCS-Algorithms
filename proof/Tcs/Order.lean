@@ -51,6 +51,10 @@ theorem not_blt_and_beq (a b : β) : ¬(blt a b = true ∧ beq a b = true) := by
   rw [h] at h₃
   exact Bool.false_ne_true h₃
 
+/-- A successful strict test excludes equality. -/
+theorem not_beq_of_blt {a b : β} (h : blt a b = true) : beq a b = false := by
+  simp [beq, (blt_iff.mp h).2]
+
 theorem ble_eq_blt_or_beq (a b : β) : ble a b = (blt a b || beq a b) := by
   cases hab : ble a b <;> cases hba : ble b a <;> simp [blt, beq, hab, hba]
 
@@ -88,30 +92,12 @@ end Cmp
 
 /-! ### `Nat` instance, used by the non-vacuity checks -/
 
-theorem nat_ble_refl (a : Nat) : Nat.ble a a = true := by
-  rw [Nat.ble_eq]
-  exact Nat.le_refl a
-
-theorem nat_ble_total (a b : Nat) : Nat.ble a b = true ∨ Nat.ble b a = true := by
-  rw [Nat.ble_eq, Nat.ble_eq]
-  exact Nat.le_total a b
-
-theorem nat_ble_trans {a b c : Nat} (h₁ : Nat.ble a b = true) (h₂ : Nat.ble b c = true) :
-    Nat.ble a c = true := by
-  rw [Nat.ble_eq] at h₁ h₂ ⊢
-  exact Nat.le_trans h₁ h₂
-
-theorem nat_ble_antisymm {a b : Nat} (h₁ : Nat.ble a b = true) (h₂ : Nat.ble b a = true) :
-    a = b := by
-  rw [Nat.ble_eq] at h₁ h₂
-  exact Nat.le_antisymm h₁ h₂
-
 instance : Cmp Nat where
   ble := Nat.ble
-  ble_refl := nat_ble_refl
-  ble_total := nat_ble_total
-  ble_trans := nat_ble_trans
-  ble_antisymm := nat_ble_antisymm
+  ble_refl a := by rw [Nat.ble_eq]; exact Nat.le_refl a
+  ble_total a b := by rw [Nat.ble_eq, Nat.ble_eq]; exact Nat.le_total a b
+  ble_trans := by intro a b c h₁ h₂; rw [Nat.ble_eq] at h₁ h₂ ⊢; exact Nat.le_trans h₁ h₂
+  ble_antisymm := by intro a b h₁ h₂; rw [Nat.ble_eq] at h₁ h₂; exact Nat.le_antisymm h₁ h₂
 
 /-! ### Strict-order glue
 
@@ -149,22 +135,6 @@ theorem blt_of_blt_of_ble {a b c : β} (h₁ : blt a b = true) (h₂ : ble b c =
 theorem blt_of_beq_of_blt {a b c : β} (h₁ : beq a b = true) (h₂ : blt b c = true) :
     blt a c = true :=
   blt_of_ble_of_blt (beq_iff.mp h₁).1 h₂
-
-theorem blt_of_blt_of_beq {a b c : β} (h₁ : blt a b = true) (h₂ : beq b c = true) :
-    blt a c = true :=
-  blt_of_blt_of_ble h₁ (beq_iff.mp h₂).1
-
-theorem blt_congr_left {a b c : β} (h : beq a b = true) : blt a c = blt b c := by
-  rw [beq_eq h]
-
-theorem blt_congr_right {a b c : β} (h : beq b c = true) : blt a b = blt a c := by
-  rw [beq_eq h]
-
-theorem ble_congr_left {a b c : β} (h : beq a b = true) : ble a c = ble b c := by
-  rw [beq_eq h]
-
-theorem ble_congr_right {a b c : β} (h : beq b c = true) : ble a b = ble a c := by
-  rw [beq_eq h]
 
 end Cmp
 
