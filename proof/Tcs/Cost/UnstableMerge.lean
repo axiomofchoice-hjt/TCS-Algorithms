@@ -208,11 +208,15 @@ theorem selScanC_length (proj : α → β) :
   | cons b rest ih =>
       rw [selScanC_cons]
       dsimp only
-      by_cases h : PairLe proj (selScanC proj cur moved rest).1.1 b = true
-      · rw [ite_eq_left h]
-        simp only [List.length_cons, ih]
-      · rw [ite_eq_right h]
-        simp only [List.length_cons, ih]
+      split <;> simp only [List.length_cons, ih]
+
+/-- The scan leaves a shorter (or equal) list to the recursive call: it walks `rest` and
+starts from `b`, so a fuel budget of `fuel + 1` for `b :: rest` suffices for the tail. -/
+theorem selScanC_length_le {proj : α → β} {b : List α} {rest : List (List α)} {fuel : Nat}
+    (h : (b :: rest).length ≤ fuel + 1) : (selScanC proj b false rest).1.2.2.length ≤ fuel := by
+  rw [selScanC_length]
+  simp only [List.length_cons] at h
+  omega
 
 /-- Each scan step performs exactly `3` key comparisons. -/
 theorem selScanC_cmp (proj : α → β) :
@@ -224,13 +228,7 @@ theorem selScanC_cmp (proj : α → β) :
   | cons b rest ih =>
       rw [selScanC_cons]
       dsimp only
-      by_cases h : PairLe proj (selScanC proj cur moved rest).1.1 b = true
-      · rw [ite_eq_left h]
-        simp only [Cost.cmp_add, Cost.cmp_cmpN, ih, List.length_cons]
-        omega
-      · rw [ite_eq_right h]
-        simp only [Cost.cmp_add, Cost.cmp_cmpN, ih, List.length_cons]
-        omega
+      split <;> simp only [Cost.cmp_add, Cost.cmp_cmpN, ih, List.length_cons] <;> omega
 
 /-- A scan never moves an element by itself (the swap is charged by the caller). -/
 theorem selScanC_mv (proj : α → β) :
@@ -242,11 +240,7 @@ theorem selScanC_mv (proj : α → β) :
   | cons b rest ih =>
       rw [selScanC_cons]
       dsimp only
-      by_cases h : PairLe proj (selScanC proj cur moved rest).1.1 b = true
-      · rw [ite_eq_left h]
-        simp only [Cost.mv_add, Cost.mv_cmpN, ih]
-      · rw [ite_eq_right h]
-        simp only [Cost.mv_add, Cost.mv_cmpN, ih]
+      split <;> simp only [Cost.mv_add, Cost.mv_cmpN, ih]
 
 /-- `block_selection_sort` with an explicit step budget; the recursion is structural in
 the budget so that the equations hold definitionally. -/
@@ -298,10 +292,7 @@ theorem selSortAuxC_perm (proj : α → β) (bs : Nat) (fuel : Nat) :
           rw [selSortAuxC_succ_cons]
           dsimp only
           have hscan := selScanC_perm proj b false rest
-          have hlen' : (selScanC proj b false rest).1.2.2.length ≤ fuel := by
-            rw [selScanC_length]
-            simp only [List.length_cons] at hlen
-            omega
+          have hlen' := selScanC_length_le (proj := proj) (b := b) (rest := rest) hlen
           exact (List.Perm.cons _ (ih _ hlen')).trans hscan
 
 /-- The selection sort performs at most `3 * tri (n - 1)` key comparisons. -/
@@ -321,18 +312,13 @@ theorem selSortAuxC_cmp_le (proj : α → β) (bs : Nat) (fuel : Nat) :
       | b :: rest =>
           rw [selSortAuxC_succ_cons]
           dsimp only
-          have hlen' : (selScanC proj b false rest).1.2.2.length ≤ fuel := by
-            rw [selScanC_length]
-            simp only [List.length_cons] at hlen
-            omega
+          have hlen' := selScanC_length_le (proj := proj) (b := b) (rest := rest) hlen
           have hrec := ih _ hlen'
           rw [selScanC_length] at hrec
           have hscan := selScanC_cmp proj b false rest
           have hmoved : (if (selScanC proj b false rest).1.2.1 then Cost.mvN (3 * bs) else 0).cmp
               = 0 := by
-            by_cases hm : (selScanC proj b false rest).1.2.1 = true
-            · rw [ite_eq_left hm]; simp
-            · rw [ite_eq_right hm]; simp
+            split <;> simp
           simp only [Cost.cmp_add, hscan, hmoved]
           simp only [List.length_cons, Nat.add_sub_cancel]
           have htri := tri_eq_add_pred rest.length
@@ -363,26 +349,18 @@ theorem selSortAuxC_mv_le (proj : α → β) (bs : Nat) (fuel : Nat) :
               | zero => rw [selSortAuxC_zero]; simp
               | succ f => rw [selSortAuxC_succ_nil]; simp
           | cons c rest' =>
-              have hlen' : (selScanC proj b false (c :: rest')).1.2.2.length ≤ fuel := by
-                rw [selScanC_length]
-                simp only [List.length_cons] at hlen ⊢
-                omega
+              have hlen' : (selScanC proj b false (c :: rest')).1.2.2.length ≤ fuel :=
+                selScanC_length_le hlen
               have hrec := ih _ hlen'
               rw [selScanC_length] at hrec
               simp only [List.length_cons, Nat.add_sub_cancel] at hrec
               have hmoved : (if (selScanC proj b false (c :: rest')).1.2.1 then
                   Cost.mvN (3 * bs) else 0).mv ≤ 3 * bs := by
-                by_cases hm : (selScanC proj b false (c :: rest')).1.2.1 = true
-                · rw [ite_eq_left hm]; simp
-                · rw [ite_eq_right hm]; simp
+                split <;> simp
               rw [Cost.mv_add, Cost.mv_add, selScanC_mv, Nat.zero_add]
               simp only [List.length_cons, Nat.add_sub_cancel]
               rw [Nat.mul_succ]
               omega
-
-theorem selSortC_fst_eq (proj : α → β) (bs : Nat) (blks : List (List α)) :
-    (selSortC proj bs blks).1 = (selSortAuxC proj bs blks.length blks).1 :=
-  rfl
 
 theorem selSortC_perm (proj : α → β) (bs : Nat) (blks : List (List α)) :
     (selSortC proj bs blks).1.Perm blks :=
@@ -730,11 +708,7 @@ theorem unstableMergeCost_bounds (proj : α → β) (l : List α) (k : Nat)
     have hla : la ≤ k := by rw [← hladef]; exact Nat.div_mul_le_self k bs
     have hra : ra ≤ l.length - k := by
       rw [← hradef]; exact Nat.div_mul_le_self (l.length - k) bs
-    have hbsle : bs ≤ l.length := by
-      have h1 : bs ≤ bs * bs := by
-        have h2 := Nat.mul_le_mul_left bs hbs1
-        simpa using h2
-      omega
+    have hbsle : bs ≤ l.length := Nat.le_trans (Nat.le_mul_self bs) hbs2
     have halle : al ≤ l.length := by rw [← haldef]; omega
     have hA1len : A1.length = la := by
       rw [← hA1def, List.length_take, Nat.min_eq_left (by omega)]
@@ -759,15 +733,13 @@ theorem unstableMergeCost_bounds (proj : α → β) (l : List α) (k : Nat)
       rw [← hblks0def, List.flatten_append, chunks_flatten, chunks_flatten, hla', hra',
         List.take_of_length_le (by omega), List.take_of_length_le (by omega),
         List.length_append, hA1len, hB1len, ← haldef]
-    have hblksmul : blks0.length * bs = al := by
-      have h1 := length_flatten_eq hblks0all
-      omega
+    have hblksmul : blks0.length * bs = al :=
+      (length_flatten_eq hblks0all).symm.trans hflat0
     have hnb : blks0.length ≤ bs + 2 := by
-      have h1 : blks0.length * bs ≤ bs * (bs + 2) := by
-        have h4 : (bs + 1) * (bs + 1) = bs * (bs + 2) + 1 := um_sq_succ bs
-        omega
       have h5 : bs * blks0.length ≤ bs * (bs + 2) := by
-        rw [Nat.mul_comm bs blks0.length]; exact h1
+        rw [Nat.mul_comm bs blks0.length]
+        have h4 := um_sq_succ bs
+        omega
       exact Nat.le_of_mul_le_mul_left h5 hbs
     have hblks1len : blks1.length = blks0.length := by
       rw [← hblks1def]; exact selSortC_length proj bs blks0
@@ -796,22 +768,16 @@ theorem unstableMergeCost_bounds (proj : α → β) (l : List α) (k : Nat)
     have hsuf : l.length - (al - bs) ≤ 3 * bs := by omega
     have hsuf2 : (l2.drop (al - bs)).length ≤ 3 * bs := by
       rw [List.length_drop, hl2len]; exact hsuf
+    have htri3 : tri ((l2.drop (al - bs)).length - 1) ≤ 9 * l.length := by
+      have h2 := tri_pred_le_sq ((l2.drop (al - bs)).length)
+      have h3 : (l2.drop (al - bs)).length * (l2.drop (al - bs)).length ≤
+          (3 * bs) * (3 * bs) := Nat.mul_self_le_mul_self hsuf2
+      have h4 : (3 * bs) * (3 * bs) ≤ 9 * l.length := um_sq_three_le hbs2
+      omega
     have hbubble_cmp : (bubbleSortC proj (l2.drop (al - bs))).2.cmp ≤ 9 * l.length := by
-      have h1 : tri ((l2.drop (al - bs)).length - 1) ≤ 9 * l.length := by
-        have h2 := tri_pred_le_sq ((l2.drop (al - bs)).length)
-        have h3 : (l2.drop (al - bs)).length * (l2.drop (al - bs)).length ≤
-            (3 * bs) * (3 * bs) := Nat.mul_self_le_mul_self hsuf2
-        have h4 : (3 * bs) * (3 * bs) ≤ 9 * l.length := um_sq_three_le hbs2
-        omega
       have h5 := bubbleSortC_cmp proj (l2.drop (al - bs))
       omega
     have hbubble_mv : (bubbleSortC proj (l2.drop (al - bs))).2.mv ≤ 27 * l.length := by
-      have h1 : tri ((l2.drop (al - bs)).length - 1) ≤ 9 * l.length := by
-        have h2 := tri_pred_le_sq ((l2.drop (al - bs)).length)
-        have h3 : (l2.drop (al - bs)).length * (l2.drop (al - bs)).length ≤
-            (3 * bs) * (3 * bs) := Nat.mul_self_le_mul_self hsuf2
-        have h4 : (3 * bs) * (3 * bs) ≤ 9 * l.length := um_sq_three_le hbs2
-        omega
       have h5 := bubbleSortC_mv_le proj (l2.drop (al - bs))
       omega
     have hsel_cmp : (selSortC proj bs blks0).2.cmp ≤ 27 * l.length := by
@@ -832,15 +798,13 @@ theorem unstableMergeCost_bounds (proj : α → β) (l : List α) (k : Nat)
       have h4 := selSortC_mv_le proj bs blks0
       rw [Nat.mul_assoc] at h4
       omega
+    have hbsblk1 : bs * blks1.length = al := by
+      rw [hblks1len, Nat.mul_comm]; exact hblksmul
     have hpair_cmp : (pairwiseC proj bs blks1).2.cmp ≤ 2 * l.length := by
-      have h1 : bs * blks1.length = al := by
-        rw [hblks1len, Nat.mul_comm]; exact hblksmul
       have h2 := pairwiseC_cmp_le proj bs blks1
       rw [Nat.mul_assoc] at h2
       omega
     have hpair_mv : (pairwiseC proj bs blks1).2.mv ≤ 9 * l.length := by
-      have h1 : bs * blks1.length = al := by
-        rw [hblks1len, Nat.mul_comm]; exact hblksmul
       have h2 := pairwiseC_mv_le proj bs blks1
       rw [Nat.mul_assoc] at h2
       omega
@@ -862,8 +826,6 @@ theorem unstableMergeCost_bounds (proj : α → β) (l : List α) (k : Nat)
       have h1 := mergeByRotationC_mv_le proj l3 0 (al - bs) l.length
       rw [Nat.sub_zero, Nat.sub_zero] at h1
       omega
-    have hra_le : ra ≤ l.length := by omega
-    have hmod_le : k % bs ≤ l.length := by omega
     simp only [Cost.cmp_add, Cost.cmp_rot, Cost.mv_add, Cost.mv_rot]
     exact ⟨by omega, by omega⟩
 

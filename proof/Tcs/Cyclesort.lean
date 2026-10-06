@@ -320,35 +320,13 @@ theorem exists_partner {proj : α → β} {a : Array α} {it : Nat} (hit : it < 
 
 /-! ## Settledness under a single swap -/
 
-theorem getElem?_swap_of_ne {a : Array α} {i j q : Nat} (hi : i < a.size) (hj : j < a.size)
-    (hqi : q ≠ i) (hqj : q ≠ j) : (a.swap i j hi hj)[q]? = a[q]? := by
-  cases h : a[q]? with
-  | none =>
-    rw [Array.getElem?_eq_none_iff] at h ⊢
-    rwa [Array.size_swap]
-  | some x =>
-    rw [Array.getElem?_eq_some_iff] at h ⊢
-    obtain ⟨hq, hqx⟩ := h
-    refine ⟨by rwa [Array.size_swap], ?_⟩
-    rw [Array.getElem_swap, ite_eq_right hqi, ite_eq_right hqj]
-    exact hqx
-
 theorem settledBool_swap_of_ne {proj : α → β} {a : Array α} {i j q : Nat} (hi : i < a.size)
     (hj : j < a.size) (hqi : q ≠ i) (hqj : q ≠ j) :
     settledBool proj (a.swap i j hi hj) q = settledBool proj a q := by
   unfold settledBool
-  rw [getElem?_swap_of_ne hi hj hqi hqj]
-  have hf : (fun x =>
-        (ltCount proj (a.swap i j hi hj) (proj x)).ble q
-          && (q + 1).ble (ltCount proj (a.swap i j hi hj) (proj x)
-            + eqCount proj (a.swap i j hi hj) (proj x)))
-      = (fun x =>
-        (ltCount proj a (proj x)).ble q
-          && (q + 1).ble (ltCount proj a (proj x) + eqCount proj a (proj x))) := by
-    funext x
-    rw [ltCount_swap (proj := proj) a i j hi hj (proj x),
-      eqCount_swap (proj := proj) a i j hi hj (proj x)]
-  rw [hf]
+  rw [Array.getElem?_swap, ite_eq_right (fun h : j = q => hqj h.symm),
+    ite_eq_right (fun h : i = q => hqi h.symm)]
+  simp only [ltCount_swap, eqCount_swap]
 
 /-- A swap that only moves *unsettled* elements around cannot unsettle anything. -/
 theorem settledBool_swap_mono {proj : α → β} {a : Array α} {i j : Nat} (hi : i < a.size)
@@ -399,8 +377,45 @@ theorem firstNe_some_beq_false {proj : α → β} {a : Array α} {k : β} {lo n 
   rw [← hx'] at hbeq
   exact hbeq
 
+/-- If `p` is the partner `firstNe` returns for the unsettled position `it`, then
+swapping the two settles `p` and drops the unsettled count, while every settled
+position stays settled.  This is the one step of the inner loop, shared by the
+correctness invariant below and by the cost module's potential argument. -/
+theorem swap_partner_spec {proj : α → β} {a : Array α} {it p : Nat}
+    (hit : it < a.size) (hIn : ¬InBlock proj a it (proj (a[it]'hit))) (hp : p < a.size)
+    (hfn : firstNe proj a (proj (a[it]'hit)) (ltCount proj a (proj (a[it]'hit)))
+        (eqCount proj a (proj (a[it]'hit))) = some p) :
+    unsettledCount proj (a.swap it p hit hp) < unsettledCount proj a
+    ∧ (∀ q, settledBool proj a q = true → settledBool proj (a.swap it p hit hp) q = true) := by
+  have hbeqf : Cmp.beq (proj (a[p]'hp)) (proj (a[it]'hit)) = false :=
+    firstNe_some_beq_false hfn hp
+  have hpblock : InBlock proj a p (proj (a[it]'hit)) :=
+    ⟨(firstNe_some hfn).1, (firstNe_some hfn).2.1⟩
+  have hnp : ¬(p = it) := by
+    intro hpit
+    exact hIn (hpit ▸ hpblock)
+  have hUit : settledBool proj a it = false := (settledBool_eq_false_iff hit).mpr hIn
+  have hUp : settledBool proj a p = false := by
+    rw [settledBool_eq_false_iff hp]
+    intro hs
+    have hb := inBlock_unique hpblock hs
+    rw [Cmp.beq_comm (proj (a[it]'hit)) (proj (a[p]'hp))] at hb
+    rw [hbeqf] at hb
+    exact Bool.false_ne_true hb
+  have hp' : p < (a.swap it p hit hp).size := by rw [Array.size_swap]; exact hp
+  have hSp : settledBool proj (a.swap it p hit hp) p = true := by
+    rw [settledBool_eq_true_iff hp']
+    unfold SettledAt
+    have hpe : (a.swap it p hit hp)[p]'hp' = a[it]'hit := by
+      rw [Array.getElem_swap, ite_eq_right hnp, ite_eq_left rfl]
+    rw [hpe]
+    exact (inBlock_swap_iff hit hp (q := p) (proj (a[it]'hit))).mpr hpblock
+  exact ⟨unsettledCount_swap_lt (proj := proj) hit hp hUit hUp hSp,
+    settledBool_swap_mono (proj := proj) hit hp hUit hUp⟩
 
-/-- C++ 内层循环：反复交换，直到位置 `it` 落进它自己 key 的块。燃料是未定位置数。 -/
+
+/-- The C++ inner loop: keep swapping until position `it` falls into the block of its
+own key.  The fuel is the number of unsettled positions. -/
 def innerAux (proj : α → β) : Nat → (a : Array α) → (it : Nat) → it < a.size → Array α
   | 0, a, _, _ => a
   | n + 1, a, it, hit =>
@@ -428,7 +443,7 @@ theorem innerAux_size (proj : α → β) (n : Nat) (a : Array α) (it : Nat) (hi
       · rename_i p hfn
         rw [ih, Array.size_swap]
 
-/-- 内层循环的全部不变量，一次归纳证完。 -/
+/-- Every invariant of the inner loop, proved by one induction. -/
 theorem innerAux_spec (proj : α → β) (n : Nat) (a : Array α) (it : Nat) (hit : it < a.size)
     (hn : unsettledCount proj a ≤ n) :
     (innerAux proj n a it hit).size = a.size
@@ -465,30 +480,8 @@ theorem innerAux_spec (proj : α → β) (n : Nat) (a : Array α) (it : Nat) (hi
         have hltp : p < a.size := by
           have h2 := ltCount_add_eqCount_le_size proj a (proj (a[it]'hit))
           omega
-        have hbeqf : Cmp.beq (proj (a[p]'hltp)) (proj (a[it]'hit)) = false :=
-          firstNe_some_beq_false hfn hltp
-        have hnp : ¬(p = it) := by
-          intro hpit
-          exact hnot (hpit ▸ hpblock)
-        have hUit : settledBool proj a it = false := (settledBool_eq_false_iff hit).mpr hnot
-        have hUp : settledBool proj a p = false := by
-          rw [settledBool_eq_false_iff hltp]
-          intro hs
-          have hb := inBlock_unique hpblock hs
-          rw [Cmp.beq_comm (proj (a[it]'hit)) (proj (a[p]'hltp))] at hb
-          rw [hbeqf] at hb
-          exact Bool.false_ne_true hb
-        have hp' : p < (a.swap it p hit hltp).size := by rw [Array.size_swap]; exact hltp
-        have hSp : settledBool proj (a.swap it p hit hltp) p = true := by
-          rw [settledBool_eq_true_iff hp']
-          unfold SettledAt
-          have hpe : (a.swap it p hit hltp)[p]'hp' = a[it]'hit := by
-            rw [Array.getElem_swap, ite_eq_right hnp, ite_eq_left rfl]
-          rw [hpe]
-          exact (inBlock_swap_iff hit hltp (q := p) (proj (a[it]'hit))).mpr hpblock
-        have hn' : unsettledCount proj (a.swap it p hit hltp) ≤ n := by
-          have hdec := unsettledCount_swap_lt (proj := proj) hit hltp hUit hUp hSp
-          omega
+        obtain ⟨hdec, hmono⟩ := swap_partner_spec hit hnot hltp hfn
+        have hn' : unsettledCount proj (a.swap it p hit hltp) ≤ n := by omega
         have hit' : it < (a.swap it p hit hltp).size := by rw [Array.size_swap]; exact hit
         obtain ⟨ihsz, ihperm, ihlt, iheq, ihmono, ihit⟩ := ih (a.swap it p hit hltp) it hit' hn'
         refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
@@ -499,16 +492,7 @@ theorem innerAux_spec (proj : α → β) (n : Nat) (a : Array α) (it : Nat) (hi
         · intro k
           exact (iheq k).trans (eqCount_swap proj a it p hit hltp k)
         · intro q hq
-          by_cases hqi : q = it
-          · rw [hqi, hUit] at hq
-            exact absurd hq Bool.false_ne_true
-          · by_cases hqj : q = p
-            · rw [hqj, hUp] at hq
-              exact absurd hq Bool.false_ne_true
-            · have hq' : settledBool proj (a.swap it p hit hltp) q = true := by
-                rw [settledBool_swap_of_ne (proj := proj) hit hltp hqi hqj]
-                exact hq
-              exact ihmono q hq'
+          exact ihmono q (hmono q hq)
         · exact ihit
 
 def inner (proj : α → β) (a : Array α) (it : Nat) (hit : it < a.size) : Array α :=
@@ -532,7 +516,7 @@ theorem inner_perm (proj : α → β) (a : Array α) (it : Nat) (hit : it < a.si
 
 /-! ## The outer loop -/
 
-/-- C++ 外层循环。 -/
+/-- The C++ outer loop. -/
 def outerAux (proj : α → β) : Nat → (a : Array α) → (it : Nat) → it ≤ a.size → Array α
   | 0, a, _, _ => a
   | n + 1, a, it, hle =>
@@ -540,7 +524,7 @@ def outerAux (proj : α → β) : Nat → (a : Array α) → (it : Nat) → it �
       outerAux proj n (inner proj a it h) (it + 1) (by rw [inner_size]; omega)
     else a
 
-/-- 外层循环：走完全部位置后**每个位置都已定**。 -/
+/-- The outer loop: after visiting every position, **every position is settled**. -/
 theorem outerAux_spec (proj : α → β) (n : Nat) (a : Array α) (it : Nat) (hle : it ≤ a.size)
     (hn : a.size - it ≤ n) (hinv : ∀ q, q < it → settledBool proj a q = true) :
     (outerAux proj n a it hle).size = a.size

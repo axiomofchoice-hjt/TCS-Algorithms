@@ -360,31 +360,30 @@ theorem unsettledCount_swap_succ_le {proj : α → β} {a : Array α} {it p : Na
     (hIn : ¬ InBlock proj a it (proj (a[it]'hit))) (hp : p < a.size)
     (hfn : firstNe proj a (proj (a[it]'hit)) (ltCount proj a (proj (a[it]'hit)))
         (eqCount proj a (proj (a[it]'hit))) = some p) :
-    unsettledCount proj (a.swap it p hit hp) + 1 ≤ unsettledCount proj a := by
-  have hbeqf : Cmp.beq (proj (a[p]'hp)) (proj (a[it]'hit)) = false :=
-    firstNe_some_beq_false hfn hp
-  have hpblock : InBlock proj a p (proj (a[it]'hit)) :=
-    ⟨(firstNe_some hfn).1, (firstNe_some hfn).2.1⟩
-  have hnp : ¬(p = it) := by
-    intro hpit
-    exact hIn (hpit ▸ hpblock)
-  have hUit : settledBool proj a it = false := (settledBool_eq_false_iff hit).mpr hIn
-  have hUp : settledBool proj a p = false := by
-    rw [settledBool_eq_false_iff hp]
-    intro hs
-    have hb := inBlock_unique hpblock hs
-    rw [Cmp.beq_comm (proj (a[it]'hit)) (proj (a[p]'hp))] at hb
-    rw [hbeqf] at hb
-    exact Bool.false_ne_true hb
-  have hp' : p < (a.swap it p hit hp).size := by rw [Array.size_swap]; exact hp
-  have hSp : settledBool proj (a.swap it p hit hp) p = true := by
-    rw [settledBool_eq_true_iff hp']
-    unfold SettledAt
-    have hpe : (a.swap it p hit hp)[p]'hp' = a[it]'hit := by
-      rw [Array.getElem_swap, ite_eq_right hnp, ite_eq_left rfl]
-    rw [hpe]
-    exact (inBlock_swap_iff hit hp (q := p) (proj (a[it]'hit))).mpr hpblock
-  exact Nat.succ_le_of_lt (unsettledCount_swap_lt (proj := proj) hit hp hUit hUp hSp)
+    unsettledCount proj (a.swap it p hit hp) + 1 ≤ unsettledCount proj a :=
+  Nat.succ_le_of_lt (swap_partner_spec hit hIn hp hfn).1
+
+/-- The final (breaking) trip of the inner loop: it costs one `destination_range` scan
+and changes neither the array nor the potential.  All three ways of breaking out of the
+loop (`n = 0`, `it` already in its block, no partner found) end in the same goals, so the
+four-conjunct invariant is discharged here once. -/
+private theorem innerAuxC_inv_break (proj : α → β) (a : Array α) (it : Nat) (hit : it < a.size) :
+    ((destRangeC proj a.toList (proj (a[it]'hit))).2 + Cost.mv1).cmp
+        + unsettledCount proj a * (3 * a.size)
+      ≤ unsettledCount proj a * (3 * a.size) + (2 * a.size)
+    ∧ ((destRangeC proj a.toList (proj (a[it]'hit))).2 + Cost.mv1).mv
+      ≤ (unsettledCount proj a - unsettledCount proj a) * (a.size + 4) + 1
+    ∧ a.size = a.size
+    ∧ unsettledCount proj a ≤ unsettledCount proj a := by
+  have hdc := destRangeC_cmp_le proj a.toList (proj (a[it]'hit))
+  rw [Array.length_toList] at hdc
+  have hmv : (destRangeC proj a.toList (proj (a[it]'hit))).2.mv = 0 :=
+    destRangeC_mv proj a.toList (proj (a[it]'hit))
+  refine ⟨?_, ?_, rfl, Nat.le_refl _⟩
+  · simp only [Cost.cmp_add, Cost.cmp_mv1, Nat.add_zero]
+    omega
+  · simp only [Cost.mv_add, Cost.mv_mv1, Nat.zero_add, Nat.sub_self, Nat.zero_mul]
+    omega
 
 /-- The potential invariant of the inner loop.  Writing `U a` for
 `unsettledCount proj a`, a swapping trip costs at most `3 * a.size` comparisons and
@@ -408,43 +407,17 @@ theorem innerAuxC_inv (proj : α → β) (n : Nat) (a : Array α) (it : Nat) (hi
   | zero =>
       rw [innerAuxC_zero]
       dsimp only
-      have hdc := destRangeC_cmp_le proj a.toList (proj (a[it]'hit))
-      rw [Array.length_toList] at hdc
-      have hmv : (destRangeC proj a.toList (proj (a[it]'hit))).2.mv = 0 :=
-        destRangeC_mv proj a.toList (proj (a[it]'hit))
-      refine ⟨?_, ?_, rfl, Nat.le_refl _⟩
-      · simp only [Cost.cmp_add, Cost.cmp_mv1, Nat.add_zero]
-        omega
-      · simp only [Cost.mv_add, Cost.mv_mv1, Nat.zero_add, Nat.sub_self, Nat.zero_mul]
-        omega
+      exact innerAuxC_inv_break proj a it hit
   | succ n ih =>
       by_cases hIn : InBlock proj a it (proj (a[it]'hit))
       · rw [innerAuxC_succ, dite_eq_left hIn]
         dsimp only
-        have hdc := destRangeC_cmp_le proj a.toList (proj (a[it]'hit))
-        rw [Array.length_toList] at hdc
-        have hmv : (destRangeC proj a.toList (proj (a[it]'hit))).2.mv = 0 :=
-          destRangeC_mv proj a.toList (proj (a[it]'hit))
-        refine ⟨?_, ?_, rfl, Nat.le_refl _⟩
-        · simp only [Cost.cmp_add, Cost.cmp_mv1, Nat.add_zero]
-          omega
-        · simp only [Cost.mv_add, Cost.mv_mv1, Nat.zero_add,
-            Nat.sub_self, Nat.zero_mul]
-          omega
+        exact innerAuxC_inv_break proj a it hit
       · rw [innerAuxC_succ, dite_eq_right hIn]
         dsimp only
         split
         · rename_i hfn
-          have hdc := destRangeC_cmp_le proj a.toList (proj (a[it]'hit))
-          rw [Array.length_toList] at hdc
-          have hmv : (destRangeC proj a.toList (proj (a[it]'hit))).2.mv = 0 :=
-            destRangeC_mv proj a.toList (proj (a[it]'hit))
-          refine ⟨?_, ?_, rfl, Nat.le_refl _⟩
-          · simp only [Cost.cmp_add, Cost.cmp_mv1, Nat.add_zero]
-            omega
-          · simp only [Cost.mv_add, Cost.mv_mv1, Nat.zero_add,
-              Nat.sub_self, Nat.zero_mul]
-            omega
+          exact innerAuxC_inv_break proj a it hit
         · rename_i p hfn
           have hp : p < a.size := firstNe_lt_size hfn
           rw [innerAuxC_swap_irrel proj n a it p hit hp]
@@ -577,11 +550,7 @@ theorem outerAuxC_inv (proj : α → β) (n : Nat) (a : Array α) (it : Nat)
   | zero =>
       have hzero : a.size - it = 0 := by omega
       rw [outerAuxC_zero, hzero, Nat.zero_mul, Nat.add_zero]
-      refine ⟨?_, ?_, rfl, Nat.le_refl _⟩
-      · simp only [Cost.cmp_zero, Nat.zero_add]
-        exact Nat.le_refl _
-      · simp only [Cost.mv_zero, Nat.sub_self, Nat.zero_mul, Nat.zero_add]
-        exact Nat.zero_le _
+      simp
   | succ n ih =>
       by_cases h : it < a.size
       · rw [outerAuxC_succ, dite_eq_left h]
@@ -623,11 +592,7 @@ theorem outerAuxC_inv (proj : α → β) (n : Nat) (a : Array α) (it : Nat)
       · have hzero : a.size - it = 0 := by omega
         rw [outerAuxC_succ, dite_eq_right h, hzero, Nat.zero_mul, Nat.add_zero]
         dsimp only
-        refine ⟨?_, ?_, rfl, Nat.le_refl _⟩
-        · simp only [Cost.cmp_zero, Nat.zero_add]
-          exact Nat.le_refl _
-        · simp only [Cost.mv_zero, Nat.sub_self, Nat.zero_mul, Nat.zero_add]
-          exact Nat.zero_le _
+        simp
 
 /-- Cycle sort carrying its cost. -/
 def cyclesortC (proj : α → β) (a : Array α) : Array α × Cost :=
