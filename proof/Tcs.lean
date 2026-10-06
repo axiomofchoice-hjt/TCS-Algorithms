@@ -9,6 +9,8 @@ import Tcs.Bfprt
 import Tcs.Merge
 import Tcs.UnstableMerge
 import Tcs.Cost
+import Tcs.Cost.UnstableMerge
+import Tcs.Cost.Bfprt
 import Tcs.Cost.Merge
 import Tcs.Cost.Cyclesort
 import Tcs.Cost.Sort

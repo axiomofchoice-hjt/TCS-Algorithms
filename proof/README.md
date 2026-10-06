@@ -1,8 +1,9 @@
 # Lean 4 formalization
 
-Machine-checked correctness proofs for the algorithms in `include/tcs/`, written
-in Lean 4 against Lean core + Std only: no Mathlib, no package dependencies, and
-`lake` alone is enough to build them (no CMake, no Makefile).
+Machine-checked correctness *and running-time* proofs for the algorithms in
+`include/tcs/`, written in Lean 4 against Lean core + Std only: no Mathlib, no
+package dependencies, and `lake` alone is enough to build them (no CMake, no
+Makefile).
 
 ```bash
 cd proof
@@ -77,8 +78,110 @@ Because these algorithms are deterministic, the Lean and the C++ results can be
 compared element by element: 300 random cases through the whole pipeline (plus
 400 + 400 through the two primitives) produced byte-identical arrays, and every pair
 of sorted runs of length ≤ 3 over `{0,1,2}` (100 cases) satisfies the contract. The
-The `bubble_sort` calls are modelled literally in `Tcs/Sort.lean` (the C++ loop, not
-an equivalent sort), so that their exact comparison count can be formalized.
+`bubble_sort` calls are modelled literally in `Tcs/Sort.lean` (the C++ loop, not an
+equivalent sort), so that their exact comparison count can be formalized.
+
+## Running time
+
+The correctness proofs above say *what* each algorithm computes. `Tcs/Cost.lean` and
+the `Tcs/Cost/` modules add *how much it costs*, also machine-checked.
+
+### The cost model
+
+A cost is a pair: the number of **key comparisons** and the number of **element
+moves**, charged the way the C++ operations pay for them.
+
+* one comparison for each evaluation of a scalar key test (`Cmp.ble` / `Cmp.blt`),
+  i.e. for each `proj`-compared C++ expression;
+* one move per element assignment or copy. `std::swap` is 3 (a temporary plus two
+  assignments, exactly how it is written for a non-trivial value type); a by-value
+  lambda parameter, as in `std::find_if` and `std::partition`, is 1 per call; a
+  linear rotate of `m` elements is `Cost.rot m = 2m`, an upper bound valid for every
+  implementation (a cyclic rotate moves each element once, a reversal-based one at
+  most twice; libstdc++ uses the former).
+
+Big-O is *uniform over the input family*: `IsBigOWith c size f g` says
+`f i ≤ c * g (size i)` for **every** input `i`, where `size` is an explicit size
+function, and `CostBigOWith` asks this of both components. Avoiding a supremum over
+the inputs keeps the definition constructive — no `Classical.choice` — and makes the
+statement stronger than the usual asymptotic reading: one constant works for every
+input, not only for large ones.
+
+### What is proved
+
+Every algorithm has a *counting copy* of the verified model with the C++'s control
+flow (`...C`), a theorem that the copy computes the model's result (`...C_fst`), and
+cost theorems: an exact count where the count is exact, an explicit-constant bound
+otherwise, plus a `CostBigOWith` corollary. With `tri k = k(k+1)/2` and
+`bs = floor (sqrt n)`:
+
+| algorithm | key comparisons | element moves | module |
+|---|---|---|---|
+| `bubble_sort`, `n` elements | exactly `n(n-1)/2` | `≤ 3n(n-1)/2` | `Cost/Sort.lean` |
+| `cyclesort`, `n` elements | `≤ 7 n^2` | `≤ 7 n^2` | `Cost/Cyclesort.lean` |
+| `cyclesort`, number of swaps | — | `≤ n` (the C++'s "O(n) writes") | `Cost/Cyclesort.lean` |
+| `bfprt`, `n` elements | `≤ 400 n` | `≤ 400 n` | `Cost/Bfprt.lean` |
+| `merge_with_swap`, range `n` | `≤ n` | exactly `3 n` | `Cost/Merge.lean` |
+| `inplace_merge_with_rotation`, runs `a`, `b` | `≤ tri (min a b) + (a+b)` | `≤ 2(tri (min a b) + (a+b))` | `Cost/Merge.lean` |
+| `block_selection_sort`, `m` blocks | `≤ 3 tri (m-1)` | `≤ 3 bs (m-1)` | `Cost/UnstableMerge.lean` |
+| `block_merge_pairwise`, `m` blocks | `≤ 2 bs m` | `≤ 9 bs m` | `Cost/UnstableMerge.lean` |
+| `inplace_unstable_merge`, `n` elements | `≤ 100 n` | `≤ 100 n` | `Cost/UnstableMerge.lean` |
+
+The whole-range bound is the interesting one: the aligned prefix has only
+`≈ sqrt n` blocks, so the block phases cost `O(bs · m) = O(n)`; the leftover suffix
+that is bubble-sorted has length `≤ 3 bs`, so its quadratic cost is still `O(n)`; and
+the final rotation merge has `min a b ≤ 3 bs`, so `tri (min a b) ≤ 9 n`. The
+`inplace_unstable_merge` statements are the array-level ones
+(`unstableMergeArrayC_cmp_le` / `_mv_le` / `_bigO`), with the split index bounded by
+the range length.
+
+`merge_with_swap` is where the pipeline spends most of its moves; its move count is
+*exactly* `3n`, because the loop takes exactly `last - first` turns and swaps on
+every one. The block phases of the unstable merge are the one place where the cost is
+not computed by the same function that produces the result: their correctness model
+is deliberately abstract (`blkMerge` / `blockMergeStd`, order-equivalent to the C++
+but not literally the same element order), so `unstableMergeC` pairs the model's
+result with a separate loop-level cost simulation of the C++ on the same blocks
+(`unstableMergeC_fst` is `rfl`).
+
+### BFPRT's linearity
+
+`O(n)` for BFPRT is the median-of-medians rank argument, formalized in
+`Cost/Bfprt.lean`:
+
+1. `groupPass_take_eq_medians`: after the group pass, index `i < len / 5` holds the
+   median of group `i` — this is exactly where the *increasing* pass order fixed
+   above matters;
+2. `three_mul_medians_count_le` / `_ge`: a sorted group of five whose middle element
+   is `≤ t` (resp. `≥ t`) contributes three elements `≤ t` (resp. `≥ t`);
+3. `partition_lengths_le_of_medians`: the pivot is a rank-`g/2` element of the `g`
+   medians, so at least `g/2 + 1` medians are `≤` it and at least `g - g/2` are `≥`
+   it; step 2 then bounds the two partition sides by `n - 3(g/2)` and
+   `n - 3(g - g/2)`, i.e. by `7n/10` up to a small constant;
+4. the recurrence `T n ≤ T (n/5) + T (7n/10 + c) + a n + b` therefore gives
+   `T n ≤ 400 n` (`bfprtAuxC_le_linear`).
+
+### Validation against the C++
+
+The cost model was cross-checked against instrumented copies of the C++
+implementations (a key type and an element type whose comparisons and assignments are
+counted), on deterministic input families and sizes up to 4096:
+
+* cycle sort: the comparison counts match the C++ *exactly* (five families at sizes
+  16, 64 and 256 — the bound `7 n^2` is proved, so the asymptotic claim does not rest
+  on the measured range), and the move count is the C++'s plus one key copy per
+  `destination_range` call, the by-value argument the C++ makes and the model
+  charges;
+* BFPRT: the model's comparison count is 1.00–1.24× the C++'s and its move count at
+  most 3.5× (the model charges every `std::partition` a full `n` predicate calls plus
+  up to `n` swaps, while the C++ performs a data-dependent number of swaps);
+* the unstable merge pipeline: comparisons are 1.0–1.7× and moves 0.86–1.33× the
+  C++'s over seven families and sizes 64…4096. The one family where the model counts
+  *fewer* moves is explained by the abstraction just described: the internal order of
+  the block displaced by `merge_with_swap` is not modelled, which shifts the
+  inversion count of the final bubble sort. The bound proved here is about the model,
+  and the model's constant is comfortably above the C++'s count in all measured
+  cases.
 
 ## Modelling conventions
 
@@ -107,6 +210,9 @@ Conventions shared by every proof module (`Tcs/Spec.lean` states them):
   with no `Classical.choice`;
 - `check.sh` demands a clean rebuild, a per-file type check with
   `-DwarningAsError=true`, and no `sorryAx` in the environment;
+- the cost model's charging rules are the C++ operations' own (see "Running time");
+  `Nat.sqrt` bounds are reproved constructively in `Cost/UnstableMerge.lean`, because
+  core's `Nat.sqrt_le` and `Nat.lt_succ_sqrt` both pull in `Classical.choice`;
 - beyond the proofs, the models were cross-checked behaviourally against the C++
   implementations: exhaustive sweeps over all small inputs and random larger ones
   (two independent oracles: a sorted copy and a direct count); for BFPRT, 400 shared
@@ -119,17 +225,23 @@ Conventions shared by every proof module (`Tcs/Spec.lean` states them):
 
 ```text
 proof/
-├── Tcs/Spec.lean          # Specification vocabulary (Sorted / Permutes / IsSort)
-├── Tcs/Order.lean         # `Cmp`: a decidable total order on keys
-├── Tcs/Count.lean         # Generic `List.countP` lemmas
-├── Tcs/Perm.lean          # Swap → `Perm` bridge for in-place algorithms
-├── Tcs/Select.lean        # Rank and selection specs (k-th smallest key)
-├── Tcs/Sort.lean          # `bubble_sort`, modelled as the C++ loop
-├── Tcs/Cyclesort.lean     # Verified cycle sort
-├── Tcs/Bfprt.lean         # Verified BFPRT selection
-├── Tcs/Merge.lean         # rotate, `merge_with_swap`, `inplace_merge_with_rotation`
-├── Tcs/UnstableMerge.lean # block selection/merge and `inplace_unstable_merge`
-├── lakefile.toml          # Lake package definition
-├── lean-toolchain         # Pinned Lean toolchain
-└── check.sh               # Proof-completeness audit (no sorry / sorryAx)
+├── Tcs/Spec.lean               # Specification vocabulary (Sorted / Permutes / IsSort)
+├── Tcs/Order.lean              # `Cmp`: a decidable total order on keys
+├── Tcs/Count.lean              # Generic `List.countP` lemmas
+├── Tcs/Perm.lean               # Swap → `Perm` bridge for in-place algorithms
+├── Tcs/Select.lean             # Rank and selection specs (k-th smallest key)
+├── Tcs/Sort.lean               # `bubble_sort`, modelled as the C++ loop
+├── Tcs/Cyclesort.lean          # Verified cycle sort
+├── Tcs/Bfprt.lean              # Verified BFPRT selection
+├── Tcs/Merge.lean              # rotate, `merge_with_swap`, `inplace_merge_with_rotation`
+├── Tcs/UnstableMerge.lean      # block selection/merge and `inplace_unstable_merge`
+├── Tcs/Cost.lean               # Cost model and uniform big-O
+├── Tcs/Cost/Sort.lean          # Cost of `bubble_sort`
+├── Tcs/Cost/Cyclesort.lean     # Cost of cycle sort
+├── Tcs/Cost/Bfprt.lean         # Cost of BFPRT, including linearity
+├── Tcs/Cost/Merge.lean         # Cost of the merge primitives
+├── Tcs/Cost/UnstableMerge.lean # Cost of the whole merge pipeline
+├── lakefile.toml               # Lake package definition
+├── lean-toolchain              # Pinned Lean toolchain
+└── check.sh                    # Proof-completeness audit (no sorry / sorryAx)
 ```
