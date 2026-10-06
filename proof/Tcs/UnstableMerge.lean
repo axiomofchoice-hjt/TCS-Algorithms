@@ -860,6 +860,71 @@ theorem countP_flatten_le_of_straddleUnique {proj : α → β} {t : β} {l : Lis
       rw [countP_eq_zero_of_all hrest', Nat.add_zero]
       exact Nat.le_trans List.countP_le_length (hlen c List.mem_cons_self)
 
+/-- In a run-ordered block list, no element of the blocks before block `p` exceeds the
+first key of block `p`.  (This is the "left part contributes nothing" half of the
+counting argument for the block merge.) -/
+theorem countP_take_flatten_eq_zero {proj : α → β} {xs : List (List α)}
+    (hxr : RunOrdered proj xs) {p : Nat} {b : List α} {a : α}
+    (hxb : xs[p]? = some b) (ha : b.head? = some a) :
+    ((xs.take p).flatten).countP (fun x => Cmp.blt (proj a) (proj x)) = 0 := by
+  apply countP_eq_zero_of_all
+  intro x hx
+  obtain ⟨c, hc, hxc⟩ := List.mem_flatten.mp hx
+  obtain ⟨i, hi, hci⟩ := List.mem_iff_getElem.mp hc
+  have hp : p < xs.length := (List.getElem?_eq_some_iff.mp hxb).1
+  have hxpeq : xs[p] = b := (List.getElem?_eq_some_iff.mp hxb).2
+  have hi' : i < xs.length :=
+    Nat.lt_of_lt_of_le hi (by rw [List.length_take]; exact Nat.min_le_right _ _)
+  have hip : i < p :=
+    Nat.lt_of_lt_of_le hi (by rw [List.length_take]; exact Nat.min_le_left _ _)
+  have hcieq : xs[i] = c := by
+    have h1 : (xs.take p)[i]? = some c := by rw [List.getElem?_eq_getElem hi, hci]
+    rw [List.getElem?_take, ite_eq_left hip] at h1
+    exact (List.getElem?_eq_some_iff.mp h1).2
+  have hall : AllLe (KeyLe proj) c b := by
+    have h1 := hxr.allLe_getElem i p hi' hp (by omega)
+    rwa [hcieq, hxpeq] at h1
+  exact Cmp.blt_eq_false_iff.mpr (hall x hxc a (List.mem_of_mem_head? (by simp [ha])))
+
+/-- At most `bs` elements of the blocks before block `j` exceed the first key of block
+`j`, as long as those blocks are pairwise ordered below `j`'s block.  Together with the
+previous lemma this bounds the two runs' contributions to the merged prefix. -/
+theorem countP_flatten_take_le {proj : α → β} {bs : Nat} {ys : List (List α)}
+    (hbs : 0 < bs) (hyr : RunOrdered proj ys) (hylen : ∀ c ∈ ys, c.length = bs)
+    {q : Nat} {b : List α} {a : α} (ha : b.head? = some a)
+    (hpre : ∀ c ∈ ys.take q, PairLe proj c b = true) :
+    ((ys.take q).flatten).countP (fun x => Cmp.blt (proj a) (proj x)) ≤ bs := by
+  refine countP_flatten_le_of_straddleUnique (fun c hc =>
+    Nat.le_of_eq (hylen c (List.mem_of_mem_take hc))) ?_
+  intro i j hi hj hij hst
+  have hi' : i < ys.length := by rw [List.length_take] at hi; omega
+  have hj' : j < ys.length := by rw [List.length_take] at hj; omega
+  have hst' : Straddle proj (proj a) (ys[i]'(by omega)) ∧
+      Straddle proj (proj a) (ys[j]'(by omega)) := by
+    rwa [List.getElem_take, List.getElem_take] at hst
+  obtain ⟨x, hxmem, hxblt⟩ := hst'.1
+  have hle1 : AllLe (KeyLe proj) (ys[i]'(by omega)) (ys[j]'(by omega)) :=
+    hyr.allLe_getElem i j hi' hj' hij
+  have hhead : ys[j]'(by omega) ≠ [] := by
+    intro hnil
+    have hlenj := hylen (ys[j]'(by omega)) (List.getElem_mem hj')
+    rw [hnil] at hlenj
+    simp at hlenj
+    omega
+  have hblt_head : Cmp.blt (proj a) (proj ((ys[j]'(by omega)).head hhead)) = true :=
+    Cmp.blt_of_blt_of_ble hxblt
+      (hle1 x hxmem ((ys[j]'(by omega)).head hhead) (List.head_mem hhead))
+  have hmemj : ys[j]'(by omega) ∈ ys.take q := by
+    rw [← List.getElem_take (h := hj)]
+    exact List.getElem_mem hj
+  have hble := PairLe_ble_fst (hpre (ys[j]'(by omega)) hmemj)
+  rw [keyFst_eq_some_of_head (List.head?_eq_some_iff.mpr ⟨_, (List.cons_head_tail hhead).symm⟩),
+    keyFst_eq_some_of_head ha] at hble
+  exact absurd hble (by
+    show ¬(Cmp.ble (proj ((ys[j]'(by omega)).head hhead)) (proj a) = true)
+    rw [Cmp.not_ble_of_blt hblt_head]
+    exact Bool.false_ne_true)
+
 /-- **The counting lemma.** In the pair-sorted block merge of the blocks of two
 sorted runs, at most `bs` elements of the blocks before position `j` exceed the
 first key of block `j`. This is the fact that lets `block_merge_pairwise` keep the
@@ -871,143 +936,43 @@ theorem countP_blkMerge_take_le (proj : α → β) {bs : Nat} (hbs : 0 < bs)
     {b : List α} (hb : (blkMerge proj xs ys)[j]? = some b) {a : α} (ha : b.head? = some a) :
     (((blkMerge proj xs ys).take j).flatten).countP (fun x => Cmp.blt (proj a) (proj x))
       ≤ bs := by
-  obtain ⟨p, q, hp, hq, hpq, htake, hdisj⟩ := blkMerge_take_succ proj xs ys j hj
-  have hxne : ∀ c ∈ xs, c ≠ [] := by
-    intro c hc hnil
-    have hlen := hxlen c hc
-    rw [hnil] at hlen
-    simp at hlen
-    omega
-  have hyne : ∀ c ∈ ys, c ≠ [] := by
-    intro c hc hnil
-    have hlen := hylen c hc
-    rw [hnil] at hlen
-    simp at hlen
-    omega
-  have hpair := blkMerge_sorted proj xs ys (hxr.pairSorted hxne) (hyr.pairSorted hyne)
+  obtain ⟨p, q, _, _, _, htake, hdisj⟩ := blkMerge_take_succ proj xs ys j hj
+  have hpair := blkMerge_sorted proj xs ys
+    (hxr.pairSorted (fun c hc hnil => by have := hxlen c hc; rw [hnil] at this; simp at this; omega))
+    (hyr.pairSorted (fun c hc hnil => by have := hylen c hc; rw [hnil] at this; simp at this; omega))
   obtain ⟨hjlen, hbj⟩ := List.getElem?_eq_some_iff.mp hb
-  -- every block of the prefix is below block `j`
   have hLseq : (blkMerge proj xs ys).take j ++ [b] = (blkMerge proj xs ys).take (j + 1) := by
     rw [← hbj, ← List.concat_eq_append]
     exact List.take_concat_get hjlen
   have hpre : ∀ c ∈ (blkMerge proj xs ys).take j, PairLe proj c b = true := by
     intro c hc
-    have hsorted : Sorted (fun x y => PairLe proj x y = true) ((blkMerge proj xs ys).take j ++ [b]) := by
+    have hsorted : Sorted (fun x y => PairLe proj x y = true)
+        ((blkMerge proj xs ys).take j ++ [b]) := by
       rw [hLseq]
       exact sorted_take hpair
     exact (sorted_append_iff.mp hsorted).2.2 c hc b (List.mem_singleton_self b)
-  have hamem : a ∈ b := List.mem_of_mem_head? (by simp [ha])
+  have ha' : a ∈ b := List.mem_of_mem_head? (by simp [ha])
+  have hpreX : ∀ c ∈ xs.take p, PairLe proj c b = true := by
+    intro c hc
+    refine hpre c ?_
+    rw [htake]
+    exact mem_blkMerge (proj := proj) (xs := xs.take p) (ys := ys.take q) (b := c) (Or.inl hc)
+  have hpreY : ∀ c ∈ ys.take q, PairLe proj c b = true := by
+    intro c hc
+    refine hpre c ?_
+    rw [htake]
+    exact mem_blkMerge (proj := proj) (xs := xs.take p) (ys := ys.take q) (b := c) (Or.inr hc)
   rw [htake, countP_eq_of_perm (blkMerge_flatten_perm proj (xs.take p) (ys.take q)),
     List.countP_append]
-  rcases hdisj with ⟨b', hxb, hLb, hcond⟩ | ⟨b', hyb, hLb, hcond⟩
-  · -- block `j` comes from the left run: the left part contributes nothing
-    have hbeq : b = b' := by rw [hb] at hLb; exact Option.some.inj hLb
+  rcases hdisj with ⟨b', hxb, hLb, _⟩ | ⟨b', hyb, hLb, _⟩
+  · have hbeq : b = b' := by rw [hb] at hLb; exact Option.some.inj hLb
     subst hbeq
-    have hpx : p < xs.length := (List.getElem?_eq_some_iff.mp hxb).1
-    have hxpeq : xs[p] = b := (List.getElem?_eq_some_iff.mp hxb).2
-    have hzero : ((xs.take p).flatten).countP (fun x => Cmp.blt (proj a) (proj x)) = 0 := by
-      apply countP_eq_zero_of_all
-      intro x hx
-      obtain ⟨c, hc, hxc⟩ := List.mem_flatten.mp hx
-      obtain ⟨i, hi, hci⟩ := List.mem_iff_getElem.mp hc
-      have hi' : i < xs.length :=
-        Nat.lt_of_lt_of_le hi (by rw [List.length_take]; exact Nat.min_le_right _ _)
-      have hip : i < p :=
-        Nat.lt_of_lt_of_le hi (by rw [List.length_take]; exact Nat.min_le_left _ _)
-      have hcieq : xs[i] = c := by
-        have h1 : (xs.take p)[i]? = some c := by rw [List.getElem?_eq_getElem hi, hci]
-        rw [List.getElem?_take, ite_eq_left hip] at h1
-        exact (List.getElem?_eq_some_iff.mp h1).2
-      have hall : AllLe (KeyLe proj) c b := by
-        have h1 := hxr.allLe_getElem i p hi' hpx (by omega)
-        rwa [hcieq, hxpeq] at h1
-      exact Cmp.blt_eq_false_iff.mpr (hall x hxc a hamem)
-    have hycount : ((ys.take q).flatten).countP (fun x => Cmp.blt (proj a) (proj x)) ≤ bs := by
-      refine countP_flatten_le_of_straddleUnique (fun c hc =>
-        Nat.le_of_eq (hylen c (List.mem_of_mem_take hc))) ?_
-      intro i j hi hj hij hst
-      have hi' : i < ys.length := by rw [List.length_take] at hi; omega
-      have hj' : j < ys.length := by rw [List.length_take] at hj; omega
-      have hst' : Straddle proj (proj a) (ys[i]'(by omega)) ∧
-          Straddle proj (proj a) (ys[j]'(by omega)) := by
-        rwa [List.getElem_take, List.getElem_take] at hst
-      obtain ⟨x, hxmem, hxblt⟩ := hst'.1
-      have hle1 : AllLe (KeyLe proj) (ys[i]'(by omega)) (ys[j]'(by omega)) :=
-        hyr.allLe_getElem i j hi' hj' hij
-      have hhead : ys[j]'(by omega) ≠ [] := hyne _ (List.getElem_mem hj')
-      have hblt_head : Cmp.blt (proj a) (proj ((ys[j]'(by omega)).head hhead)) = true :=
-        Cmp.blt_of_blt_of_ble hxblt
-          (hle1 x hxmem ((ys[j]'(by omega)).head hhead) (List.head_mem hhead))
-      have hmemj : ys[j]'(by omega) ∈ ys.take q := by
-        rw [← List.getElem_take (h := hj)]
-        exact List.getElem_mem hj
-      have hprej : PairLe proj (ys[j]'(by omega)) b = true := by
-        refine hpre (ys[j]'(by omega)) ?_
-        rw [htake]
-        exact mem_blkMerge (proj := proj) (xs := xs.take p) (ys := ys.take q)
-          (b := ys[j]'(by omega)) (Or.inr hmemj)
-      have hble := PairLe_ble_fst hprej
-      rw [keyFst_eq_some_of_head (List.head?_eq_some_iff.mpr ⟨_, (List.cons_head_tail hhead).symm⟩),
-        keyFst_eq_some_of_head ha] at hble
-      exact absurd hble (by
-        show ¬(Cmp.ble (proj ((ys[j]'(by omega)).head hhead)) (proj a) = true)
-        rw [Cmp.not_ble_of_blt hblt_head]
-        exact Bool.false_ne_true)
-    omega
-  · -- block `j` comes from the right run: the right part contributes nothing
-    have hbeq : b = b' := by rw [hb] at hLb; exact Option.some.inj hLb
+    rw [countP_take_flatten_eq_zero hxr hxb ha, Nat.zero_add]
+    exact countP_flatten_take_le hbs hyr hylen ha hpreY
+  · have hbeq : b = b' := by rw [hb] at hLb; exact Option.some.inj hLb
     subst hbeq
-    have hqy : q < ys.length := (List.getElem?_eq_some_iff.mp hyb).1
-    have hyqeq : ys[q] = b := (List.getElem?_eq_some_iff.mp hyb).2
-    have hzero : ((ys.take q).flatten).countP (fun x => Cmp.blt (proj a) (proj x)) = 0 := by
-      apply countP_eq_zero_of_all
-      intro x hx
-      obtain ⟨c, hc, hxc⟩ := List.mem_flatten.mp hx
-      obtain ⟨i, hi, hci⟩ := List.mem_iff_getElem.mp hc
-      have hi' : i < ys.length :=
-        Nat.lt_of_lt_of_le hi (by rw [List.length_take]; exact Nat.min_le_right _ _)
-      have hiq : i < q :=
-        Nat.lt_of_lt_of_le hi (by rw [List.length_take]; exact Nat.min_le_left _ _)
-      have hcieq : ys[i] = c := by
-        have h1 : (ys.take q)[i]? = some c := by rw [List.getElem?_eq_getElem hi, hci]
-        rw [List.getElem?_take, ite_eq_left hiq] at h1
-        exact (List.getElem?_eq_some_iff.mp h1).2
-      have hall : AllLe (KeyLe proj) c b := by
-        have h1 := hyr.allLe_getElem i q hi' hqy (by omega)
-        rwa [hcieq, hyqeq] at h1
-      exact Cmp.blt_eq_false_iff.mpr (hall x hxc a hamem)
-    have hxcount : ((xs.take p).flatten).countP (fun x => Cmp.blt (proj a) (proj x)) ≤ bs := by
-      refine countP_flatten_le_of_straddleUnique (fun c hc =>
-        Nat.le_of_eq (hxlen c (List.mem_of_mem_take hc))) ?_
-      intro i j hi hj hij hst
-      have hi' : i < xs.length := by rw [List.length_take] at hi; omega
-      have hj' : j < xs.length := by rw [List.length_take] at hj; omega
-      have hst' : Straddle proj (proj a) (xs[i]'(by omega)) ∧
-          Straddle proj (proj a) (xs[j]'(by omega)) := by
-        rwa [List.getElem_take, List.getElem_take] at hst
-      obtain ⟨x, hxmem, hxblt⟩ := hst'.1
-      have hle1 : AllLe (KeyLe proj) (xs[i]'(by omega)) (xs[j]'(by omega)) :=
-        hxr.allLe_getElem i j hi' hj' hij
-      have hhead : xs[j]'(by omega) ≠ [] := hxne _ (List.getElem_mem hj')
-      have hblt_head : Cmp.blt (proj a) (proj ((xs[j]'(by omega)).head hhead)) = true :=
-        Cmp.blt_of_blt_of_ble hxblt
-          (hle1 x hxmem ((xs[j]'(by omega)).head hhead) (List.head_mem hhead))
-      have hmemj : xs[j]'(by omega) ∈ xs.take p := by
-        rw [← List.getElem_take (h := hj)]
-        exact List.getElem_mem hj
-      have hprej : PairLe proj (xs[j]'(by omega)) b = true := by
-        refine hpre (xs[j]'(by omega)) ?_
-        rw [htake]
-        exact mem_blkMerge (proj := proj) (xs := xs.take p) (ys := ys.take q)
-          (b := xs[j]'(by omega)) (Or.inl hmemj)
-      have hble := PairLe_ble_fst hprej
-      rw [keyFst_eq_some_of_head (List.head?_eq_some_iff.mpr ⟨_, (List.cons_head_tail hhead).symm⟩),
-        keyFst_eq_some_of_head ha] at hble
-      exact absurd hble (by
-        show ¬(Cmp.ble (proj ((xs[j]'(by omega)).head hhead)) (proj a) = true)
-        rw [Cmp.not_ble_of_blt hblt_head]
-        exact Bool.false_ne_true)
-    omega
+    rw [countP_take_flatten_eq_zero hyr hyb ha, Nat.add_zero]
+    exact countP_flatten_take_le hbs hxr hxlen ha hpreX
 
 /-! ## Multiset inclusion and the merge of two blocks -/
 
