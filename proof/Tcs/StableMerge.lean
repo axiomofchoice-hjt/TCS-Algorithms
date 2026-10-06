@@ -1630,4 +1630,54 @@ theorem uniqueLimitRange_spec (proj : α → β) (max : Nat) {L R : List α}
       _ = keyFilter proj k L ++ keyFilter proj k R := by rw [hrest]
       _ = keyFilter proj k (L ++ R) := by rw [keyFilter_append]
 
+/-- In a list whose keys are pairwise different, the subsequence of a key that one of its
+elements carries is that single element. -/
+theorem keyFilter_eq_singleton_of_keysNodup {proj : α → β} {l : List α} (h : KeysNodup proj l)
+    {x : α} (hx : x ∈ l) {k : β} (hk : Cmp.beq (proj x) k = true) : keyFilter proj k l = [x] := by
+  induction l with
+  | nil => simp at hx
+  | cons y ys ih =>
+      rw [KeysNodup, List.pairwise_cons] at h
+      obtain ⟨h1, h2⟩ := h
+      rcases List.mem_cons.mp hx with hxy | hx'
+      · have hyk : Cmp.beq (proj y) k = true := by rw [← hxy]; exact hk
+        rw [← hxy, keyFilter_cons_of_beq hk,
+          keyFilter_eq_nil_of_all ys (fun w hw => by
+            have hw' := h1 w hw
+            rw [Cmp.beq_eq hyk] at hw'
+            rw [Cmp.beq_comm (proj w) k]
+            exact hw')]
+      · have hyx : Cmp.beq (proj y) (proj x) = false := h1 x hx'
+        rw [Cmp.beq_eq hk] at hyx
+        rw [keyFilter_cons_of_not_beq (by rw [hyx]; exact Bool.false_ne_true)]
+        exact ih h2 hx'
+
+/-- **The buffer's element for a key is that key's first occurrence**: the key's
+subsequence of the whole input starts with it. This is what makes merging the buffer back
+in front of the remainders put the equal keys in the right order. -/
+theorem uniqueLimit_buf_first (proj : α → β) (max : Nat) {l : List α} (hl : Sorted (KeyLe proj) l)
+    {x : α} (hx : x ∈ (uniqueLimit proj max l).1) {k : β} (hk : Cmp.beq (proj x) k = true) :
+    keyFilter proj k l = [x] ++ keyFilter proj k (uniqueLimit proj max l).2 := by
+  have hsingle := keyFilter_eq_singleton_of_keysNodup (uniqueLimit_spec proj max hl).2.1 hx hk
+  have hkf := uniqueLimit_keyFilter proj max hl k
+  rw [hsingle] at hkf
+  exact hkf.symm
+
+/-- The same for the four-argument overload. -/
+theorem uniqueLimitRange_buf_first (proj : α → β) (max : Nat) {L R : List α}
+    (hL : Sorted (KeyLe proj) L) (hR : Sorted (KeyLe proj) R) {x : α}
+    (hx : x ∈ (uniqueLimitRange proj max L R).1) {k : β} (hk : Cmp.beq (proj x) k = true) :
+    keyFilter proj k (L ++ R) = [x] ++ keyFilter proj k (uniqueLimitRange proj max L R).2.1 ++
+      keyFilter proj k (uniqueLimitRange proj max L R).2.2 := by
+  have hspec := uniqueLimitRange_spec proj max hL hR
+  have hsingle := keyFilter_eq_singleton_of_keysNodup hspec.2.1 hx hk
+  have hkf := hspec.2.2.2.2.2 k
+  rw [keyFilter_append (proj := proj) k
+      ((uniqueLimitRange proj max L R).1 ++ (uniqueLimitRange proj max L R).2.1)
+      (uniqueLimitRange proj max L R).2.2,
+    keyFilter_append (proj := proj) k (uniqueLimitRange proj max L R).1
+      (uniqueLimitRange proj max L R).2.1,
+    hsingle] at hkf
+  exact hkf.symm
+
 end Tcs
