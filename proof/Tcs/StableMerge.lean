@@ -1303,4 +1303,44 @@ theorem keepUnique_blt {proj : α → β} {max : Nat} {picked : List α} {x : α
         simp [Cmp.blt, hy_le, hxy]
       exact Cmp.blt_of_ble_of_blt (keyLe_getLast hs hl z hz) hyx
 
+/-- A failed pick test either hits the `max` limit or finds `x`'s key already kept. -/
+theorem keepUnique_eq_false {proj : α → β} {max : Nat} {picked : List α} {x : α}
+    (hk : keepUnique proj max picked x = false) :
+    max ≤ picked.length ∨ ∃ y, picked.getLast? = some y ∧ Cmp.beq (proj y) (proj x) = true := by
+  by_cases hlen : picked.length < max
+  · right
+    cases hl : picked.getLast? with
+    | none =>
+        rw [List.getLast?_eq_none_iff] at hl
+        subst hl
+        have h : keepUnique proj max [] x = true := by
+          rw [keepUnique, List.getLast?_nil, Bool.and_true]
+          exact decide_eq_true hlen
+        rw [h] at hk
+        exact absurd hk (by simp)
+    | some y =>
+        refine ⟨y, rfl, ?_⟩
+        cases hb : Cmp.beq (proj y) (proj x) with
+        | true => rfl
+        | false =>
+            exfalso
+            have hk' := hk
+            rw [keepUnique] at hk'
+            simp only [hl] at hk'
+            rw [hb] at hk'
+            simp [hlen] at hk'
+  · left; omega
+
+/-- A sublist of a sorted list is sorted. -/
+theorem sorted_of_sublist {R : α → α → Prop} :
+    ∀ {l₁ l₂ : List α}, List.Sublist l₁ l₂ → Sorted R l₂ → Sorted R l₁ := by
+  intro l₁ l₂ h
+  induction h with
+  | slnil => intro _; exact sorted_nil _
+  | cons b _ ih => intro hs; exact ih (List.pairwise_cons.mp hs).2
+  | cons_cons b h ih =>
+      intro hs
+      obtain ⟨h1, h2⟩ := List.pairwise_cons.mp hs
+      exact List.Pairwise.cons (fun y hy => h1 y (List.Sublist.subset h hy)) (ih h2)
+
 end Tcs
