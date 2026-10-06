@@ -1789,4 +1789,25 @@ theorem mergeTwo_length (proj : α → β) (A B : List α) :
     (mergeTwo proj A B).length = A.length + B.length := by
   rw [← List.length_append, ← (mergeTwo_perm proj A B).length_eq]
 
+/-! ## The contract of `align_blocks_limit` -/
+
+/-- The first merge of `align_blocks_limit` rewrites `l` only from `m` on, so `l`'s first
+`m` elements survive it. -/
+theorem mergeByRotationStable_take_self (proj : α → β) {l : List α} {m mid last : Nat}
+    (hm_len : m ≤ l.length)
+    (hA : Sorted (KeyLe proj) ((l.drop m).take (mid - m)))
+    (hB : Sorted (KeyLe proj) ((l.drop mid).take (last - mid))) :
+    (mergeByRotationStable proj l m mid last).take m = l.take m := by
+  rw [mergeByRotationStable_spec (proj := proj) hA hB, List.append_assoc]
+  exact take_prefix_of_length (by rw [List.length_take, Nat.min_eq_left hm_len])
+
+/-- The piece `[l₂, m)` of the first merge's output is the piece `[l₂, m)` of `l`. -/
+theorem mergeByRotationStable_drop_prefix (proj : α → β) {l : List α} {m mid last l2 : Nat}
+    (hm_len : m ≤ l.length)
+    (hA : Sorted (KeyLe proj) ((l.drop m).take (mid - m)))
+    (hB : Sorted (KeyLe proj) ((l.drop mid).take (last - mid))) :
+    ((mergeByRotationStable proj l m mid last).drop l2).take (m - l2) =
+      (l.drop l2).take (m - l2) :=
+  drop_take_of_take_eq (mergeByRotationStable_take_self proj hm_len hA hB)
+
 end Tcs
