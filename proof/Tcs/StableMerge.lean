@@ -1743,4 +1743,29 @@ theorem keyFilter_mergeByRotationStable {proj : α → β} {l : List α} {first 
     simp only [List.append_assoc]
   rw [hspec, hf, ← take_drop_splice3 (l := l) h1 h2]
 
+/-- A sub-run of a sorted run is sorted. This is what lets `align_blocks_limit` re-merge
+the pieces its block rounding cuts out: each piece is still one of the caller's sorted
+runs, just a shorter one. -/
+theorem sorted_subrun {proj : α → β} {l : List α} {first mid lo hi : Nat}
+    (h1 : first ≤ lo) (h2 : lo ≤ hi) (h3 : hi ≤ mid)
+    (hs : Sorted (KeyLe proj) ((l.drop first).take (mid - first))) :
+    Sorted (KeyLe proj) ((l.drop lo).take (hi - lo)) := by
+  have h3' : lo ≤ mid := Nat.le_trans h2 h3
+  have hsplit : (mid - lo) + (lo - first) = mid - first := by
+    rw [← Nat.add_sub_assoc h1, Nat.sub_add_cancel h3']
+  have hA : hi - lo ≤ (mid - first) - (lo - first) := by
+    rw [← hsplit, Nat.add_sub_cancel (mid - lo) (lo - first)]
+    exact Nat.sub_le_sub_right h3 lo
+  have hM : ((l.drop first).take (mid - first)).drop (lo - first) =
+      (l.drop lo).take ((mid - first) - (lo - first)) := by
+    rw [drop_take']
+    rw [show List.drop (lo - first) (l.drop first) = l.drop lo from by
+      simp only [List.drop_drop]
+      exact congrArg (fun n => List.drop n l) (Nat.add_sub_of_le h1)]
+  have hstep : Sorted (KeyLe proj) ((l.drop lo).take ((mid - first) - (lo - first))) := by
+    rw [← hM]
+    exact sorted_drop (n := lo - first) hs
+  have hfin := sorted_take (n := hi - lo) hstep
+  rwa [List.take_take, Nat.min_eq_left hA] at hfin
+
 end Tcs

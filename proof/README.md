@@ -279,8 +279,8 @@ Conventions shared by every proof module (`Tcs/Spec.lean` states them):
   core's `Nat.sqrt_le` and `Nat.lt_succ_sqrt` both pull in `Classical.choice` — as do
   `List.take_add` (why `Cost/Bfprt.lean` keeps its own `take_add_groups`),
   `Nat.lt_of_mul_lt_mul_left`/`_right` (why `Cost/UnstableMerge.lean` keeps
-  `um_mul_lt_cancel_right`), and `List.drop_take` (why `Tcs/StableMerge.lean` spells the
-  prefix/drop manipulation it needs with `List.drop_drop` and `congrArg` instead). A
+  `um_mul_lt_cancel_right`), and `List.drop_take` (why `Tcs/Merge.lean` keeps its own
+  `drop_take'`, which `Tcs/StableMerge.lean` reuses for `sorted_subrun`). A
   further trap is that `omega` applied to a goal whose context still holds list
   hypotheses can pick up `Classical.choice`; the arithmetic is therefore factored into
   pure-`Nat` helper lemmas, and the axiom audit below is run after every change;
