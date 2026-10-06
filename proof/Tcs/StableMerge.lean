@@ -2026,4 +2026,26 @@ theorem blocksOf_length_le {bs : Nat} (l : List α) :
     ∀ b ∈ blocksOf bs l, b.length ≤ bs :=
   blocksOfAux_length_le (l.length / bs + 1) bs l
 
+/-- A key's subsequence is nonempty as soon as the list contains an element with that key. -/
+theorem keyFilter_ne_nil_of_mem {proj : α → β} {x : α} {l : List α} (hx : x ∈ l) :
+    keyFilter proj (proj x) l ≠ [] := by
+  induction l with
+  | nil => simp at hx
+  | cons y ys ih =>
+      rcases List.mem_cons.mp hx with hxy | hx'
+      · rw [hxy, keyFilter_cons_of_beq (Cmp.beq_self (proj y))]
+        simp
+      · rw [keyFilter_cons]
+        by_cases hb : Cmp.beq (proj y) (proj x) = true
+        · rw [ite_eq_left hb]; simp
+        · rw [ite_eq_right (by simpa using hb)]
+          exact ih hx'
+
+/-- A sorted list whose elements all have keys above `k` has no `k`-subsequence. -/
+theorem keyFilter_eq_nil_of_sorted_above {proj : α → β} {k : β} {l : List α}
+    (h : ∀ y ∈ l, Cmp.blt k (proj y) = true) : keyFilter proj k l = [] :=
+  keyFilter_eq_nil_of_all l (fun y hy => by
+    rw [Cmp.beq_comm]
+    exact Cmp.not_beq_of_blt (h y hy))
+
 end Tcs
