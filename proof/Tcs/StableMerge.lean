@@ -1043,7 +1043,7 @@ def scrollLeftTurn (proj : α → β) (A B Q : List α) : List α × List α × 
   | _, [] => (A, B, Q)
   | _, b :: Br =>
       let sa := splitAbove proj (proj b) A
-      let se := splitEqualHead proj (sa.2.reverse ++ (b :: Br))
+      let se := splitEqualHead proj (b :: Br)
       (sa.1, se.2.reverse, se.1.reverse ++ sa.2 ++ Q)
 
 /-- C++'s `inplace_merge_with_rotation_scroll_left`, run for `fuel` turns. A turn that
@@ -1069,26 +1069,21 @@ theorem scrollLeftTurn_cons (proj : α → β) (a : α) (As : List α) (Br : Lis
     scrollLeftTurn proj (a :: As) (Br ++ [b]) Q =
       (match splitAbove proj (proj b) (a :: As) with
        | (A1, A2) =>
-         match splitEqualHead proj (A2.reverse ++ (b :: Br.reverse)) with
+         match splitEqualHead proj (b :: Br.reverse) with
          | (B2r, B1r) => (A1, B1r.reverse, B2r.reverse ++ A2 ++ Q)) := by
   unfold scrollLeftTurn
   rw [show (Br ++ [b]).reverse = b :: Br.reverse from by
     rw [List.reverse_append, List.reverse_singleton, List.singleton_append]]
 
 /-- **A left turn is a `mergeTwo` split.** If the left run ends in a part `A2` that is
-strictly above the right run, and the region `B ++ A2` splits into `B1 ++ B2` whose tail
-`B2` carries a key no key of `A1` exceeds, then the merge of `A1 ++ A2` with `B` is
-`mergeTwo A1 B1` followed by `B2`. Both halves of the turn - peeling `A2` off the back,
-then the equal-key run - are the two suffix facts, so no case analysis on `A2` is
-needed. -/
-theorem mergeTwo_split_tail {proj : α → β} {A1 A2 B B1 B2 : List α}
-    (hA2 : ∀ y ∈ A2, ∀ x ∈ B, Cmp.blt (proj x) (proj y) = true)
-    (hA1A2 : ∀ x ∈ A1, ∀ y ∈ A2, Cmp.ble (proj x) (proj y) = true)
-    (hregion : B ++ A2 = B1 ++ B2)
+strictly above the right run, and the right run splits as `B1 ++ B2` where `B2` carries a
+key no key of `A1` exceeds, then merging `A1 ++ A2` with `B1 ++ B2` is `mergeTwo A1 B1`,
+then `B2`, then `A2`. -/
+theorem mergeTwo_split_tail {proj : α → β} {A1 A2 B1 B2 : List α}
+    (hA2 : ∀ y ∈ A2, ∀ x ∈ B1 ++ B2, Cmp.blt (proj x) (proj y) = true)
     (hA1B2 : ∀ x ∈ A1, ∀ y ∈ B2, Cmp.ble (proj x) (proj y) = true) :
-    mergeTwo proj (A1 ++ A2) B = mergeTwo proj A1 B1 ++ B2 := by
-  rw [mergeTwo_append_left_suffix A1 B hA2,
-    ← mergeTwo_append_right_suffix B A1 hA1A2, hregion,
-    mergeTwo_append_right_suffix B1 A1 hA1B2]
+    mergeTwo proj (A1 ++ A2) (B1 ++ B2) = mergeTwo proj A1 B1 ++ (B2 ++ A2) := by
+  rw [mergeTwo_append_left_suffix A1 (B1 ++ B2) hA2,
+    mergeTwo_append_right_suffix B1 A1 hA1B2, List.append_assoc]
 
 end Tcs
