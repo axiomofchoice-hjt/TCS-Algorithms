@@ -1343,4 +1343,27 @@ theorem sorted_of_sublist {R : α → α → Prop} :
       obtain ⟨h1, h2⟩ := List.pairwise_cons.mp hs
       exact List.Pairwise.cons (fun y hy => h1 y (List.Sublist.subset h hy)) (ih h2)
 
+/-- A successful pick test implies the buffer has not reached `max`. -/
+theorem keepUnique_lt {proj : α → β} {max : Nat} {picked : List α} {x : α}
+    (hk : keepUnique proj max picked x = true) : picked.length < max := by
+  by_cases h : picked.length < max
+  · exact h
+  · have hc : keepUnique proj max picked x = false := by
+      rw [keepUnique]
+      simp [h]
+    rw [hc] at hk
+    exact absurd hk (by simp)
+
+/-- The `k`-subsequence of a cons, as an append - the form the per-key argument wants. -/
+theorem keyFilter_cons' (proj : α → β) (k : β) (x : α) (xs : List α) :
+    keyFilter proj k (x :: xs) = keyFilter proj k [x] ++ keyFilter proj k xs := by
+  cases hx : Cmp.beq (proj x) k with
+  | false =>
+      rw [keyFilter_cons_of_not_beq (by rw [hx]; exact Bool.false_ne_true),
+        keyFilter_cons_of_not_beq (by rw [hx]; exact Bool.false_ne_true), keyFilter_nil,
+        List.nil_append]
+  | true =>
+      rw [keyFilter_cons_of_beq hx, keyFilter_cons_of_beq hx, keyFilter_nil,
+        List.singleton_append]
+
 end Tcs
