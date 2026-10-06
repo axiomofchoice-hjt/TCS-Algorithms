@@ -1824,4 +1824,23 @@ theorem mergeTwo_pieces_length (proj : α → β) {l : List α} {m mid last : Na
     h1', h2', Nat.add_comm (mid - m) (last - mid), ← Nat.add_sub_assoc hm_mid,
     Nat.sub_add_cancel h2]
 
+/-- The range the first merge rewrites comes out as `mergeTwo` of the two pieces. -/
+theorem mergeByRotationStable_drop_self (proj : α → β) {l : List α} {m mid last : Nat}
+    (hm_mid : m ≤ mid) (h2 : mid ≤ last) (h3 : last ≤ l.length)
+    (hA : Sorted (KeyLe proj) ((l.drop m).take (mid - m)))
+    (hB : Sorted (KeyLe proj) ((l.drop mid).take (last - mid))) :
+    ((mergeByRotationStable proj l m mid last).drop m).take (last - m) =
+      mergeTwo proj ((l.drop m).take (mid - m)) ((l.drop mid).take (last - mid)) := by
+  have hml : mid ≤ l.length := Nat.le_trans h2 h3
+  have hspec := mergeByRotationStable_spec (proj := proj) hA hB
+  have hlen := mergeTwo_pieces_length proj hm_mid h2 h3
+  rw [hspec, List.append_assoc,
+    List.drop_append_of_le_length
+      (by rw [List.length_take, Nat.min_eq_left (Nat.le_trans hm_mid hml)]
+          exact Nat.le_refl m),
+    show (l.take m).drop m = [] from
+      List.drop_eq_nil_of_le (by rw [List.length_take]; exact Nat.min_le_left m l.length),
+    List.nil_append]
+  exact take_prefix_of_length hlen
+
 end Tcs
