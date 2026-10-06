@@ -1551,4 +1551,83 @@ theorem uniqueLimit_spec (proj : α → β) (max : Nat) {l : List α} (hl : Sort
     uniqueLimit_perm proj max l,
     uniqueLimit_keyFilter proj max hl⟩
 
+/-! ## The four-argument `stable_unique_limit`
+
+The C++ overload does the same job for two adjacent sorted runs at once: it takes the
+buffer of the right run, merges the left run with it (`inplace_merge_with_rotation`,
+which `mergeByRotationStable` mirrors, so the merged range is `mergeTwo L R.buf`), and
+then takes the buffer of that merged part. The result is the buffer, what is left of the
+merged part, and what is left of the right run - the whole range in three pieces. -/
+
+/-- C++'s four-argument `stable_unique_limit` on the adjacent sorted runs `L` and `R`. -/
+def uniqueLimitRange (proj : α → β) (max : Nat) (L R : List α) : List α × List α × List α :=
+  let rR := uniqueLimit proj max R
+  let rL := uniqueLimit proj max (mergeTwo proj L rR.1)
+  (rL.1, rL.2, rR.2)
+
+/-- **The four-argument `stable_unique_limit`**: the buffer is sorted with pairwise
+different keys, both remainders are sorted, the whole range is only permuted, and every
+`k`-subsequence survives - so the buffer's element for a key is that key's first
+occurrence in the *whole* range, which is what the later stages need. -/
+theorem uniqueLimitRange_spec (proj : α → β) (max : Nat) {L R : List α}
+    (hL : Sorted (KeyLe proj) L) (hR : Sorted (KeyLe proj) R) :
+    Sorted (KeyLe proj) (uniqueLimitRange proj max L R).1 ∧
+    KeysNodup proj (uniqueLimitRange proj max L R).1 ∧
+    Sorted (KeyLe proj) (uniqueLimitRange proj max L R).2.1 ∧
+    Sorted (KeyLe proj) (uniqueLimitRange proj max L R).2.2 ∧
+    ((uniqueLimitRange proj max L R).1 ++ (uniqueLimitRange proj max L R).2.1 ++
+        (uniqueLimitRange proj max L R).2.2).Perm (L ++ R) ∧
+    (∀ k : β, keyFilter proj k ((uniqueLimitRange proj max L R).1 ++
+        (uniqueLimitRange proj max L R).2.1 ++ (uniqueLimitRange proj max L R).2.2) =
+      keyFilter proj k (L ++ R)) := by
+  dsimp only [uniqueLimitRange]
+  have hRspec : Sorted (KeyLe proj) (uniqueLimit proj max R).1 ∧
+      KeysNodup proj (uniqueLimit proj max R).1 ∧
+      Sorted (KeyLe proj) (uniqueLimit proj max R).2 ∧
+      List.Sublist (uniqueLimit proj max R).2 R ∧
+      ((uniqueLimit proj max R).1 ++ (uniqueLimit proj max R).2).Perm R ∧
+      (∀ k : β, keyFilter proj k (uniqueLimit proj max R).1 ++
+          keyFilter proj k (uniqueLimit proj max R).2 = keyFilter proj k R) :=
+    uniqueLimit_spec proj max hR
+  have hm : Sorted (KeyLe proj) (mergeTwo proj L (uniqueLimit proj max R).1) :=
+    mergeTwo_sorted proj L _ hL hRspec.1
+  have hmspec := uniqueLimit_spec proj max hm
+  refine ⟨hmspec.1, hmspec.2.1, hmspec.2.2.1, hRspec.2.2.1, ?_, ?_⟩
+  · have h1 := List.Perm.append_right (uniqueLimit proj max R).2
+      (uniqueLimit_perm proj max (mergeTwo proj L (uniqueLimit proj max R).1))
+    have h2 := List.Perm.append_right (uniqueLimit proj max R).2
+      (mergeTwo_perm proj L (uniqueLimit proj max R).1)
+    have h3 : ((L ++ (uniqueLimit proj max R).1) ++ (uniqueLimit proj max R).2).Perm (L ++ R) := by
+      rw [List.append_assoc]
+      exact List.Perm.append_left L hRspec.2.2.2.2.1
+    exact (h1.trans h2).trans h3
+  · intro k
+    have hmerge : keyFilter proj k (mergeTwo proj L (uniqueLimit proj max R).1) =
+        keyFilter proj k L ++ keyFilter proj k (uniqueLimit proj max R).1 :=
+      mergeTwo_keyFilter proj k L _ hL hRspec.1
+    have hbuf := hmspec.2.2.2.2.2 k
+    have hrest := hRspec.2.2.2.2.2 k
+    calc keyFilter proj k
+          (((uniqueLimit proj max (mergeTwo proj L (uniqueLimit proj max R).1)).1 ++
+            (uniqueLimit proj max (mergeTwo proj L (uniqueLimit proj max R).1)).2) ++
+            (uniqueLimit proj max R).2)
+        = keyFilter proj k (uniqueLimit proj max (mergeTwo proj L (uniqueLimit proj max R).1)).1 ++
+          keyFilter proj k (uniqueLimit proj max (mergeTwo proj L (uniqueLimit proj max R).1)).2 ++
+          keyFilter proj k (uniqueLimit proj max R).2 := by
+            rw [keyFilter_append (proj := proj) k
+                ((uniqueLimit proj max (mergeTwo proj L (uniqueLimit proj max R).1)).1 ++
+                  (uniqueLimit proj max (mergeTwo proj L (uniqueLimit proj max R).1)).2)
+                (uniqueLimit proj max R).2,
+              keyFilter_append (proj := proj) k
+                (uniqueLimit proj max (mergeTwo proj L (uniqueLimit proj max R).1)).1
+                (uniqueLimit proj max (mergeTwo proj L (uniqueLimit proj max R).1)).2]
+      _ = keyFilter proj k (mergeTwo proj L (uniqueLimit proj max R).1) ++
+          keyFilter proj k (uniqueLimit proj max R).2 := by rw [hbuf]
+      _ = (keyFilter proj k L ++ keyFilter proj k (uniqueLimit proj max R).1) ++
+          keyFilter proj k (uniqueLimit proj max R).2 := by rw [hmerge]
+      _ = keyFilter proj k L ++ (keyFilter proj k (uniqueLimit proj max R).1 ++
+          keyFilter proj k (uniqueLimit proj max R).2) := by rw [List.append_assoc]
+      _ = keyFilter proj k L ++ keyFilter proj k R := by rw [hrest]
+      _ = keyFilter proj k (L ++ R) := by rw [keyFilter_append]
+
 end Tcs
