@@ -1086,4 +1086,148 @@ theorem mergeTwo_split_tail {proj : α → β} {A1 A2 B1 B2 : List α}
   rw [mergeTwo_append_left_suffix A1 (B1 ++ B2) hA2,
     mergeTwo_append_right_suffix B1 A1 hA1B2, List.append_assoc]
 
+/-- A turn with an empty left or right run has nothing to move, so the loop returns the
+state unchanged however much fuel it is given. -/
+theorem scrollLeft_eq_of_nil {proj : α → β} (fuel : Nat) :
+    ∀ (A B Q : List α), (A = [] ∨ B = []) → scrollLeft proj fuel A B Q = A ++ B ++ Q := by
+  induction fuel with
+  | zero => intro A B Q _; rw [scrollLeft_zero]
+  | succ n ih =>
+      intro A B Q h
+      rw [scrollLeft_succ]
+      match A, B with
+      | [], B =>
+          rw [scrollLeftTurn_nil_left]
+          dsimp only
+          exact ih [] B Q (Or.inl rfl)
+      | a :: As, [] =>
+          dsimp only [scrollLeftTurn]
+          exact ih (a :: As) [] Q (Or.inr rfl)
+
+/-- **`inplace_merge_with_rotation_scroll_left` is the stable merge**: run from the state
+`A ++ B ++ Q` with both runs sorted and `fuel` large enough, it leaves the finished tail
+`Q` alone and prepends `mergeTwo A B`. -/
+theorem scrollLeft_spec (proj : α → β) (fuel : Nat) :
+    ∀ (A B Q : List α), A.length + B.length ≤ fuel →
+      Sorted (KeyLe proj) A → Sorted (KeyLe proj) B →
+      scrollLeft proj fuel A B Q = mergeTwo proj A B ++ Q := by
+  induction fuel with
+  | zero =>
+      intro A B Q hlen _ _
+      have hA : A = [] := List.eq_nil_of_length_eq_zero (by omega)
+      have hB : B = [] := List.eq_nil_of_length_eq_zero (by omega)
+      rw [hA, hB, scrollLeft_zero, mergeTwo_nil_left]
+      simp
+  | succ n ih =>
+      intro A B Q hlen hAs hBs
+      cases hBr : B.reverse with
+      | nil =>
+          have hBnil : B = [] := by
+            have h := congrArg List.reverse hBr
+            rw [List.reverse_reverse, List.reverse_nil] at h
+            exact h
+          subst hBnil
+          match A with
+          | [] =>
+              rw [scrollLeft_eq_of_nil (n + 1) [] [] Q (Or.inl rfl), mergeTwo_nil_left]
+              simp
+          | a :: As =>
+              rw [scrollLeft_eq_of_nil (n + 1) (a :: As) [] Q (Or.inr rfl), mergeTwo_nil_right]
+              simp
+      | cons b Br =>
+          have hB : B = Br.reverse ++ [b] := by
+            have h := congrArg List.reverse hBr
+            rw [List.reverse_reverse] at h
+            rw [h, List.reverse_cons]
+          rw [hB] at hlen hBs ⊢
+          match A with
+          | [] =>
+              rw [scrollLeft_eq_of_nil (n + 1) [] (Br.reverse ++ [b]) Q (Or.inl rfl),
+                mergeTwo_nil_left]
+              simp
+          | a :: As =>
+              rw [scrollLeft_succ]
+              dsimp only [scrollLeftTurn]
+              rw [show (Br.reverse ++ [b]).reverse = b :: Br from by
+                rw [List.reverse_append, List.reverse_singleton, List.singleton_append,
+                  List.reverse_reverse]]
+              dsimp only
+              cases hsa : splitAbove proj (proj b) (a :: As) with
+              | mk A1 A2 =>
+                cases hse : splitEqualHead proj (b :: Br) with
+                | mk B2r B1r =>
+                  dsimp only
+                  have hsplitA : A1 ++ A2 = a :: As := by
+                    have h := splitAbove_append proj (proj b) (a :: As)
+                    rw [hsa] at h
+                    exact h
+                  have hsA : Sorted (KeyLe proj) (A1 ++ A2) := by rw [hsplitA]; exact hAs
+                  have hA1 : Sorted (KeyLe proj) A1 := (List.pairwise_append.mp hsA).1
+                  have hbA2 : ∀ y ∈ A2, Cmp.blt (proj b) (proj y) = true := by
+                    intro y hy
+                    exact splitAbove_snd_blt proj (proj b) (a :: As) y (by rw [hsa]; exact hy)
+                  have hBleb : ∀ x ∈ Br.reverse ++ [b], Cmp.ble (proj x) (proj b) = true :=
+                    keyLe_getLast (proj := proj) (l := Br.reverse ++ [b]) (z := b) hBs
+                      List.getLast?_concat
+                  have hA2gtB : ∀ y ∈ A2, ∀ x ∈ Br.reverse ++ [b],
+                      Cmp.blt (proj x) (proj y) = true :=
+                    fun y hy x hx => Cmp.blt_of_ble_of_blt (hBleb x hx) (hbA2 y hy)
+                  have hBsplit : Br.reverse ++ [b] = B1r.reverse ++ B2r.reverse := by
+                    have h := splitEqualHead_append proj (b :: Br)
+                    rw [hse] at h
+                    have h2 := congrArg List.reverse h
+                    simpa [List.reverse_append, List.reverse_cons, List.reverse_reverse] using h2.symm
+                  have hB1 : Sorted (KeyLe proj) B1r.reverse :=
+                    (List.pairwise_append.mp (by rw [← hBsplit]; exact hBs)).1
+                  have hA1leb : ∀ x ∈ A1, Cmp.ble (proj x) (proj b) = true := by
+                    rcases List.eq_nil_or_concat A1 with hA1nil | ⟨A1', z, hA1z⟩
+                    · intro x hx; rw [hA1nil] at hx; simp at hx
+                    · have hA1z' : A1 = A1' ++ [z] := by rw [hA1z, List.concat_eq_append]
+                      have hzle : Cmp.ble (proj z) (proj b) = true := by
+                        refine splitAbove_fst_le_last (A := a :: As) (ys := A1') (z := z) ?_
+                        rw [hsa]
+                        exact hA1z'
+                      have hget : A1.getLast? = some z := by
+                        rw [hA1z']
+                        exact List.getLast?_concat
+                      have hall := keyLe_getLast hA1 hget
+                      intro x hx
+                      exact Cmp.ble_trans (hall x hx) hzle
+                  have hB2r_eq : B2r = (splitEqualHead proj (b :: Br)).1 := by simp [hse]
+                  have hkeyge : ∀ y ∈ B2r, Cmp.ble (proj b) (proj y) = true := by
+                    intro y hy
+                    rw [hB2r_eq] at hy
+                    rw [Cmp.beq_eq (splitEqualHead_fst_beq proj b Br y hy)]
+                    exact Cmp.ble_refl _
+                  have hA1B2 : ∀ x ∈ A1, ∀ y ∈ B2r.reverse, Cmp.ble (proj x) (proj y) = true :=
+                    fun x hx y hy => Cmp.ble_trans (hA1leb x hx) (hkeyge y (List.mem_reverse.mp hy))
+                  have hB2r_ne : B2r ≠ [] := by
+                    rw [hB2r_eq]
+                    exact splitEqualHead_fst_ne_nil proj b Br
+                  have hA2gtB' : ∀ y ∈ A2, ∀ x ∈ B1r.reverse ++ B2r.reverse,
+                      Cmp.blt (proj x) (proj y) = true := by
+                    rw [← hBsplit]
+                    exact hA2gtB
+                  have hlen' : A1.length + B1r.reverse.length ≤ n := by
+                    have h1 : A1.length + A2.length = As.length + 1 := by
+                      have h := congrArg List.length hsplitA
+                      simpa using h
+                    have h2 : B2r.length + B1r.length = Br.length + 1 := by
+                      have h := splitEqualHead_append proj (b :: Br)
+                      rw [hse] at h
+                      have hlen2 := congrArg List.length h
+                      simp [List.length_append] at hlen2
+                      omega
+                    have h3 : 1 ≤ B2r.length := List.length_pos_iff.mpr hB2r_ne
+                    have h4 : (a :: As).length + (Br.reverse ++ [b]).length ≤ n + 1 := hlen
+                    simp only [List.length_cons, List.length_append, List.length_nil,
+                      List.length_reverse] at h4
+                    simp only [List.length_reverse]
+                    omega
+                  rw [ih A1 B1r.reverse (B2r.reverse ++ A2 ++ Q) hlen' hA1 hB1,
+                    ← hsplitA, hBsplit,
+                    mergeTwo_split_tail (A1 := A1) (A2 := A2) (B1 := B1r.reverse)
+                      (B2 := B2r.reverse) hA2gtB' hA1B2]
+                  simp only [List.append_assoc]
+
 end Tcs
