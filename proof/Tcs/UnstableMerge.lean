@@ -530,14 +530,6 @@ theorem blkMerge_cons_cons_of_not_le {proj : α → β} {x y : List α} {xs ys :
     blkMerge proj (x :: xs) (y :: ys) = y :: blkMerge proj (x :: xs) ys := by
   rw [blkMerge.eq_3, ite_eq_right (by rw [h]; exact Bool.false_ne_true)]
 
-/-- `y :: x :: (xs ++ ys)` is `x :: (xs ++ y :: ys)` up to permutation. -/
-theorem perm_cons_cons_append {γ : Type w} (y x : γ) (xs ys : List γ) :
-    List.Perm (y :: x :: (xs ++ ys)) (x :: (xs ++ y :: ys)) := by
-  have h : List.Perm ([y] ++ (x :: xs)) ((x :: xs) ++ [y]) := List.perm_append_comm
-  have h₂ : List.Perm (([y] ++ (x :: xs)) ++ ys) (((x :: xs) ++ [y]) ++ ys) :=
-    List.Perm.append_right ys h
-  simpa [List.singleton_append, List.append_assoc, List.cons_append] using h₂
-
 theorem blkMerge_perm (proj : α → β) (xs ys : List (List α)) :
     (blkMerge proj xs ys).Perm (xs ++ ys) := by
   induction xs, ys using blkMerge.induct proj with
@@ -1014,18 +1006,6 @@ theorem mergeTwo_length (proj : α → β) (xs ys : List α) :
     rw [mergeTwo_cons_cons_of_not_ble (by simpa using h)]
     simp only [List.length_cons, ih]
     omega
-
-theorem mergeTwo_perm (proj : α → β) (xs ys : List α) :
-    (mergeTwo proj xs ys).Perm (xs ++ ys) := by
-  induction xs, ys using mergeTwo.induct proj with
-  | case1 ys => rw [mergeTwo_nil_left, List.nil_append]
-  | case2 xs hne => rw [mergeTwo_nil_right, List.append_nil]
-  | case3 x xs y ys h ih =>
-    rw [mergeTwo_cons_cons_of_ble h, List.cons_append]
-    exact List.Perm.cons x ih
-  | case4 x xs y ys h ih =>
-    rw [mergeTwo_cons_cons_of_not_ble (by simpa using h), List.cons_append]
-    exact (List.Perm.cons y ih).trans (perm_cons_cons_append y x xs ys)
 
 /-- If at most `bs` elements of a sorted `2*bs` list exceed `t`, then the first
 half of the list is entirely at most `t`. This is how the counting lemma turns

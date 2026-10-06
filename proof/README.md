@@ -81,6 +81,35 @@ of sorted runs of length ≤ 3 over `{0,1,2}` (100 cases) satisfies the contract
 `bubble_sort` calls are modelled literally in `Tcs/Sort.lean` (the C++ loop, not an
 equivalent sort), so that their exact comparison count can be formalized.
 
+### In-place stable merge — `Tcs/StableMerge.lean` (first milestone)
+
+`tcs::inplace::stable_merge::inplace_stable_merge`, matching
+`tests/inplace/test_stable_merge.cpp`: unlike the unstable merge above, the result
+must also keep the input order of equal keys.
+
+`Tcs/StableMerge.lean` states that contract without ever mentioning positions. For
+a key `k`, `keyFilter proj k l` is the subsequence of `l` made of the elements whose
+key equals `k`; asking it to be unchanged for every `k` says both that equal keys
+keep their input order and that no element was lost or invented.
+`StableSort proj l l'` bundles that with sortedness, and it is the contract the
+whole pipeline `stable_unique_limit -> align_blocks_limit -> block phases ->
+bubble_sort -> rotation merges` has to maintain end to end, so no uniqueness
+argument about sorted permutations is needed anywhere.
+
+Proved so far:
+
+* `bubbleSort_stableSort` — `bubble_sort` is a stable sort of *any* list, because it
+  only ever swaps two elements of strictly different keys. This closes the
+  `block_size <= 4` branch of the C++, which below 25 elements calls `bubble_sort`
+  over the whole range (the exhaustive cross-check below exercises exactly that
+  branch for every input of length ≤ 24).
+* `mergeTwo_stableSort` — the reference merge `mergeTwo` satisfies the same
+  contract on two sorted runs, i.e. it takes from the left run exactly on ties.
+
+Still to model: `stable_unique_limit`, `align_blocks_limit`, the label-carrying
+`block_selection_sort`/`block_merge_pairwise`/`inplace_merge_with_rotation_indexed`
+phases, and the assembly.
+
 ## Running time
 
 The correctness proofs above say *what* each algorithm computes. `Tcs/Cost.lean` and
@@ -243,6 +272,7 @@ proof/
 ├── Tcs/Bfprt.lean              # Verified BFPRT selection
 ├── Tcs/Merge.lean              # rotate, `merge_with_swap`, `inplace_merge_with_rotation`
 ├── Tcs/UnstableMerge.lean      # block selection/merge and `inplace_unstable_merge`
+├── Tcs/StableMerge.lean        # stability spec; `bubble_sort` branch of `inplace_stable_merge`
 ├── Tcs/Cost.lean               # Cost model and uniform big-O
 ├── Tcs/Cost/Sort.lean          # Cost of `bubble_sort`
 ├── Tcs/Cost/Cyclesort.lean     # Cost of cycle sort
