@@ -410,4 +410,333 @@ theorem uniqueLimit_sorted_keysNodup (proj : α → β) (max : Nat) {l : List α
     Sorted (KeyLe proj) (uniqueLimit proj max l).1 ∧ KeysNodup proj (uniqueLimit proj max l).1 :=
   uniqueLimitAux_sorted_keysNodup proj max [] l ⟨sorted_nil _, List.Pairwise.nil, hl, by simp⟩
 
+/-! ## The scans of the stable rotation merge
+
+`inplace_merge_with_rotation` merges two adjacent sorted runs by repeatedly rotating a
+block of one run that has to cross the current element of the other, and then skipping
+straight past the elements that block has just made final. The two scans below are the
+inner loops that find those blocks; modelling them as recursions rather than with
+`takeWhile` keeps the "everything below `a`" and "everything equal to `a`" facts
+available as plain inductions. -/
+
+/-- The B-side scan of `inplace_merge_with_rotation_scroll_right`: the elements of `B`
+whose key is strictly below `a`. That is exactly the C++ `while (split_right < last &&
+proj(*split_right) < proj(*first)) split_right++;`, returning the scanned block and the
+rest. -/
+def splitRight (proj : α → β) (a : β) : List α → List α × List α
+  | [] => ([], [])
+  | y :: ys =>
+      if Cmp.blt (proj y) a then
+        let r := splitRight proj a ys
+        (y :: r.1, r.2)
+      else ([], y :: ys)
+
+theorem splitRight_nil (proj : α → β) (a : β) : splitRight proj a [] = ([], []) := rfl
+
+theorem splitRight_cons (proj : α → β) (a : β) (y : α) (ys : List α) :
+    splitRight proj a (y :: ys) =
+      if Cmp.blt (proj y) a then (let r := splitRight proj a ys; (y :: r.1, r.2))
+      else ([], y :: ys) := rfl
+
+/-- The scan consumes exactly the front of the list. -/
+theorem splitRight_append (proj : α → β) (a : β) (B : List α) :
+    (splitRight proj a B).1 ++ (splitRight proj a B).2 = B := by
+  induction B with
+  | nil => simp [splitRight_nil]
+  | cons y ys ih =>
+      rw [splitRight_cons]
+      by_cases h : Cmp.blt (proj y) a = true
+      · rw [ite_eq_left h]; dsimp only; rw [List.cons_append, ih]
+      · rw [ite_eq_right (by simpa using h)]; simp
+
+/-- Everything the scan takes is strictly below `a`. -/
+theorem splitRight_blt (proj : α → β) (a : β) (B : List α) :
+    ∀ y ∈ (splitRight proj a B).1, Cmp.blt (proj y) a = true := by
+  induction B with
+  | nil => intro y hy; rw [splitRight_nil] at hy; simp at hy
+  | cons z zs ih =>
+      intro y hy
+      rw [splitRight_cons] at hy
+      by_cases h : Cmp.blt (proj z) a = true
+      · rw [ite_eq_left h] at hy
+        dsimp only at hy
+        rcases List.mem_cons.mp hy with hy' | hy'
+        · rw [hy']; exact h
+        · exact ih y hy'
+      · rw [ite_eq_right (by simpa using h)] at hy
+        simp at hy
+
+/-- What the scan leaves behind starts at a key that is *not* below `a`, so by
+sortedness every key left behind is at least `a`. -/
+theorem splitRight_snd_head_ble {proj : α → β} {a : β} :
+    ∀ {B : List α} {y : α} {ys : List α}, (splitRight proj a B).2 = y :: ys →
+      Cmp.ble a (proj y) = true := by
+  intro B
+  induction B with
+  | nil => intro y ys h; rw [splitRight_nil] at h; simp at h
+  | cons z zs ih =>
+      intro y ys h
+      rw [splitRight_cons] at h
+      by_cases hz : Cmp.blt (proj z) a = true
+      · rw [ite_eq_left hz] at h
+        dsimp only at h
+        exact ih h
+      · rw [ite_eq_right (by simpa using hz)] at h
+        injection h with h1 _
+        rw [← h1]
+        exact Cmp.blt_eq_false_iff.mp (by simpa using hz)
+
+/-- The A-side scan of the same turn: the leading run of `A` whose key equals `a`. That
+is the C++ `first++; while (first < mid && proj(*first) == proj(*(first - 1))) first++;`
+- under sortedness "equal to the previous element" and "equal to the head" agree, and
+the C++ has just advanced past the head. -/
+def splitEq (proj : α → β) (a : β) : List α → List α × List α
+  | [] => ([], [])
+  | y :: ys =>
+      if Cmp.beq (proj y) a then
+        let r := splitEq proj a ys
+        (y :: r.1, r.2)
+      else ([], y :: ys)
+
+theorem splitEq_nil (proj : α → β) (a : β) : splitEq proj a [] = ([], []) := rfl
+
+theorem splitEq_cons (proj : α → β) (a : β) (y : α) (ys : List α) :
+    splitEq proj a (y :: ys) =
+      if Cmp.beq (proj y) a then (let r := splitEq proj a ys; (y :: r.1, r.2))
+      else ([], y :: ys) := rfl
+
+theorem splitEq_append (proj : α → β) (a : β) (A : List α) :
+    (splitEq proj a A).1 ++ (splitEq proj a A).2 = A := by
+  induction A with
+  | nil => simp [splitEq_nil]
+  | cons y ys ih =>
+      rw [splitEq_cons]
+      by_cases h : Cmp.beq (proj y) a = true
+      · rw [ite_eq_left h]; dsimp only; rw [List.cons_append, ih]
+      · rw [ite_eq_right (by simpa using h)]; simp
+
+/-- Everything the equal-run scan takes has key exactly `a`. -/
+theorem splitEq_beq (proj : α → β) (a : β) (A : List α) :
+    ∀ y ∈ (splitEq proj a A).1, Cmp.beq (proj y) a = true := by
+  induction A with
+  | nil => intro y hy; rw [splitEq_nil] at hy; simp at hy
+  | cons z zs ih =>
+      intro y hy
+      rw [splitEq_cons] at hy
+      by_cases h : Cmp.beq (proj z) a = true
+      · rw [ite_eq_left h] at hy
+        dsimp only at hy
+        rcases List.mem_cons.mp hy with hy' | hy'
+        · rw [hy']; exact h
+        · exact ih y hy'
+      · rw [ite_eq_right (by simpa using h)] at hy
+        simp at hy
+
+/-- The equal-run scan takes at least the head when the head's key is `a`, which is what
+makes every turn of the loop advance. -/
+theorem splitEq_cons_of_beq {proj : α → β} {a : β} {y : α} {ys : List α}
+    (h : Cmp.beq (proj y) a = true) :
+    ∃ r : List α × List α, splitEq proj a (y :: ys) = (y :: r.1, r.2) := by
+  rw [splitEq_cons, ite_eq_left h]
+  exact ⟨_, rfl⟩
+
+/-! ## Two block facts about `mergeTwo`
+
+A merge that has a whole block of the right run strictly below the left run's head
+emits that block first; and a merge whose left run starts at a key that is at most the
+right run's keys emits the left run first. Those two facts are exactly what one turn of
+the rotation merge needs. -/
+
+theorem mergeTwo_append_right_eq {proj : α → β} {a : α} {A' : List α} (B1 : List α) :
+    ∀ B2 : List α, (∀ y ∈ B1, Cmp.blt (proj y) (proj a) = true) →
+      mergeTwo proj (a :: A') (B1 ++ B2) = B1 ++ mergeTwo proj (a :: A') B2 := by
+  induction B1 with
+  | nil => intro B2 _; rw [List.nil_append, List.nil_append]
+  | cons y ys ih =>
+      intro B2 h
+      have hy : Cmp.blt (proj y) (proj a) = true := h y (by simp)
+      have hys : ∀ z ∈ ys, Cmp.blt (proj z) (proj a) = true := fun z hz => h z (by simp [hz])
+      rw [List.cons_append, mergeTwo_cons_cons_of_not_ble (Cmp.not_ble_of_blt hy), ih B2 hys,
+        List.cons_append]
+
+theorem mergeTwo_append_left_eq {proj : α → β} (A1 : List α) :
+    ∀ A2 B2 : List α, (∀ x ∈ A1, ∀ y ∈ B2, Cmp.ble (proj x) (proj y) = true) →
+      mergeTwo proj (A1 ++ A2) B2 = A1 ++ mergeTwo proj A2 B2 := by
+  induction A1 with
+  | nil => intro A2 B2 _; rw [List.nil_append, List.nil_append]
+  | cons x xs ih =>
+      intro A2 B2 h
+      rw [List.cons_append]
+      cases B2 with
+      | nil => rw [mergeTwo_nil_right, mergeTwo_nil_right, List.cons_append]
+      | cons y ys =>
+          rw [mergeTwo_cons_cons_of_ble (h x (by simp) y (by simp)),
+            ih A2 (y :: ys) (fun z hz w hw => h z (by simp [hz]) w hw), List.cons_append]
+
+theorem Cmp.beq_self (a : β) : Cmp.beq a a = true := by
+  simp [Cmp.beq, Cmp.ble_refl]
+
+/-- In a sorted list nothing is below the head. -/
+theorem keyLe_head {proj : α → β} {x : α} {xs : List α}
+    (hs : Sorted (KeyLe proj) (x :: xs)) : ∀ y ∈ x :: xs, KeyLe proj x y := by
+  intro y hy
+  obtain ⟨h1, _⟩ := (sorted_cons_iff (KeyLe proj) x xs).mp hs
+  rcases List.mem_cons.mp hy with h | h
+  · rw [h]; exact Cmp.ble_refl _
+  · exact h1 y h
+
+/-- A merge of a right run that is *entirely* below the left head emits the right run
+first, and then the left run. -/
+theorem mergeTwo_eq_of_all_blt {proj : α → β} {a : α} {A' : List α} (B : List α) :
+    ∀ (_ : ∀ y ∈ B, Cmp.blt (proj y) (proj a) = true),
+      mergeTwo proj (a :: A') B = B ++ (a :: A') := by
+  induction B with
+  | nil => intro _; rw [List.nil_append, mergeTwo_nil_right]
+  | cons y ys ih =>
+      intro h
+      have hy : Cmp.blt (proj y) (proj a) = true := h y (by simp)
+      have hys : ∀ z ∈ ys, Cmp.blt (proj z) (proj a) = true := fun z hz => h z (by simp [hz])
+      rw [mergeTwo_cons_cons_of_not_ble (Cmp.not_ble_of_blt hy), ih hys, List.cons_append]
+
+/-! ## `inplace_merge_with_rotation_scroll_right`
+
+The C++ turns the loop inside out: everything before `first` is already final, `A` and
+`B` are the two runs that remain, and one turn rotates `B`'s block below `A`'s head to
+the front and then finalizes `A`'s leading run of equal keys. Modelling the state as
+`P ++ A ++ B` keeps that invariant a plain list equation, and `fuel` bounds
+`A.length + B.length` as in the other loop models. -/
+
+/-- C++'s `inplace_merge_with_rotation_scroll_right` loop. -/
+def scrollRight (proj : α → β) : Nat → List α → List α → List α → List α
+  | 0, P, A, B => P ++ A ++ B
+  | _ + 1, P, [], B => P ++ B
+  | _ + 1, P, a :: A', [] => P ++ (a :: A')
+  | n + 1, P, a :: A', b :: B' =>
+      match splitRight proj (proj a) (b :: B') with
+      | (B1, []) => P ++ B1 ++ (a :: A')
+      | (B1, B2) =>
+          match splitEq proj (proj a) (a :: A') with
+          | (A1, A2) => scrollRight proj n (P ++ B1 ++ A1) A2 B2
+
+theorem scrollRight_zero (proj : α → β) (P A B : List α) :
+    scrollRight proj 0 P A B = P ++ A ++ B := rfl
+
+theorem scrollRight_succ_nil_left (proj : α → β) (n : Nat) (P B : List α) :
+    scrollRight proj (n + 1) P [] B = P ++ B := rfl
+
+theorem scrollRight_succ_nil_right (proj : α → β) (n : Nat) (P : List α) (a : α)
+    (A' : List α) : scrollRight proj (n + 1) P (a :: A') [] = P ++ (a :: A') := rfl
+
+theorem scrollRight_succ_cons (proj : α → β) (n : Nat) (P : List α) (a : α) (A' : List α)
+    (b : α) (B' : List α) :
+    scrollRight proj (n + 1) P (a :: A') (b :: B') =
+      (match splitRight proj (proj a) (b :: B') with
+       | (B1, []) => P ++ B1 ++ (a :: A')
+       | (B1, B2) =>
+          match splitEq proj (proj a) (a :: A') with
+          | (A1, A2) => scrollRight proj n (P ++ B1 ++ A1) A2 B2) := rfl
+
+/-- **`inplace_merge_with_rotation_scroll_right` is the stable merge**: run from the
+state `P ++ A ++ B` with both runs sorted, it leaves `P` alone and appends
+`mergeTwo A B`. -/
+theorem scrollRight_spec (proj : α → β) (fuel : Nat) :
+    ∀ (P A B : List α), A.length + B.length ≤ fuel →
+      Sorted (KeyLe proj) A → Sorted (KeyLe proj) B →
+      scrollRight proj fuel P A B = P ++ mergeTwo proj A B := by
+  induction fuel with
+  | zero =>
+      intro P A B hlen _ _
+      have hA : A = [] := List.eq_nil_of_length_eq_zero (by omega)
+      have hB : B = [] := List.eq_nil_of_length_eq_zero (by omega)
+      rw [hA, hB, scrollRight_zero, mergeTwo_nil_left, List.append_nil]
+  | succ n ih =>
+      intro P A B hlen hAs hBs
+      match A, B with
+      | [], B => rw [scrollRight_succ_nil_left, mergeTwo_nil_left]
+      | a :: A', [] => rw [scrollRight_succ_nil_right, mergeTwo_nil_right]
+      | a :: A', b :: B' =>
+        rw [scrollRight_succ_cons]
+        cases hsp : splitRight proj (proj a) (b :: B') with
+        | mk B1 B2 =>
+          cases B2 with
+          | nil =>
+              dsimp only
+              have hB1 : B1 = b :: B' := by
+                have h := splitRight_append proj (proj a) (b :: B')
+                rw [hsp] at h
+                simpa using h
+              have hblt : ∀ y ∈ B1, Cmp.blt (proj y) (proj a) = true := by
+                have h := splitRight_blt proj (proj a) (b :: B')
+                rw [hsp] at h
+                exact h
+              rw [hB1] at hblt
+              rw [hB1, mergeTwo_eq_of_all_blt (b :: B') hblt, List.append_assoc]
+          | cons c B2' =>
+              have hB : B1 ++ (c :: B2') = b :: B' := by
+                have h := splitRight_append proj (proj a) (b :: B')
+                rw [hsp] at h
+                exact h
+              have hblt : ∀ y ∈ B1, Cmp.blt (proj y) (proj a) = true := by
+                have h := splitRight_blt proj (proj a) (b :: B')
+                rw [hsp] at h
+                exact h
+              have hc : Cmp.ble (proj a) (proj c) = true := by
+                refine splitRight_snd_head_ble (B := b :: B') (y := c) (ys := B2') ?_
+                rw [hsp]
+              have hBs2 : Sorted (KeyLe proj) (c :: B2') := by
+                have h1 : c :: B2' = (b :: B').drop B1.length := by
+                  rw [← List.drop_left (l₁ := B1) (l₂ := c :: B2'), ← hB]
+                rw [h1]
+                exact sorted_drop hBs
+              cases hse : splitEq proj (proj a) (a :: A') with
+              | mk A1 A2 =>
+                dsimp only
+                have hA : A1 ++ A2 = a :: A' := by
+                  have h := splitEq_append proj (proj a) (a :: A')
+                  rw [hse] at h
+                  exact h
+                have hA1 : ∀ y ∈ A1, Cmp.beq (proj y) (proj a) = true := by
+                  have h := splitEq_beq proj (proj a) (a :: A')
+                  rw [hse] at h
+                  exact h
+                have hA1ne : A1 ≠ [] := by
+                  obtain ⟨r, hr⟩ := splitEq_cons_of_beq (proj := proj) (a := proj a) (y := a)
+                    (ys := A') (Cmp.beq_self (proj a))
+                  rw [hr] at hse
+                  injection hse with h1 _
+                  rw [← h1]
+                  simp
+                have hAs2 : Sorted (KeyLe proj) A2 := by
+                  have h1 : A2 = (a :: A').drop A1.length := by
+                    rw [← List.drop_left (l₁ := A1) (l₂ := A2), ← hA]
+                  rw [h1]
+                  exact sorted_drop hAs
+                have hlen2 : A2.length + (c :: B2').length ≤ n := by
+                  have h1 : 0 < A1.length := List.length_pos_iff.mpr hA1ne
+                  have h2 : A1.length + A2.length = A'.length + 1 := by
+                    rw [← List.length_append, hA]
+                    simp
+                  have h3 : B1.length + (c :: B2').length = B'.length + 1 := by
+                    rw [← List.length_append, hB]
+                    simp
+                  have h4 : A'.length + 1 + (B'.length + 1) ≤ n + 1 := by
+                    simpa using hlen
+                  omega
+                have hble : ∀ x ∈ A1, ∀ y ∈ c :: B2', Cmp.ble (proj x) (proj y) = true := by
+                  intro x hx y hy
+                  rw [Cmp.beq_eq (hA1 x hx)]
+                  exact Cmp.ble_trans hc (keyLe_head hBs2 y hy)
+                rw [ih (P ++ B1 ++ A1) A2 (c :: B2') hlen2 hAs2 hBs2,
+                  ← hB, mergeTwo_append_right_eq (a := a) (A' := A') B1 (c :: B2') hblt,
+                  ← hA, mergeTwo_append_left_eq A1 A2 (c :: B2') hble]
+                simp only [List.append_assoc]
+
+/-- Run to completion from an empty final prefix, the scroll-right loop *is* the stable
+merge of the two runs. -/
+theorem scrollRight_eq_mergeTwo (proj : α → β) {A B : List α}
+    (hA : Sorted (KeyLe proj) A) (hB : Sorted (KeyLe proj) B) :
+    scrollRight proj (A.length + B.length) [] A B = mergeTwo proj A B := by
+  have h := scrollRight_spec proj (A.length + B.length) [] A B (Nat.le_refl _) hA hB
+  simpa using h
+
 end Tcs

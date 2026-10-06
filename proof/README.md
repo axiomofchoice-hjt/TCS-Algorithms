@@ -112,6 +112,15 @@ Proved so far:
   C++ keeps contiguously just before the scanned position: `UniqueInv` records that
   the buffer's last key is the largest kept key, which is what makes the C++
   comparison against `*(right - 1)` sufficient.
+* `scrollRight_spec` — **the scroll-right pass of the stable
+  `inplace_merge_with_rotation` is exactly `mergeTwo`** on its two runs. The model
+  keeps the state as `P ++ A ++ B` (the final prefix plus the two remaining runs) and
+  `fuel` bounds `A.length + B.length`; `splitRight`/`splitEq` are the C++'s two inner
+  scans, written as recursions so that "everything below `a`" and "everything equal to
+  `a`" stay plain inductions. One turn needs only the two block facts about a merge:
+  `mergeTwo_append_right_eq` (a right-run block entirely below the left head is emitted
+  first) and `mergeTwo_append_left_eq` (a left run starting at or below the right keys
+  is emitted first). `scrollRight_eq_mergeTwo` is the whole pass from an empty prefix.
 
 Cross-checked against the C++ (element-wise, with original indices attached):
 
@@ -125,11 +134,14 @@ Cross-checked against the C++ (element-wise, with original indices attached):
   `block_merge_pairwise`, `bubble_sort` and both rotation merges, and only
   `block_selection_sort` reorders equal keys (9,145/26,400 cases), which the pairwise
   merge then repairs — so the invariant to carry through the block phase is exactly
-  `∀ k, keyFilter proj k state = keyFilter proj k input`.
+  `∀ k, keyFilter proj k state = keyFilter proj k input`;
+* `inplace_merge_with_rotation` alone is the stable merge of its two runs — 0
+  mismatches in 41,000 randomized cases.
 
-Still to model: the four-argument `stable_unique_limit`, `align_blocks_limit`, the
-label-carrying `block_selection_sort`/`block_merge_pairwise`/
-`inplace_merge_with_rotation_indexed` phases, and the assembly.
+Still to model: the scroll-left pass and the dispatch of `inplace_merge_with_rotation`,
+the four-argument `stable_unique_limit`, `align_blocks_limit`, the label-carrying
+`block_selection_sort`/`block_merge_pairwise`/`inplace_merge_with_rotation_indexed`
+phases, and the assembly.
 
 ## Running time
 
