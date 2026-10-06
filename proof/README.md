@@ -325,3 +325,48 @@ proof/
 ├── lean-toolchain              # Pinned Lean toolchain
 └── check.sh                    # Audit: rebuild, per-file strict check, no sorry, no choice
 ```
+
+## `inplace_stable_merge`: what is proved and what is left
+
+The top-level target is `Tcs.StableMergeSpec proj L R l` - the result is sorted, it is a
+permutation of the two runs, and it keeps every key's subsequence (the part that makes the
+merge stable). `mergeTwo_stableMergeSpec` shows `mergeTwo L R` meets it and
+`eq_mergeTwo_of_stableMergeSpec` shows that anything meeting it *is* `mergeTwo L R`, so the
+specification characterises the stable merge exactly.
+
+Everything the algorithm does *before* the labelled block phase is proved, and each stage
+is already in the form the assembly needs (`Perm` plus per-key preservation):
+
+| stage | result |
+| --- | --- |
+| `stable_unique_limit` (3-arg) | `uniqueLimit_spec`, plus `uniqueLimit_buf_first` |
+| `stable_unique_limit` (4-arg) | `uniqueLimitRange_spec`, plus `uniqueLimitRange_buf_first` |
+| `align_blocks_limit` | `alignBlocksLimit_perm`, `alignBlocksLimit_keyFilter` |
+| `inplace_merge_with_rotation` | `mergeByRotationStable_spec`, `perm_mergeByRotationStable`, `keyFilter_mergeByRotationStable` |
+| `bubble_sort` | `bubbleSort_stableSort` |
+| block decomposition | `blocksOf_flatten`, `blocksOf_length_le` |
+
+The gaps, in the order they are needed:
+
+1. **The finishing merges.** `mergeByRotationStable_buf_merge` (buffer merged with the block
+   region, tail untouched) and its tail counterpart, then the composition of the two. Each
+   is `mergeByRotationStable_spec` plus index bookkeeping. Two things cost attempts here:
+   `simp only` does *not* rewrite `List.take_left` under the `Sorted` definition (use
+   `rw [...]` then `exact`), and one expression can need *opposite* normalisations in two
+   places - write the range end as `(buf ++ X).length` rather than `buf.length + X.length`
+   so the trailing drop stays a single `List.drop_left`, and split the double merge into two
+   single-step lemmas so each has only one index to normalise.
+2. **The labelled block phase** - `merge_with_swap` (with the label pair deciding ties and
+   the `swap(labels[1], labels[2])` bookkeeping when the left run is unfinished),
+   `inplace_merge_with_rotation_indexed`, `block_selection_sort` and
+   `block_merge_pairwise`. `block_selection_sort` is the one stage that does *not* preserve
+   per-key order on its own; `block_merge_pairwise` repairs it, so the two have to be proved
+   together. Because of `eq_mergeTwo_of_stableMergeSpec`, the block phase only has to be
+   shown to preserve `Perm` and per-key order over the range - it does not have to place
+   individual elements, which is what the lane labels are for.
+3. **The assembly**, using per-stage invariants above and treating the block phase as the
+   one remaining hypothesis.
+
+Core lemmas that are *not* choice-free in this toolchain and therefore have constructive
+replacements in the development: `List.take_add` (`Tcs.take_add'`), `List.drop_take`
+(`Tcs.drop_take'`), `Nat.sqrt_le`/`Nat.lt_succ_sqrt`, `Nat.lt_of_mul_lt_mul_left`/`_right`.
