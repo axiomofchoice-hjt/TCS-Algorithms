@@ -1970,4 +1970,28 @@ def blocksOfAux : Nat → Nat → List α → List (List α)
 def blocksOf (bs : Nat) (l : List α) : List (List α) :=
   blocksOfAux (l.length / bs + 1) bs l
 
+/-- The blocks concatenate back to the range they came from. -/
+theorem blocksOfAux_flatten : ∀ fuel bs (l : List α), l.length ≤ fuel * bs →
+    (blocksOfAux fuel bs l).flatten = l := by
+  intro fuel
+  induction fuel with
+  | zero =>
+      intro bs l h
+      have h0 : l.length = 0 := Nat.eq_zero_of_le_zero (by simpa using h)
+      match l with
+      | [] => rfl
+      | a :: t => exact absurd h0 (by simp)
+  | succ f ih =>
+      intro bs l h
+      match l with
+      | [] => rfl
+      | a :: t =>
+          have hdrop : ((a :: t).drop bs).length ≤ f * bs := by
+            rw [List.length_drop, List.length_cons, Nat.sub_le_iff_le_add']
+            calc t.length + 1 ≤ (f + 1) * bs := h
+              _ = f * bs + bs := Nat.succ_mul f bs
+              _ = bs + f * bs := Nat.add_comm _ _
+          simp only [blocksOfAux, List.flatten_cons]
+          rw [ih bs ((a :: t).drop bs) hdrop, List.take_append_drop]
+
 end Tcs
