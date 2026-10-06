@@ -931,4 +931,76 @@ theorem splitEqual_snd_ne_nil {proj : α → β} {b : β} {B0 : List α} {z : α
       List.reverse_nil]
   exact hrev hz0
 
+/-! ## Suffix block facts about `mergeTwo`
+
+The left-scrolling pass peels its finished tail off the *back* of the merge, so it needs
+the mirror block facts: a left run that is entirely above the right run goes last, and a
+left run whose keys are at most a right-run suffix goes in front of it. -/
+
+theorem mergeTwo_eq_of_all_gt {proj : α → β} {A : List α} (B : List α) :
+    ∀ (_ : ∀ y ∈ A, ∀ x ∈ B, Cmp.blt (proj x) (proj y) = true),
+      mergeTwo proj A B = B ++ A := by
+  induction B with
+  | nil => intro _; rw [mergeTwo_nil_right, List.nil_append]
+  | cons b Bs ih =>
+      intro h
+      match A with
+      | [] => rw [mergeTwo_nil_left, List.append_nil]
+      | a :: As =>
+          have hba : Cmp.blt (proj b) (proj a) = true := h a (by simp) b (by simp)
+          have hBs : ∀ y ∈ a :: As, ∀ x ∈ Bs, Cmp.blt (proj x) (proj y) = true :=
+            fun y hy x hx => h y hy x (by simp [hx])
+          rw [mergeTwo_cons_cons_of_not_ble (Cmp.not_ble_of_blt hba), ih hBs, List.cons_append]
+
+theorem mergeTwo_append_left_suffix {proj : α → β} {A2 : List α} (A1 : List α) :
+    ∀ B : List α, (∀ y ∈ A2, ∀ x ∈ B, Cmp.blt (proj x) (proj y) = true) →
+      mergeTwo proj (A1 ++ A2) B = mergeTwo proj A1 B ++ A2 := by
+  induction A1 with
+  | nil => intro B h; rw [mergeTwo_nil_left]; exact mergeTwo_eq_of_all_gt (A := A2) B h
+  | cons x xs ih =>
+      have main : ∀ B : List α, (∀ y ∈ A2, ∀ x ∈ B, Cmp.blt (proj x) (proj y) = true) →
+          mergeTwo proj (x :: (xs ++ A2)) B = mergeTwo proj (x :: xs) B ++ A2 := by
+        intro B
+        induction B with
+        | nil => intro _; rw [mergeTwo_nil_right, mergeTwo_nil_right, List.cons_append]
+        | cons y ys ihB =>
+            intro h
+            by_cases hxy : Cmp.ble (proj x) (proj y) = true
+            · rw [mergeTwo_cons_cons_of_ble hxy, mergeTwo_cons_cons_of_ble hxy,
+                ih (y :: ys) h, List.cons_append]
+            · have hxy' : Cmp.ble (proj x) (proj y) = false := by simpa using hxy
+              rw [mergeTwo_cons_cons_of_not_ble hxy', mergeTwo_cons_cons_of_not_ble hxy',
+                ihB (fun z hz w hw => h z hz w (by simp [hw])), List.cons_append]
+      intro B h
+      rw [List.cons_append]
+      exact main B h
+
+theorem mergeTwo_append_right_suffix {proj : α → β} {B2 : List α} (B1 : List α) :
+    ∀ A : List α, (∀ x ∈ A, ∀ y ∈ B2, Cmp.ble (proj x) (proj y) = true) →
+      mergeTwo proj A (B1 ++ B2) = mergeTwo proj A B1 ++ B2 := by
+  induction B1 with
+  | nil =>
+      intro A h
+      have h2 := mergeTwo_append_left_eq A [] B2 (fun x hx y hy => h x hx y hy)
+      rw [List.append_nil, mergeTwo_nil_left] at h2
+      rw [List.nil_append, mergeTwo_nil_right]
+      exact h2
+  | cons b Bs ih =>
+      have main : ∀ A : List α, (∀ x ∈ A, ∀ y ∈ B2, Cmp.ble (proj x) (proj y) = true) →
+          mergeTwo proj A (b :: (Bs ++ B2)) = mergeTwo proj A (b :: Bs) ++ B2 := by
+        intro A
+        induction A with
+        | nil => intro _; rw [mergeTwo_nil_left, mergeTwo_nil_left, List.cons_append]
+        | cons a As ihA =>
+            intro h
+            by_cases hab : Cmp.ble (proj a) (proj b) = true
+            · rw [mergeTwo_cons_cons_of_ble hab, mergeTwo_cons_cons_of_ble hab,
+                ihA (fun x hx y hy => h x (by simp [hx]) y hy), List.cons_append]
+            · have hab' : Cmp.ble (proj a) (proj b) = false := by simpa using hab
+              rw [mergeTwo_cons_cons_of_not_ble hab', mergeTwo_cons_cons_of_not_ble hab',
+                ih (a :: As) (fun x hx y hy => h x hx y (by simp [hy])), List.cons_append]
+      intro A h
+      rw [List.cons_append]
+      exact main A h
+
 end Tcs
