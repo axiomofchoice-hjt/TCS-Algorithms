@@ -2048,4 +2048,85 @@ theorem keyFilter_eq_nil_of_sorted_above {proj : α → β} {k : β} {l : List �
     rw [Cmp.beq_comm]
     exact Cmp.not_beq_of_blt (h y hy))
 
+/-- **A sorted list is determined by its per-key subsequences**: if two sorted lists have
+the same `k`-subsequence for every key then they are equal. This is the bridge the assembly
+needs - it turns "the result is sorted, a permutation of the two runs, and keeps every
+per-key order" into "the result is the stable merge", which is why the block phase only has
+to be shown to preserve per-key order rather than to place individual elements. -/
+theorem eq_of_sorted_keyFilter {proj : α → β} :
+    ∀ {l l' : List α}, Sorted (KeyLe proj) l → Sorted (KeyLe proj) l' →
+      (∀ k : β, keyFilter proj k l' = keyFilter proj k l) → l' = l := by
+  intro l
+  induction l with
+  | nil =>
+      intro l' _ _ hk
+      match l' with
+      | [] => rfl
+      | a :: t =>
+          have hNe := keyFilter_ne_nil_of_mem (proj := proj) (x := a) (l := a :: t) (by simp)
+          have hNil : keyFilter proj (proj a) (a :: t) = [] := by
+            rw [hk (proj a), keyFilter_nil]
+          exact absurd hNil hNe
+  | cons b t ih =>
+      intro l' hs hs' hk
+      match l' with
+      | [] =>
+          have hNe := keyFilter_ne_nil_of_mem (proj := proj) (x := b) (l := b :: t) (by simp)
+          have hNil : keyFilter proj (proj b) (b :: t) = [] := by
+            rw [← hk (proj b), keyFilter_nil]
+          exact absurd hNil hNe
+      | a :: t' =>
+          obtain ⟨hbt, ht⟩ := (sorted_cons_iff (KeyLe proj) b t).mp hs
+          obtain ⟨hae, ht'⟩ := (sorted_cons_iff (KeyLe proj) a t').mp hs'
+          by_cases hab : Cmp.blt (proj a) (proj b) = true
+          · have hNe := keyFilter_ne_nil_of_mem (proj := proj) (x := a) (l := a :: t') (by simp)
+            have hNil : keyFilter proj (proj a) (a :: t') = [] := by
+              rw [hk (proj a)]
+              refine keyFilter_eq_nil_of_all (b :: t) (fun y hy => ?_)
+              rcases List.mem_cons.mp hy with hyb | hy'
+              · rw [hyb, Cmp.beq_comm]
+                exact Cmp.not_beq_of_blt hab
+              · have hbty : Cmp.blt (proj a) (proj y) = true :=
+                  Cmp.blt_of_blt_of_ble hab (hbt y hy')
+                rw [Cmp.beq_comm]
+                exact Cmp.not_beq_of_blt hbty
+            exact absurd hNil hNe
+          · by_cases hba : Cmp.blt (proj b) (proj a) = true
+            · have hNe := keyFilter_ne_nil_of_mem (proj := proj) (x := b) (l := b :: t) (by simp)
+              have hNil : keyFilter proj (proj b) (b :: t) = [] := by
+                rw [← hk (proj b)]
+                refine keyFilter_eq_nil_of_all (a :: t') (fun y hy => ?_)
+                rcases List.mem_cons.mp hy with hya | hy'
+                · rw [hya, Cmp.beq_comm]
+                  exact Cmp.not_beq_of_blt hba
+                · have hbty : Cmp.blt (proj b) (proj y) = true :=
+                    Cmp.blt_of_blt_of_ble hba (hae y hy')
+                  rw [Cmp.beq_comm]
+                  exact Cmp.not_beq_of_blt hbty
+              exact absurd hNil hNe
+            · have hbf : Cmp.blt (proj b) (proj a) = false := by
+                cases h : Cmp.blt (proj b) (proj a) <;> simp_all
+              have haf : Cmp.blt (proj a) (proj b) = false := by
+                cases h : Cmp.blt (proj a) (proj b) <;> simp_all
+              have hbeq : Cmp.beq (proj a) (proj b) = true := by
+                simp only [Cmp.beq, Bool.and_eq_true]
+                exact ⟨Cmp.ble_of_not_blt hbf, Cmp.ble_of_not_blt haf⟩
+              have hbeq' : Cmp.beq (proj b) (proj a) = true := by
+                rw [Cmp.beq_comm (proj b) (proj a)]
+                exact hbeq
+              have hhead := hk (proj a)
+              rw [keyFilter_cons_of_beq (Cmp.beq_self (proj a)),
+                keyFilter_cons_of_beq hbeq'] at hhead
+              have hat : a = b := (List.cons.inj hhead).1
+              have htt : t' = t := ih (l' := t') ht ht' (fun k => by
+                have hk' := hk k
+                rw [hat] at hk'
+                rw [keyFilter_cons, keyFilter_cons] at hk'
+                by_cases hb : Cmp.beq (proj b) k = true
+                · rw [ite_eq_left hb, ite_eq_left hb] at hk'
+                  exact (List.cons.inj hk').2
+                · rw [ite_eq_right (by simpa using hb), ite_eq_right (by simpa using hb)] at hk'
+                  exact hk')
+              rw [hat, htt]
+
 end Tcs
