@@ -1888,4 +1888,68 @@ theorem alignBlocksLimit_keyFilter (proj : α → β) {bs nb : Nat} {l : List α
   · rw [ite_eq_right hbr]
     exact hk1
 
+/-- Merging the two halves of a range in place only permutes the list. -/
+theorem perm_mergeByRotationStable {proj : α → β} {l : List α} {first mid last : Nat}
+    (h1 : first ≤ mid) (h2 : mid ≤ last)
+    (hA : Sorted (KeyLe proj) ((l.drop first).take (mid - first)))
+    (hB : Sorted (KeyLe proj) ((l.drop mid).take (last - mid))) :
+    (mergeByRotationStable proj l first mid last).Perm l := by
+  have hspec := mergeByRotationStable_spec (proj := proj) hA hB
+  have hsel := take_drop_splice3 (l := l) h1 h2
+  have hinner : (l.take first ++ mergeTwo proj ((l.drop first).take (mid - first))
+        ((l.drop mid).take (last - mid)) ++ l.drop last).Perm
+      (l.take first ++ (l.drop first).take (mid - first) ++
+        (l.drop mid).take (last - mid) ++ l.drop last) := by
+    have hAB := mergeTwo_perm proj ((l.drop first).take (mid - first))
+      ((l.drop mid).take (last - mid))
+    have h2 := List.Perm.append_right (l.drop last) hAB
+    have h3 := List.Perm.append_left (l.take first) h2
+    simpa only [List.append_assoc] using h3
+  rw [hspec]
+  exact hinner.trans (List.Perm.of_eq hsel.symm)
+
+/-- **`align_blocks_limit` only permutes the range**, which is the other half of its
+contract: the two rotation merges each only rearrange, and the rest is untouched. -/
+theorem alignBlocksLimit_perm (proj : α → β) {bs nb : Nat} {l : List α}
+    {first mid last : Nat} (h1 : first ≤ mid) (h2 : mid ≤ last) (h3 : last ≤ l.length)
+    (hA : Sorted (KeyLe proj) ((l.drop first).take (mid - first)))
+    (hB : Sorted (KeyLe proj) ((l.drop mid).take (last - mid))) :
+    (alignBlocksLimit proj bs nb l first mid last).1.Perm l := by
+  dsimp only [alignBlocksLimit]
+  generalize hm : first + ((mid - first) / bs * bs) = m
+  generalize hl2 : first + bs * nb = l2
+  have hm_mid : m ≤ mid := by
+    rw [← hm]
+    exact Nat.le_trans (Nat.add_le_add_left (Nat.div_mul_le_self (mid - first) bs) first)
+      (Nat.le_of_eq (Nat.add_sub_of_le h1))
+  have hf_m : first ≤ m := by rw [← hm]; exact Nat.le_add_right first _
+  have hf_l2 : first ≤ l2 := by rw [← hl2]; exact Nat.le_add_right first _
+  have hml : m ≤ l.length := Nat.le_trans hm_mid (Nat.le_trans h2 h3)
+  have hA' : Sorted (KeyLe proj) ((l.drop m).take (mid - m)) :=
+    sorted_subrun hf_m hm_mid (Nat.le_refl mid) hA
+  have hp1 : (mergeByRotationStable proj l m mid last).Perm l :=
+    perm_mergeByRotationStable (h1 := hm_mid) (h2 := h2) (hA := hA') (hB := hB)
+  by_cases hbr : l2 < m
+  · rw [ite_eq_left hbr]
+    have hl2m : l2 ≤ m := Nat.le_of_lt hbr
+    have hA2 : Sorted (KeyLe proj)
+        (((mergeByRotationStable proj l m mid last).drop l2).take (m - l2)) := by
+      have hsplit := mergeByRotationStable_drop_prefix (proj := proj) (l := l) (m := m)
+        (mid := mid) (last := last) (l2 := l2) (hm_len := hml) (hA := hA') (hB := hB)
+      rw [hsplit]
+      exact sorted_subrun (h1 := hf_l2) (h2 := hl2m) (h3 := hm_mid) (hs := hA)
+    have hB2 : Sorted (KeyLe proj)
+        (((mergeByRotationStable proj l m mid last).drop m).take (last - m)) := by
+      have hsplit := mergeByRotationStable_drop_self (proj := proj) (l := l) (m := m)
+        (mid := mid) (last := last) (hm_mid := hm_mid) (h2 := h2) (h3 := h3) (hA := hA') (hB := hB)
+      rw [hsplit]
+      exact mergeTwo_sorted proj _ _ hA' hB
+    have hp2 : (mergeByRotationStable proj (mergeByRotationStable proj l m mid last) l2 m last).Perm
+        (mergeByRotationStable proj l m mid last) :=
+      perm_mergeByRotationStable (l := mergeByRotationStable proj l m mid last) (first := l2)
+        (mid := m) (last := last) (h1 := hl2m) (h2 := Nat.le_trans hm_mid h2) (hA := hA2) (hB := hB2)
+    exact hp2.trans hp1
+  · rw [ite_eq_right hbr]
+    exact hp1
+
 end Tcs
