@@ -23,7 +23,7 @@
   The block is never read again (it is always the next `output` slot), so only its
   multiset matters; final key sequences agree, element order inside equal-key
   groups may differ. This is documented on `blockMergeStd` below. Likewise
-  `bubble_sort` is modelled by `Tcs.sortRange` and the block selection sort by the
+  `bubble_sort` is modelled by `Tcs.bubbleSort` and the block selection sort by the
   two runs' pair-ordered block merge, as in `Tcs/Sort.lean`.
 
   What is proved:
@@ -1746,7 +1746,7 @@ def unstableMerge (proj : α → β) (l : List α) (k : Nat) : List α :=
     let blks := blockSelectionSort proj bs (la / bs) (ra / bs) A1 B1
     let blks' := blockMergePairwise proj bs blks
     let l2 := blks'.flatten ++ (rotRange l la k (k + ra)).drop al
-    let l3 := l2.take (al - bs) ++ sortRange proj (l2.drop (al - bs))
+    let l3 := l2.take (al - bs) ++ bubbleSort proj (l2.drop (al - bs))
     mergeByRotation proj l3 0 (al - bs) l.length
 
 /-- **`inplace_unstable_merge` sorts the whole range and only permutes it.** -/
@@ -1779,7 +1779,7 @@ theorem unstableMerge_sorted_and_perm (proj : α → β) (l : List α) {k : Nat}
     generalize hblksdef : blockSelectionSort proj bs (la / bs) (ra / bs) A1 B1 = blks
     generalize hblks'def : blockMergePairwise proj bs blks = blks'
     generalize hl2def : blks'.flatten ++ (rotRange l la k (k + ra)).drop al = l2
-    generalize hl3def : l2.take (al - bs) ++ sortRange proj (l2.drop (al - bs)) = l3
+    generalize hl3def : l2.take (al - bs) ++ bubbleSort proj (l2.drop (al - bs)) = l3
     have hbs : 0 < bs := by rw [← hbsdef]; exact sqrt_pos_of_pos (by omega)
     have hlak : la ≤ k := by rw [← hladef]; exact Nat.div_mul_le_self k bs
     have hrale : ra ≤ l.length - k := by
@@ -1876,7 +1876,7 @@ theorem unstableMerge_sorted_and_perm (proj : α → β) (l : List α) {k : Nat}
       exact h1.trans h2
     have hl3perm : l3.Perm l2 := by
       rw [← hl3def]
-      have h := List.Perm.append_left (l2.take (al - bs)) (sortRange_perm proj (l2.drop (al - bs)))
+      have h := List.Perm.append_left (l2.take (al - bs)) (bubbleSort_perm proj (l2.drop (al - bs)))
       rwa [List.take_append_drop] at h
     -- the tail sort
     have hsortHead : SortedOn proj l3 0 (al - bs) := by
@@ -1891,10 +1891,10 @@ theorem unstableMerge_sorted_and_perm (proj : α → β) (l : List α) {k : Nat}
       rw [SortedOn]
       rw [List.drop_append_of_le_length (by rw [List.length_take]; omega),
         List.drop_eq_nil_of_le (by rw [List.length_take]; omega), List.nil_append]
-      have hlen : (sortRange proj (l2.drop (al - bs))).length = l.length - (al - bs) := by
-        rw [(sortRange_perm proj (l2.drop (al - bs))).length_eq, List.length_drop, hl2len]
+      have hlen : (bubbleSort proj (l2.drop (al - bs))).length = l.length - (al - bs) := by
+        rw [(bubbleSort_perm proj (l2.drop (al - bs))).length_eq, List.length_drop, hl2len]
       rw [List.take_of_length_le (by omega)]
-      exact sortRange_sorted proj _
+      exact bubbleSort_sorted proj _
     have hl3eq : l3.length = l.length := hl3perm.length_eq.trans hl2perm.length_eq
     have hmerge := mergeByRotation_sorted proj (l := l3) (first := 0) (mid := al - bs)
       (last := l.length) (by omega) (by omega) (by omega) hsortHead hsortTail

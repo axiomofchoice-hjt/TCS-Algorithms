@@ -37,18 +37,23 @@ multiplicity. At the `Array` level this is `bfprtRange_selects`, and
 the key a sorted copy of the range carries there.
 
 `Tcs/Select.lean` holds the rank relation `IsKthSmallest` and the selection
-contract `Selects`; `Tcs/Bfprt.lean` holds `sortRange` (the `bubble_sort`
-contract), a `std::partition` model with its permutation/split lemmas, the
-median-of-medians group pass (`placeMedian` / `groupPass`), and `bfprtAux`, which
-mirrors `bfprt.hpp` line for line on the element list of the range, with the range
-length as fuel.
+contract `Selects`; `Tcs/Sort.lean` holds `bubbleSort`, a literal model of the C++
+`bubble_sort` loop (one pass carries the maximum to the right end, the outer loop
+then runs over the shrinking prefix), and `Tcs/Bfprt.lean` holds a `std::partition`
+model with its permutation/split lemmas, the median-of-medians group pass
+(`placeMedian` / `groupPass`), and `bfprtAux`, which mirrors `bfprt.hpp` line for
+line on the element list of the range, with the range length as fuel. `groupPass`
+applies the passes in **increasing** group order, as the C++ loop does: that is what
+puts the group medians in `[0, len / 5)`, and the order is significant (the reverse
+order re-sorts a low group after its median has been moved out).
 
-The median-of-medians *choice* is deliberately unused: a three-way partition
-selects correctly for whatever pivot it is given, and the recursion terminates
-because every recursive range is strictly shorter — the pivot occurs in the range,
-so the block it lands in is a proper sub-range. Median of medians is what makes
-that shortening *fast*, a running-time fact that is not formalized here. The group
-pass is still modelled faithfully and proved to permute, because the C++ does it.
+Correctness does not depend on the median-of-medians *choice*: a three-way
+partition selects correctly for whatever pivot it is given, and the recursion
+terminates because every recursive range is strictly shorter — the pivot occurs in
+the range, so the block it lands in is a proper sub-range. Median of medians is what
+makes that shortening *fast*; that running-time fact is formalized separately in
+`Tcs/Cost/Bfprt.lean` (see the cost section below), where the group pass is used to
+bound the size of the recursive range by `7n/10`.
 
 ### In-place unstable merge — `Tcs/UnstableMerge.lean`
 
@@ -72,9 +77,8 @@ Because these algorithms are deterministic, the Lean and the C++ results can be
 compared element by element: 300 random cases through the whole pipeline (plus
 400 + 400 through the two primitives) produced byte-identical arrays, and every pair
 of sorted runs of length ≤ 3 over `{0,1,2}` (100 cases) satisfies the contract. The
-`bubble_sort` calls are modelled by core's `mergeSort` in `Tcs/Sort.lean`; both are
-stable comparison sorts for the same order, and only the sorted + permutation
-contract is used.
+The `bubble_sort` calls are modelled literally in `Tcs/Sort.lean` (the C++ loop, not
+an equivalent sort), so that their exact comparison count can be formalized.
 
 ## Modelling conventions
 
@@ -120,7 +124,7 @@ proof/
 ├── Tcs/Count.lean         # Generic `List.countP` lemmas
 ├── Tcs/Perm.lean          # Swap → `Perm` bridge for in-place algorithms
 ├── Tcs/Select.lean        # Rank and selection specs (k-th smallest key)
-├── Tcs/Sort.lean          # `bubble_sort` contract (core `mergeSort`)
+├── Tcs/Sort.lean          # `bubble_sort`, modelled as the C++ loop
 ├── Tcs/Cyclesort.lean     # Verified cycle sort
 ├── Tcs/Bfprt.lean         # Verified BFPRT selection
 ├── Tcs/Merge.lean         # rotate, `merge_with_swap`, `inplace_merge_with_rotation`

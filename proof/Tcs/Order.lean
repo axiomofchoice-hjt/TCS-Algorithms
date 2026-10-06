@@ -69,6 +69,21 @@ theorem blt_trans {a b c : β} (h₁ : blt a b = true) (h₂ : blt b c = true) :
 theorem beq_comm (a b : β) : beq a b = beq b a := by
   simp [beq, Bool.and_comm]
 
+/-- Totality in the form the strict order needs it: a failed `<` means `≥`. -/
+theorem blt_eq_false_iff {a b : β} : blt a b = false ↔ ble b a = true := by
+  rw [blt, Bool.and_eq_false_iff]
+  constructor
+  · rintro (h | h)
+    · rcases ble_total a b with h₁ | h₁
+      · exact absurd h₁ (by simp [h])
+      · exact h₁
+    · simpa using h
+  · intro h
+    exact Or.inr (by simpa using h)
+
+theorem ble_of_not_blt {a b : β} (h : blt a b = false) : ble b a = true :=
+  blt_eq_false_iff.mp h
+
 end Cmp
 
 /-! ### `Nat` instance, used by the non-vacuity checks -/

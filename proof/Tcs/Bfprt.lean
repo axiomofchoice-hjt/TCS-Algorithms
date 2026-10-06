@@ -65,7 +65,7 @@ theorem getElem?_take_append_of_le {l s : List α} {lo k : Nat} (hlen : lo ≤ l
 
 /-! ## Splicing a sub-range back in
 
-`sortRange` (the sorting primitive behind the C++ `bubble_sort` calls) lives in
+`bubbleSort` (the sorting primitive behind the C++ `bubble_sort` calls) lives in
 `Tcs.Sort`, which this file imports. -/
 
 /-- Sorting a sub-range in place: sort `s` and glue it back between the untouched
@@ -233,24 +233,34 @@ theorem swapAt_perm (l : List α) (i j : Nat) : (swapAt l i j).Perm l := by
 `bubble_sort(first + 5 * i, first + 5 * i + 5)` - and move the group's median from
 offset `2` to index `i` - C++'s `std::swap(first[i], first[5 * i + 2])`. -/
 def placeMedian (proj : α → β) (i : Nat) (l : List α) : List α :=
-  swapAt (l.take (5 * i) ++ sortRange proj ((l.drop (5 * i)).take 5) ++ l.drop (5 * i + 5))
+  swapAt (l.take (5 * i) ++ bubbleSort proj ((l.drop (5 * i)).take 5) ++ l.drop (5 * i + 5))
     i (5 * i + 2)
 
 /-- C++'s `for (i = 0; i + 5 <= len; i += 5)` loop: every full group of five is
-sorted and its median is moved into `[0, len / 5)`. -/
+sorted and its median is moved into `[0, len / 5)`.
+
+The *order* of the passes is part of the loop, and this is the one place where it
+matters: group `i` is processed in increasing `i`. The destination index `i` is
+smaller than every slot of group `i` (and of every later group), so once a median is
+written at index `i` no later pass disturbs it, and after the whole pass index `i`
+holds the median of group `i` for every `i < len / 5`. Running the groups in the
+reverse order instead re-sorts the low groups *after* their medians have been moved
+out (the group of index `i` is re-sorted by the passes `j < i` whose slot range
+covers `i`), which is not the C++ loop and would invalidate the linear-time argument
+below. -/
 def groupPass (proj : α → β) : Nat → List α → List α
   | 0, l => l
-  | i + 1, l => groupPass proj i (placeMedian proj i l)
+  | i + 1, l => placeMedian proj i (groupPass proj i l)
 
 theorem placeMedian_perm (proj : α → β) (i : Nat) (l : List α) :
     (placeMedian proj i l).Perm l := by
   unfold placeMedian
   refine (swapAt_perm _ _ _).trans ?_
-  exact splice_perm (sortRange_perm proj ((l.drop (5 * i)).take 5))
+  exact splice_perm (bubbleSort_perm proj ((l.drop (5 * i)).take 5))
 
 theorem groupPass_perm (proj : α → β) : ∀ i (l : List α), (groupPass proj i l).Perm l
   | 0, l => List.Perm.refl l
-  | i + 1, l => (groupPass_perm proj i (placeMedian proj i l)).trans (placeMedian_perm proj i l)
+  | i + 1, l => (placeMedian_perm proj i (groupPass proj i l)).trans (groupPass_perm proj i l)
 
 theorem groupPass_length (proj : α → β) (i : Nat) (l : List α) :
     (groupPass proj i l).length = l.length :=
@@ -264,7 +274,7 @@ structural - every recursive range is proved strictly shorter below. -/
 def bfprtAux (proj : α → β) : Nat → Nat → List α → List α
   | 0, _, l => l
   | fuel + 1, k, l =>
-    if l.length < 5 then sortRange proj l
+    if l.length < 5 then bubbleSort proj l
     else
       let g := l.length / 5
       let l₁ := groupPass proj g l
@@ -302,10 +312,10 @@ theorem bfprtAux_spec (proj : α → β) (fuel : Nat) :
     rw [bfprtAux]
     by_cases hsmall : l.length < 5
     · simp only [hsmall, ite_true]
-      refine ⟨sortRange_perm proj l, ?_⟩
+      refine ⟨bubbleSort_perm proj l, ?_⟩
       intro hk
-      exact (selects_of_sorted_perm (sortRange_perm proj l) (sortRange_sorted proj l)
-        (by rw [(sortRange_perm proj l).length_eq]; exact hk)).2
+      exact (selects_of_sorted_perm (bubbleSort_perm proj l) (bubbleSort_sorted proj l)
+        (by rw [(bubbleSort_perm proj l).length_eq]; exact hk)).2
     · simp only [hsmall, ite_false]
       generalize hg : l.length / 5 = g
       generalize hl₁ : groupPass proj g l = l₁
@@ -592,7 +602,7 @@ copy of the range carries there. -/
 theorem bfprtRange_key_eq_sorted (proj : α → β) (a : Array α) {lo mid hi : Nat}
     (hlo : lo ≤ mid) (hmid : mid < hi) (hhi : hi ≤ a.size) :
     ∃ y z, (bfprtRange proj a lo mid hi)[mid]? = some y ∧
-      (sortRange proj ((a.toList.drop lo).take (hi - lo)))[mid - lo]? = some z ∧
+      (bubbleSort proj ((a.toList.drop lo).take (hi - lo)))[mid - lo]? = some z ∧
       Cmp.beq (proj y) (proj z) = true := by
   have hlen_eq : ((a.toList.drop lo).take (hi - lo)).length = hi - lo := by
     rw [List.length_take, List.length_drop, Array.length_toList]
@@ -601,21 +611,21 @@ theorem bfprtRange_key_eq_sorted (proj : α → β) (a : Array α) {lo mid hi : 
     rw [hlen_eq]
     omega
   obtain ⟨y, hy, hranky⟩ := bfprtRange_selects proj a hlo hmid hhi
-  have hk' : mid - lo < (sortRange proj ((a.toList.drop lo).take (hi - lo))).length := by
-    rw [(sortRange_perm proj _).length_eq]
+  have hk' : mid - lo < (bubbleSort proj ((a.toList.drop lo).take (hi - lo))).length := by
+    rw [(bubbleSort_perm proj _).length_eq]
     exact hk
-  refine ⟨y, (sortRange proj ((a.toList.drop lo).take (hi - lo)))[mid - lo]'hk', hy, ?_, ?_⟩
+  refine ⟨y, (bubbleSort proj ((a.toList.drop lo).take (hi - lo)))[mid - lo]'hk', hy, ?_, ?_⟩
   · exact List.getElem?_eq_getElem hk'
-  · exact isKthSmallest_unique hranky (isKthSmallest_of_perm (sortRange_perm proj _)
-      (sorted_isKthSmallest (sortRange_sorted proj _) hk'))
+  · exact isKthSmallest_unique hranky (isKthSmallest_of_perm (bubbleSort_perm proj _)
+      (sorted_isKthSmallest (bubbleSort_sorted proj _) hk'))
 
 /-! Concrete values, so a mis-stated definition cannot pass unnoticed. -/
 
-example : (sortRange (proj := fun n : Nat => n) [3, 1, 2]).Perm [3, 1, 2] :=
-  sortRange_perm _ _
+example : (bubbleSort (proj := fun n : Nat => n) [3, 1, 2]).Perm [3, 1, 2] :=
+  bubbleSort_perm _ _
 
-example : Sorted (KeyLe (fun n : Nat => n)) (sortRange (fun n : Nat => n) [3, 1, 2]) :=
-  sortRange_sorted _ _
+example : Sorted (KeyLe (fun n : Nat => n)) (bubbleSort (fun n : Nat => n) [3, 1, 2]) :=
+  bubbleSort_sorted _ _
 
 example : (partition (fun n : Nat => n < 2) [1, 5, 0, 7]).1 = [1, 0] := rfl
 
