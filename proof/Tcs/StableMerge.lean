@@ -1680,4 +1680,19 @@ theorem uniqueLimitRange_buf_first (proj : α → β) (max : Nat) {L R : List α
     hsingle] at hkf
   exact hkf.symm
 
+/-! ## `align_blocks_limit` -/
+
+/-- C++'s `align_blocks_limit`: round the split between the two runs down to a multiple of
+`block_size` counted from `first`, then cut the block region off after
+`block_size * n_blocks` elements, merging with `inplace_merge_with_rotation`
+(`mergeByRotationStable`) so that both runs stay sorted. Returns the rearranged list, the
+new split and the new end of the block region; `first` and the original end are unchanged,
+which is why the C++ returns them untouched. -/
+def alignBlocksLimit (proj : α → β) (bs nb : Nat) (l : List α) (first mid last : Nat) :
+    List α × Nat × Nat :=
+  let m := first + ((mid - first) / bs * bs)
+  let l1 := mergeByRotationStable proj l m mid last
+  let l2 := first + bs * nb
+  if m > l2 then (mergeByRotationStable proj l1 l2 m last, l2, last) else (l1, m, l2)
+
 end Tcs
