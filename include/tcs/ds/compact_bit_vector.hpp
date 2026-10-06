@@ -2,8 +2,8 @@
 // --------------------------------------------------------------------------
 // Bit vector packed into machine words with O(1) rank and select and O(n) extra
 // bits (not succinct). rank uses log(n)/2-bit blocks and a popcount table;
-// select encodes each log(n)-one segment, sparsely or Elias-Fano style, and
-// decodes it with a lookup table.
+// select encodes each log(n)-one segment Elias-Fano style and decodes it with a
+// lookup table.
 //
 // Blog: https://axiomofchoice-hjt.github.io/pages/6b2b47/
 
@@ -218,7 +218,6 @@ struct SelectIndexer {
         int64_t logn = std::max(ceil_log2(std::max(size, int64_t{1})), int64_t{1});
         assert_or_throw(logn <= n_word_bits, "n_word_bits must be at least ceil_log2(size)");
         int64_t n_index_bits = logn;
-        int64_t sparse_threshold = logn * logn;
         int64_t n_ones_per_segment = logn;
         int64_t count = 0;
         for (int64_t i = 0; i < size; i++) {
@@ -241,32 +240,24 @@ struct SelectIndexer {
                 int64_t span =
                     static_cast<int64_t>(segment.get(segment.size() - 1) - segment.get(0) + 1);
                 compact.push_back_range(segment.get(0), n_index_bits);
-                if (span >= sparse_threshold) {
-                    compact.push_back(true);
-                    for (int64_t j = 0; j < segment.size(); j++) {
-                        compact.push_back_range(segment.get(j) - segment.get(0), n_index_bits);
-                    }
-                } else {
+                int64_t n_span_bits = ceil_log2(span);
+                int64_t n_low_bits =
+                    ceil_log2((span + n_ones_per_segment - 1) / n_ones_per_segment);
+                int64_t high_len = (int64_t{1} << (n_span_bits - n_low_bits)) + segment.size();
+                compact.push_back_range(n_span_bits, n_index_bits);
+                compact.push_back_range(n_low_bits, n_index_bits);
+                for (int64_t j = 0; j < high_len; j++) {
                     compact.push_back(false);
-                    int64_t n_span_bits = ceil_log2(span);
-                    int64_t n_low_bits =
-                        ceil_log2((span + n_ones_per_segment - 1) / n_ones_per_segment);
-                    int64_t high_len = (int64_t{1} << (n_span_bits - n_low_bits)) + segment.size();
-                    compact.push_back_range(n_span_bits, n_index_bits);
-                    compact.push_back_range(n_low_bits, n_index_bits);
-                    for (int64_t j = 0; j < high_len; j++) {
-                        compact.push_back(false);
-                    }
-                    for (int64_t j = 0; j < segment.size(); j++) {
-                        int64_t value =
-                            static_cast<int64_t>(segment.get(j) - segment.get(0)) >> n_low_bits;
-                        compact.set(compact.size_ - high_len + j + value, true);
-                    }
-                    for (int64_t j = 0; j < segment.size(); j++) {
-                        int64_t value = static_cast<int64_t>(segment.get(j) - segment.get(0)) &
-                                        ((int64_t{1} << n_low_bits) - 1);
-                        compact.push_back_range(value, n_low_bits);
-                    }
+                }
+                for (int64_t j = 0; j < segment.size(); j++) {
+                    int64_t value =
+                        static_cast<int64_t>(segment.get(j) - segment.get(0)) >> n_low_bits;
+                    compact.set(compact.size_ - high_len + j + value, true);
+                }
+                for (int64_t j = 0; j < segment.size(); j++) {
+                    int64_t value = static_cast<int64_t>(segment.get(j) - segment.get(0)) &
+                                    ((int64_t{1} << n_low_bits) - 1);
+                    compact.push_back_range(value, n_low_bits);
                 }
                 while (compact.size_ % n_align_bits != 0) {
                     compact.push_back(false);
@@ -308,13 +299,6 @@ struct SelectIndexer {
         int64_t segment_first =
             static_cast<int64_t>(compact_.get_range(offset, offset + n_index_bits_));
         offset += n_index_bits_;
-        bool is_sparse = compact_.get(offset);
-        offset++;
-        if (is_sparse) {
-            offset += k % n_ones_per_segment_ * n_index_bits_;
-            return segment_first +
-                   static_cast<int64_t>(compact_.get_range(offset, offset + n_index_bits_));
-        }
         int64_t n_span_bits =
             static_cast<int64_t>(compact_.get_range(offset, offset + n_index_bits_));
         offset += n_index_bits_;

@@ -326,8 +326,8 @@ auto random_densities = utest::register_test([] {
 });
 
 // ------------------------------------------------------------------------ large
-// Sizes far beyond a machine word: exercises many segments, the long (sparse)
-// branch, the short (Elias-Fano) branch, and mixed inputs.
+// Sizes far beyond a machine word: exercises many segments, wide (sparse) spans
+// and mixed inputs.
 void large_test(StructuredParam param) {
     const int64_t n = param.n;
     std::vector<std::pair<std::string, std::vector<uint8_t>>> patterns;
