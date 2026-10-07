@@ -138,10 +138,10 @@ Cross-checked against the C++ (element-wise, with original indices attached):
 * `inplace_merge_with_rotation` alone is the stable merge of its two runs — 0
   mismatches in 41,000 randomized cases.
 
-Still to model: the scroll-left pass and the dispatch of `inplace_merge_with_rotation`,
-the four-argument `stable_unique_limit`, `align_blocks_limit`, the label-carrying
-`block_selection_sort`/`block_merge_pairwise`/`inplace_merge_with_rotation_indexed`
-phases, and the assembly.
+Still to model: the assembly (see the section at the end of this file). The
+four-argument `stable_unique_limit`, `align_blocks_limit`, the dispatch of
+`inplace_merge_with_rotation` and the labelled block phase are all modelled and
+proved; the block phase is `Tcs/StableBlock.lean`.
 
 ## Running time
 
@@ -345,10 +345,14 @@ is already in the form the assembly needs (`Perm` plus per-key preservation):
 | `inplace_merge_with_rotation` | `mergeByRotationStable_spec`, `perm_mergeByRotationStable`, `keyFilter_mergeByRotationStable` |
 | `bubble_sort` | `bubbleSort_stableSort` |
 | block decomposition | `blocksOf_flatten`, `blocksOf_length_le` |
+| labelled block phase (`Tcs/StableBlock.lean`) | `blkPhaseData_spec` |
 
 The gaps, in the order they are needed:
 
-1. **The finishing merges.** `mergeByRotationStable_buf_merge` (buffer merged with the block
+1. **The assembly** (`Tcs/StableMergeTop.lean`): the list-level model of the two
+   branches, using the per-stage invariants above and `blkPhaseData_spec` below, and
+   the composition of the two finishing merges.
+2. **The finishing merges.** `mergeByRotationStable_buf_merge` (buffer merged with the block
    region, tail untouched) and its tail counterpart, then the composition of the two. Each
    is `mergeByRotationStable_spec` plus index bookkeeping. Two things cost attempts here:
    `simp only` does *not* rewrite `List.take_left` under the `Sorted` definition (use
@@ -356,16 +360,50 @@ The gaps, in the order they are needed:
    places - write the range end as `(buf ++ X).length` rather than `buf.length + X.length`
    so the trailing drop stays a single `List.drop_left`, and split the double merge into two
    single-step lemmas so each has only one index to normalise.
-2. **The labelled block phase** - `merge_with_swap` (with the label pair deciding ties and
-   the `swap(labels[1], labels[2])` bookkeeping when the left run is unfinished),
-   `inplace_merge_with_rotation_indexed`, `block_selection_sort` and
-   `block_merge_pairwise`. `block_selection_sort` is the one stage that does *not* preserve
-   per-key order on its own; `block_merge_pairwise` repairs it, so the two have to be proved
-   together. Because of `eq_mergeTwo_of_stableMergeSpec`, the block phase only has to be
-   shown to preserve `Perm` and per-key order over the range - it does not have to place
-   individual elements, which is what the lane labels are for.
-3. **The assembly**, using per-stage invariants above and treating the block phase as the
-   one remaining hypothesis.
+
+### The labelled block phase, via tags (`Tcs/StableBlock.lean`)
+
+`block_selection_sort` + `block_merge_pairwise` + `inplace_block_merge_pairwise` were the
+one part whose invariant was not obvious, because `block_selection_sort` is the single
+stage that does *not* preserve per-key order on its own and the later merges repair it by
+comparing `(key, label)` pairs. The modelling step is to name the labels: the C++ label of
+a block is a buffer value whose order is the order of the blocks in the array, so tagging
+an element at position `i` by `(x, i)` and comparing tagged elements by
+`KeyLe (tagProj proj)` - the lexicographic order on `(key, tag)` pairs, `Tcs.Order`'s
+`instCmpProdNat` - reproduces exactly the C++ tie-break, and turns the block phase into a
+plain merge under a total order:
+
+* `seqMergeTag`/`blkSortTag` model the pairwise merges and the block sort; `seqMergeTag`
+  keeps only the *sorted* result, which is legitimate precisely because a merge writes a
+  prefix of its result and carries the rest as its unfinished tail (the blog's "next merge
+  only looks at the last part"), so `done ++ pending` is the merge of everything processed
+  so far regardless of where the split falls;
+* `tagFrom`/`taggedBlocks`/`tagProj` carry the positions, `blkPhaseData` erases them again;
+* `blkPhaseData_spec` is the interface: for tagged blocks that partition a region,
+  `blkPhaseData` is **key-sorted**, a **permutation** of the region, and **preserves every
+  key's subsequence** - the last point is where stability comes from, because the tags
+  increase along the array, so sorting by `(key, tag)` sorts equal keys into their input
+  order. The proof of that point is `eq_of_sorted_perm` applied to the `k`-filters of the
+  tagged merge and of `tagFrom off l` (both are sorted under the tag order and permutations
+  of each other), with antisymmetry supplied by `tagFrom_snd_inj`.
+
+This is a *behavioural* model of the labels, not a refinement: the C++ comparison reads
+label *values* out of the buffer, while `StableBlock.lean` compares positions. The two were
+cross-checked on the C++ itself, with an exact index-level Python simulation of
+`stable_merge.hpp` validated element-wise against a reference stable merge (8008 exhaustive
+inputs of length ≤ 10, then 20000 random inputs of length ≤ 120): after the block phase,
+in **both** branches, the data region is exactly `sorted(blocks, key=(key, original
+position))` and the buffer region keeps its multiset (0 mismatches; 3952 double-buffer and
+11861 single-buffer cases). The model encodes exactly those two facts, and it keeps the
+buffer region *unchanged*, which is sound because the buffer's keys are pairwise distinct
+(`KeysNodup` from `uniqueLimitRange_spec`), so re-sorting it erases any permutation the
+C++ may have left there.
+
+One consequence worth recording: the block *order* does not matter for the data region
+(`seqMergeTag`'s result only depends on the tagged elements, not on how the blocks were
+ordered), which is why `blkSortTag` is proved only to permute the blocks and keep each one
+intact, and why `block_selection_sort`'s comparison can be modelled by any sort with the
+same comparison.
 
 Core lemmas that are *not* choice-free in this toolchain and therefore have constructive
 replacements in the development: `List.take_add` (`Tcs.take_add'`), `List.drop_take`
