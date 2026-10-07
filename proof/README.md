@@ -81,7 +81,7 @@ of sorted runs of length ≤ 3 over `{0,1,2}` (100 cases) satisfies the contract
 `bubble_sort` calls are modelled literally in `Tcs/Sort.lean` (the C++ loop, not an
 equivalent sort), so that their exact comparison count can be formalized.
 
-### In-place stable merge — `Tcs/StableMerge.lean` (first milestone)
+### In-place stable merge — `Tcs/StableMerge.lean` … `Tcs/StableMergeTop.lean`
 
 `tcs::inplace::stable_merge::inplace_stable_merge`, matching
 `tests/inplace/test_stable_merge.cpp`: unlike the unstable merge above, the result
@@ -314,6 +314,10 @@ proof/
 ├── Tcs/Merge.lean              # rotate, `merge_with_swap`, `inplace_merge_with_rotation`
 ├── Tcs/UnstableMerge.lean      # block selection/merge and `inplace_unstable_merge`
 ├── Tcs/StableMerge.lean        # stability spec; `bubble_sort` branch of `inplace_stable_merge`
+├── Tcs/StableBlock.lean        # the labelled block phase, modelled with position tags
+├── Tcs/StableBuffer.lean       # why the scratch region's order does not matter
+├── Tcs/StableFinish.lean       # the two finishing rotation merges
+├── Tcs/StableMergeTop.lean     # the assembly: `inplace_stable_merge` is the stable merge
 ├── Tcs/Cost.lean               # Cost model and uniform big-O
 ├── Tcs/Cost/Sort.lean          # Cost of `bubble_sort`
 ├── Tcs/Cost/Cyclesort.lean     # Cost of cycle sort
@@ -334,8 +338,8 @@ merge stable). `mergeTwo_stableMergeSpec` shows `mergeTwo L R` meets it and
 `eq_mergeTwo_of_stableMergeSpec` shows that anything meeting it *is* `mergeTwo L R`, so the
 specification characterises the stable merge exactly.
 
-Everything the algorithm does *before* the labelled block phase is proved, and each stage
-is already in the form the assembly needs (`Perm` plus per-key preservation):
+Every stage of the routine is proved, and each is in the form the assembly needs (`Perm`
+plus per-key preservation, or a full `StableSort`/`StableMergeSpec`):
 
 | stage | result |
 | --- | --- |
@@ -343,23 +347,47 @@ is already in the form the assembly needs (`Perm` plus per-key preservation):
 | `stable_unique_limit` (4-arg) | `uniqueLimitRange_spec`, plus `uniqueLimitRange_buf_first` |
 | `align_blocks_limit` | `alignBlocksLimit_perm`, `alignBlocksLimit_keyFilter` |
 | `inplace_merge_with_rotation` | `mergeByRotationStable_spec`, `perm_mergeByRotationStable`, `keyFilter_mergeByRotationStable` |
-| `bubble_sort` | `bubbleSort_stableSort` |
+| `bubble_sort` | `bubbleSort_stableSort`, and `bubbleSort_eq_of_perm_of_keysNodup` for the scratch region |
 | block decomposition | `blocksOf_flatten`, `blocksOf_length_le` |
 | labelled block phase (`Tcs/StableBlock.lean`) | `blkPhaseData_spec` |
+| finishing merges (`Tcs/StableFinish.lean`) | `finishMerge_noTail`, `finishMerge_tail`, `finishMerge_both` |
+| assembly (`Tcs/StableMergeTop.lean`) | `stableMergePipeline_stableSort`, `stableMerge_stableMergeSpec` |
 
-The gaps, in the order they are needed:
+The end result is the objective itself:
 
-1. **The assembly** (`Tcs/StableMergeTop.lean`): the list-level model of the two
-   branches, using the per-stage invariants above and `blkPhaseData_spec` below, and
-   the composition of the two finishing merges.
-2. **The finishing merges.** `mergeByRotationStable_buf_merge` (buffer merged with the block
-   region, tail untouched) and its tail counterpart, then the composition of the two. Each
-   is `mergeByRotationStable_spec` plus index bookkeeping. Two things cost attempts here:
-   `simp only` does *not* rewrite `List.take_left` under the `Sorted` definition (use
-   `rw [...]` then `exact`), and one expression can need *opposite* normalisations in two
-   places - write the range end as `(buf ++ X).length` rather than `buf.length + X.length`
-   so the trailing drop stays a single `List.drop_left`, and split the double merge into two
-   single-step lemmas so each has only one index to normalise.
+```lean
+stableMerge_stableMergeSpec (proj) (hL : Sorted (KeyLe proj) L) (hR : Sorted (KeyLe proj) R) :
+    StableMergeSpec proj L R (stableMerge proj (L ++ R) L.length)
+stableMerge_eq_mergeTwo (proj) (hL) (hR) :
+    stableMerge proj (L ++ R) L.length = mergeTwo proj L R
+```
+
+so the model of `inplace_stable_merge`, run on two adjacent sorted runs, *is* their stable
+merge; `stableMergeArray_stableMergeSpec` is the same statement in the C++ signature
+(`Array`, `mid`). Nothing in the pipeline is left unproved.
+
+### The assembly (`Tcs/StableMergeTop.lean`)
+
+`stableMerge` is the list-level model of the C++ routine: below 25 elements it is
+`bubbleSort`; otherwise it runs `uniqueLimitRange` on the two runs, takes the double-buffer
+branch when the buffer came out at its full length `n / sqrt n + sqrt n` and the
+single-buffer branch otherwise, and both branches share `stableMergePipeline` -
+`alignBlocksLimit`, the labelled block phase `blkPhaseData` on the tagged blocks of the
+aligned region, `bubbleSort` of the buffer, and the two finishing rotation merges
+(`finishMerge_both`). The pipeline is proved to be a stable sort of `buf ++ L' ++ R'`
+(`stableMergePipeline_stableSort`), and `uniqueLimitRange_spec` (the extraction only
+permutes `L ++ R`, and preserves every key's subsequence) turns that into
+`stableMerge_stableMergeSpec`. The two branch lemmas need one structural fact about
+`alignBlocksLimit`: no `block_size`-sized block of its aligned prefix straddles the merge
+boundary (which is a multiple of `block_size`), so every such block is internally sorted and
+its tags increase - `alignLimit_le_tail_and_blocks` and its overshoot counterpart, which
+also give that the untouched tail is sorted.
+
+Two index-normalisation pitfalls cost attempts here and are worth remembering: `simp only`
+does *not* rewrite `List.take_left` under the `Sorted` definition (use `rw [...]` then
+`exact`), and one expression can need *opposite* normalisations in two places (the `take`
+side wants `br ++ (sd ++ tail)`, the `drop` side `(br ++ sd) ++ tail`), so it pays to prove
+the small `take_br`/`drop_br`/`drop_br_sd`/`take_drop_br` normalisations separately.
 
 ### The labelled block phase, via tags (`Tcs/StableBlock.lean`)
 
