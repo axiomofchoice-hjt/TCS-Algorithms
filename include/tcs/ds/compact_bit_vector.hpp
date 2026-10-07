@@ -336,6 +336,8 @@ struct SelectIndexer {
 };
 
 struct CompactBitVector {
+    int64_t size_ = 0;
+    int64_t count_ = 0;
     BitVector data_;
     PackedVector popcount_table_;
     RankIndexer rank_indexer_;
@@ -378,6 +380,8 @@ struct CompactBitVector {
         auto rank_indexer = RankIndexer::create(data);
         auto select_indexer = SelectIndexer::create(data);
         return {
+            .size_ = size,
+            .count_ = rank_indexer.count_,
             .data_ = data,
             .popcount_table_ = popcount_table,
             .rank_indexer_ = rank_indexer,
@@ -388,5 +392,7 @@ struct CompactBitVector {
     bool get(int64_t index) const { return data_.get(index); }
     int64_t rank(int64_t index) const { return rank_indexer_(index, data_, popcount_table_); }
     int64_t select(int64_t k) const { return select_indexer_(k, popcount_table_); }
+    int64_t size() const { return size_; }
+    int64_t count() const { return count_; }
 };
 }  // namespace tcs::ds::compact_bit_vector
