@@ -6,13 +6,8 @@
 // above, and the pivot always leaves the candidate set. Ties break by position,
 // so the result is the element a stable sort would place at k.
 //
-// The per-block median selection comes from bfprt.hpp (worst-case linear) when
-// TCS_NO_TEMP_IMPL is defined; otherwise it falls back to
-// std::ranges::nth_element.
-//
-// Time-space complexity: under TCS_NO_TEMP_IMPL, O(n) worst-case time and
-// O(n) bits of extra space; otherwise O(n) expected time (O(n log n) worst
-// case) and O(n) words.
+// Time-space complexity: O(n) worst-case time, and O(n) bits of extra space
+// (O(n / log n) machine words).
 //
 // Blog:
 
