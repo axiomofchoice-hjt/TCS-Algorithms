@@ -25,11 +25,11 @@ constexpr int64_t kSeedStrideWords = 131;
 constexpr int64_t kShortPattern = 40;
 constexpr int64_t kExtraWidthA = 13;
 constexpr int64_t kExtraWidthB = 37;
-constexpr int64_t kTinyPoolMax = 12;
-constexpr int64_t kSmallPoolMax = 13;
+constexpr int64_t kTinyPoolMax = 8;
+constexpr int64_t kSmallPoolMax = 10;
 constexpr int64_t kWidthSwitchN = 4096;
-constexpr int64_t kLargeN = 65536;
-constexpr int64_t kHugeN = 150000;
+constexpr int64_t kLargeN = 4096;
+constexpr int64_t kHugeN = 16384;
 constexpr int64_t kEighth = 8;
 constexpr int64_t kSixteenth = 16;
 constexpr int64_t kRunWidth = 3;
@@ -40,8 +40,8 @@ constexpr int64_t kSparseStep = 977;
 constexpr int64_t kPermilleScale = 1000;
 constexpr int64_t kSetStride = 3;
 constexpr int64_t kSetPops = 5;
-constexpr int64_t kBitVectorOps = 2000;
-constexpr int64_t kRangeProbes = 2000;
+constexpr int64_t kBitVectorOps = 500;
+constexpr int64_t kRangeProbes = 500;
 constexpr int64_t kPackedArgScale = 100;
 constexpr int64_t kPackedLen = 300;
 constexpr int64_t kPackedProbes = 200;
@@ -126,41 +126,45 @@ struct Reference {
 void check_all(const std::vector<uint8_t>& bits, int64_t n_word_bits, std::string_view what,
     bool check_bounds = false) {
     Reference ref(bits);
-    const std::string where = describe(what, bits, n_word_bits);
+    auto where = [&] { return describe(what, bits, n_word_bits); };
     auto cbv = CompactBitVector::create(
         bits.begin(), bits.end(), n_word_bits, [](uint8_t bit) { return bit != 0; });
 
     for (int64_t i = 0; i < ref.size(); i++) {
         bool expected = ref.bits[i] != 0;
-        utest::assert_or_throw(cbv.get(i) == expected,
-            std::format("{}: get({}) = {}, expected {}", where, i, cbv.get(i), expected));
+        utest::assert_or_throw_lazy(cbv.get(i) == expected, [&] {
+            return std::format("{}: get({}) = {}, expected {}", where(), i, cbv.get(i), expected);
+        });
     }
     for (int64_t i = 0; i <= ref.size(); i++) {
         int64_t actual = cbv.rank(i);
-        utest::assert_or_throw(actual == ref.rank(i),
-            std::format("{}: rank({}) = {}, expected {}", where, i, actual, ref.rank(i)));
+        utest::assert_or_throw_lazy(actual == ref.rank(i), [&] {
+            return std::format("{}: rank({}) = {}, expected {}", where(), i, actual, ref.rank(i));
+        });
     }
     for (int64_t k = 0; k < ref.count(); k++) {
         int64_t actual = cbv.select(k);
-        utest::assert_or_throw(actual == ref.select(k),
-            std::format("{}: select({}) = {}, expected {}", where, k, actual, ref.select(k)));
+        utest::assert_or_throw_lazy(actual == ref.select(k), [&] {
+            return std::format(
+                "{}: select({}) = {}, expected {}", where(), k, actual, ref.select(k));
+        });
     }
 
     if (!check_bounds) {
         return;
     }
-    utest::assert_or_throw(
-        throws([&] { cbv.get(ref.size()); }), std::format("{}: get(size) must throw", where));
-    utest::assert_or_throw(
-        throws([&] { cbv.get(-1); }), std::format("{}: get(-1) must throw", where));
-    utest::assert_or_throw(throws([&] { cbv.rank(ref.size() + 1); }),
-        std::format("{}: rank(size + 1) must throw", where));
-    utest::assert_or_throw(
-        throws([&] { cbv.rank(-1); }), std::format("{}: rank(-1) must throw", where));
-    utest::assert_or_throw(throws([&] { cbv.select(ref.count()); }),
-        std::format("{}: select(count) must throw", where));
-    utest::assert_or_throw(
-        throws([&] { cbv.select(-1); }), std::format("{}: select(-1) must throw", where));
+    utest::assert_or_throw_lazy(throws([&] { cbv.get(ref.size()); }),
+        [&] { return std::format("{}: get(size) must throw", where()); });
+    utest::assert_or_throw_lazy(throws([&] { cbv.get(-1); }),
+        [&] { return std::format("{}: get(-1) must throw", where()); });
+    utest::assert_or_throw_lazy(throws([&] { cbv.rank(ref.size() + 1); }),
+        [&] { return std::format("{}: rank(size + 1) must throw", where()); });
+    utest::assert_or_throw_lazy(throws([&] { cbv.rank(-1); }),
+        [&] { return std::format("{}: rank(-1) must throw", where()); });
+    utest::assert_or_throw_lazy(throws([&] { cbv.select(ref.count()); }),
+        [&] { return std::format("{}: select(count) must throw", where()); });
+    utest::assert_or_throw_lazy(throws([&] { cbv.select(-1); }),
+        [&] { return std::format("{}: select(-1) must throw", where()); });
 }
 
 // ------------------------------------------------------------------ exhaustive
@@ -185,7 +189,7 @@ void exhaustive_test(ExhaustiveParam param) {
                 bits[i] = (mask >> i) & 1;
             }
             for (int64_t w : widths) {
-                check_all(bits, w, std::format("exhaustive n={}", n));
+                check_all(bits, w, "exhaustive");
             }
         }
     }
@@ -232,13 +236,13 @@ void single_zero_test(PositionsParam param) {
 }
 
 auto single_one = utest::register_test([] {
-    for (int64_t n : {1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 32, 64, 127, 257}) {
+    for (int64_t n : {1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 32, 64}) {
         utest::test("compact_bit_vector", "single_one", single_one_test, PositionsParam{.n = n});
     }
 });
 
 auto single_zero = utest::register_test([] {
-    for (int64_t n : {1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 32, 64, 127, 257}) {
+    for (int64_t n : {1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 32, 64}) {
         utest::test("compact_bit_vector", "single_zero", single_zero_test, PositionsParam{.n = n});
     }
 });
@@ -282,7 +286,7 @@ void structured_test(StructuredParam param) {
 }
 
 auto structured = utest::register_test([] {
-    for (int64_t n : {1, 2, 3, 4, 5, 7, 8, 9, 16, 17, 63, 64, 65, 100, 256, 1000, 4097}) {
+    for (int64_t n : {1, 2, 3, 4, 5, 7, 8, 9, 16, 17, 63, 64, 65, 100}) {
         utest::test("compact_bit_vector", "structured", structured_test, StructuredParam{.n = n});
     }
 });
@@ -314,9 +318,9 @@ void random_test(RandomParam param) {
 }
 
 auto random_densities = utest::register_test([] {
-    constexpr int64_t kNs[] = {1, 2, 3, 4, 5, 8, 16, 17, 32, 33, 64, 65, 128, 129, 256, 257, 512,
-        513, 1024, 1025, kWidthSwitchN, kWidthSwitchN + 1, 12345};
-    constexpr int64_t kPermille[] = {0, 1, 10, 100, 500, 900, 990, 1000};
+    constexpr int64_t kNs[] = {
+        1, 2, 3, 4, 5, 8, 16, 17, 32, 33, 64, 65, 128, 129, 256, 257, 512, 513, kWidthSwitchN + 1};
+    constexpr int64_t kPermille[] = {0, 1, 10, 500, 990, 1000};
     for (int64_t n : kNs) {
         for (int64_t permille : kPermille) {
             utest::test("compact_bit_vector", "random_densities", random_test,

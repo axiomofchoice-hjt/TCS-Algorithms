@@ -24,6 +24,17 @@ inline void assert_or_throw(bool condition, std::string_view message = "empty me
     }
 }
 
+// Like assert_or_throw, but `message` is a callable invoked only on failure, so
+// hot loops do not format a message on the passing path.
+template <typename Message>
+inline void assert_or_throw_lazy(bool condition, Message&& message,
+    const std::source_location& loc = std::source_location::current()) {
+    if (!condition) [[unlikely]] {
+        throw std::runtime_error(
+            std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message()));
+    }
+}
+
 struct TestCase {
     std::string suite;
     std::string name;
@@ -82,7 +93,7 @@ inline std::vector<Interval> parse_param_spec(std::string_view spec) {
                 intervals.emplace_back(lo, hi);
             }
         } else {
-            int64_t v;
+            int64_t v = 0;
             std::from_chars(sv.data(), sv.data() + sv.size(), v);
             intervals.emplace_back(v, v);
         }
