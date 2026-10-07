@@ -415,6 +415,14 @@ ordered), which is why `blkSortTag` is proved only to permute the blocks and kee
 intact, and why `block_selection_sort`'s comparison can be modelled by any sort with the
 same comparison.
 
+Two faithful-abstraction details that are *not* proved, only cross-checked: (i) the C++
+reads label *values* whose relative order stands in for the block order, and its label
+array `buf1 + 1` overlaps the scratch block `buf2` by one slot (`labels[n_blocks]` is
+`buf2[0]`), so late in the loop a label can be a scrambled scratch element; (ii) the C++
+permutes the scratch block, while the model leaves it alone. Both are invisible in the
+cross-check above, which is why it is stated as a differential test rather than a
+refinement proof.
+
 Core lemmas that are *not* choice-free in this toolchain and therefore have constructive
 replacements in the development: `List.take_add` (`Tcs.take_add'`), `List.drop_take`
 (`Tcs.drop_take'`), `Nat.sqrt_le`/`Nat.lt_succ_sqrt`, `Nat.lt_of_mul_lt_mul_left`/`_right`.
