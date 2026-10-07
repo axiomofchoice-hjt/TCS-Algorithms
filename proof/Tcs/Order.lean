@@ -89,7 +89,6 @@ theorem ble_of_not_blt {a b : β} (h : blt a b = false) : ble b a = true :=
   blt_eq_false_iff.mp h
 
 end Cmp
-
 /-! ### `Nat` instance, used by the non-vacuity checks -/
 
 instance : Cmp Nat where
@@ -136,6 +135,70 @@ theorem blt_of_beq_of_blt {a b c : β} (h₁ : beq a b = true) (h₂ : blt b c =
     blt a c = true :=
   blt_of_ble_of_blt (beq_iff.mp h₁).1 h₂
 
+/-! ### Lexicographic order on key/tag pairs
+
+The stable merge distinguishes equal keys by the label of the block an element came
+from, which is exactly the lexicographic order below: compare keys first, break ties
+with the tag. -/
+
+/-- The lexicographic comparison used for tagged keys, as a test. -/
+theorem prod_ble_iff {a b : β × Nat} :
+    (blt a.1 b.1 || (beq a.1 b.1 && Nat.ble a.2 b.2)) = true ↔
+      blt a.1 b.1 = true ∨ (a.1 = b.1 ∧ a.2 ≤ b.2) := by
+  rw [Bool.or_eq_true, Bool.and_eq_true, Nat.ble_eq, beq_iff]
+  constructor
+  · rintro (h | ⟨⟨h₁, h₂⟩, h₃⟩)
+    · exact Or.inl h
+    · exact Or.inr ⟨ble_antisymm h₁ h₂, h₃⟩
+  · rintro (h | ⟨h₁, h₃⟩)
+    · exact Or.inl h
+    · rw [h₁]
+      exact Or.inr ⟨⟨ble_refl _, ble_refl _⟩, h₃⟩
+
+theorem beq_refl (a : β) : beq a a = true := by rw [Cmp.beq, Cmp.ble_refl, Bool.and_self]
+
+theorem of_eq {a b : β} (h : a = b) : ble a b = true := h ▸ ble_refl a
+
 end Cmp
+
+/-- Lexicographic order on `key × tag` pairs: keys first, tags break ties. This is the
+order the C++ stable merge compares with inside the block phase, where the tag is the
+label of the block an element came from. -/
+instance instCmpProdNat [Cmp β] : Cmp (β × Nat) where
+  ble a b := Cmp.blt a.1 b.1 || (Cmp.beq a.1 b.1 && Nat.ble a.2 b.2)
+  ble_refl a := Cmp.prod_ble_iff.mpr (Or.inr ⟨rfl, Nat.le_refl a.2⟩)
+  ble_total a b := by
+    cases h : Cmp.blt a.1 b.1 with
+    | true => left; simp
+    | false =>
+      cases h₂ : Cmp.blt b.1 a.1 with
+      | true => right; simp
+      | false =>
+        have heq : Cmp.beq a.1 b.1 = true := by
+          have h₁ : Cmp.ble b.1 a.1 = (Cmp.blt b.1 a.1 || Cmp.beq b.1 a.1) :=
+            Cmp.ble_eq_blt_or_beq b.1 a.1
+          have hba : Cmp.ble b.1 a.1 = true := Cmp.ble_of_not_blt h
+          rw [h₁, h₂] at hba
+          exact Cmp.beq_comm b.1 a.1 ▸ (by simpa using hba)
+        have heq' : Cmp.beq b.1 a.1 = true := Cmp.beq_comm a.1 b.1 ▸ heq
+        rcases Nat.le_total a.2 b.2 with h₃ | h₃
+        · left; simpa [heq, Nat.ble_eq] using h₃
+        · right; simpa [heq', Nat.ble_eq] using h₃
+  ble_trans ha hb := by
+    rcases Cmp.prod_ble_iff.mp ha with h₁ | ⟨h₁, h₂⟩
+    · rcases Cmp.prod_ble_iff.mp hb with h₃ | ⟨h₃, _⟩
+      · exact Cmp.prod_ble_iff.mpr (Or.inl (Cmp.blt_trans h₁ h₃))
+      · exact Cmp.prod_ble_iff.mpr (Or.inl (h₃ ▸ h₁))
+    · rcases Cmp.prod_ble_iff.mp hb with h₃ | ⟨h₃, h₄⟩
+      · exact Cmp.prod_ble_iff.mpr (Or.inl (h₁ ▸ h₃))
+      · exact Cmp.prod_ble_iff.mpr (Or.inr ⟨h₁.trans h₃, Nat.le_trans h₂ h₄⟩)
+  ble_antisymm ha hb := by
+    rcases Cmp.prod_ble_iff.mp ha with h₁ | ⟨h₁, h₂⟩
+    · rcases Cmp.prod_ble_iff.mp hb with h₃ | ⟨h₃, _⟩
+      · exact absurd h₃ (by rw [Cmp.not_blt_of_blt h₁]; exact Bool.false_ne_true)
+      · exact absurd (h₃ ▸ h₁) (by simp [Cmp.blt_irrefl])
+    · rcases Cmp.prod_ble_iff.mp hb with h₃ | ⟨h₃, h₄⟩
+      · exact absurd (h₁ ▸ h₃) (by simp [Cmp.blt_irrefl])
+      · exact Prod.ext h₁ (Nat.le_antisymm h₂ h₄)
 
 end Tcs
