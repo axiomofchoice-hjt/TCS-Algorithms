@@ -15,12 +15,14 @@
 
 #include <algorithm>
 #include <bit>
+#include <climits>
 #include <cstdint>
 #include <format>
 #include <functional>
 #include <source_location>
 #include <stdexcept>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -37,13 +39,15 @@ inline void assert_or_throw(bool condition, std::string_view message = "empty me
     }
 }
 
+constexpr int64_t n_machine_word_bits = sizeof(uint64_t) * CHAR_BIT;
+
 inline int64_t ceil_log2(int64_t x) {
     assert_or_throw(x > 0, "ceil_log2: argument must be positive");
     return std::bit_width(static_cast<uint64_t>(x) - 1);
 }
 
 #ifdef TCS_NO_TEMP_IMPL
-using BitVectorRef = tcs::ds::compact_bit_vector::CompactBitVector;
+using BitVectorType = tcs::ds::compact_bit_vector::CompactBitVector;
 #else
 struct BitVectorStub {
     int64_t size_;
@@ -55,6 +59,9 @@ struct BitVectorStub {
     template <typename Placement>
     static BitVectorStub create(
         int64_t size, Placement placement, [[maybe_unused]] int64_t n_word_bits) {
+        static_assert(std::is_invocable_r_v<bool, Placement&, int64_t>);
+        assert_or_throw(size >= 0);
+        assert_or_throw(n_word_bits > 0 && n_word_bits <= n_machine_word_bits);
         std::vector<bool> data;
         std::vector<int64_t> rank;
         std::vector<int64_t> select;
@@ -85,21 +92,23 @@ struct BitVectorStub {
         return select_[k];
     }
 };
-using BitVectorRef = BitVectorStub;
+using BitVectorType = BitVectorStub;
 #endif
 
 struct WaveletStack {
-    int64_t size_;
-    int64_t n_word_bits_;
-    std::vector<BitVectorRef> stack_;
+    int64_t size_ = 0;
+    int64_t n_word_bits_ = 0;
+    std::vector<BitVectorType> stack_;
 
     static WaveletStack create(int64_t size, int64_t n_word_bits) {
+        assert_or_throw(size >= 0);
+        assert_or_throw(n_word_bits > 0 && n_word_bits <= n_machine_word_bits);
         return {.size_ = size, .n_word_bits_ = n_word_bits, .stack_ = {}};
     }
 
     template <typename Placement>
     void update(Placement placement) {
-        auto bit_vector = BitVectorRef::create(
+        auto bit_vector = BitVectorType::create(
             count(),
             [this, placement](int64_t k) {
                 int64_t index = select(k);
@@ -111,11 +120,11 @@ struct WaveletStack {
 
     bool get(int64_t index) const {
         assert_or_throw(index >= 0 && index < size_);
-        for (const auto& vec : stack_) {
-            if (!vec.get(index)) {
+        for (const auto& bit_vector : stack_) {
+            if (!bit_vector.get(index)) {
                 return false;
             }
-            index = vec.rank(index);
+            index = bit_vector.rank(index);
         }
         return true;
     }
@@ -125,8 +134,8 @@ struct WaveletStack {
 
     int64_t rank(int64_t index) const {
         assert_or_throw(index >= 0 && index <= size_);
-        for (const auto& vec : stack_) {
-            index = vec.rank(index);
+        for (const auto& bit_vector : stack_) {
+            index = bit_vector.rank(index);
         }
         return index;
     }
@@ -145,25 +154,25 @@ struct WaveletStack {
 template <typename BitVector, typename RandomIt, typename IterProj>
 RandomIt median_of_medians(const BitVector& bit_vector, RandomIt first, IterProj iter_proj) {
     int64_t size = bit_vector.size();
-    int64_t n_actives = bit_vector.count();
-    assert_or_throw(size > 0 && n_actives > 0);
+    int64_t n_candidates = bit_vector.count();
+    assert_or_throw(size > 0 && n_candidates > 0);
     int64_t block_size = std::max(size / std::max(ceil_log2(size), int64_t{1}), int64_t{1});
-    int64_t n_blocks = (n_actives + block_size - 1) / block_size;
+    int64_t n_blocks = (n_candidates + block_size - 1) / block_size;
     std::vector<RandomIt> medians;
     for (int64_t i = 0; i < n_blocks; i++) {
-        int64_t start = i * block_size;
-        int64_t end = std::min(start + block_size, n_actives);
+        int64_t block_start = i * block_size;
+        int64_t block_end = std::min(block_start + block_size, n_candidates);
         std::vector<RandomIt> buffer;
-        for (int64_t j = start; j < end; j++) {
+        for (int64_t j = block_start; j < block_end; j++) {
             buffer.push_back(first + bit_vector.select(j));
         }
-        int64_t mid = (buffer.size() - 1) / 2;
-        std::ranges::nth_element(buffer, buffer.begin() + mid, std::less{}, iter_proj);
-        medians.push_back(buffer[mid]);
+        int64_t mid_index = (static_cast<int64_t>(buffer.size()) - 1) / 2;
+        std::ranges::nth_element(buffer, buffer.begin() + mid_index, std::less{}, iter_proj);
+        medians.push_back(buffer[mid_index]);
     }
-    int64_t mid = (medians.size() - 1) / 2;
-    std::ranges::nth_element(medians, medians.begin() + mid, std::less{}, iter_proj);
-    return medians[mid];
+    int64_t mid_index = (static_cast<int64_t>(medians.size()) - 1) / 2;
+    std::ranges::nth_element(medians, medians.begin() + mid_index, std::less{}, iter_proj);
+    return medians[mid_index];
 }
 
 template <typename RandomIt, typename Proj = std::identity>
@@ -172,26 +181,26 @@ RandomIt bit_vector_select(RandomIt first, RandomIt last, int64_t k, Proj proj =
     assert_or_throw(first < last);
     int64_t size = last - first;
     assert_or_throw(k >= 0 && k < size);
-    int64_t n_word_bits = ceil_log2(size);
+    int64_t n_word_bits = std::max(ceil_log2(size), int64_t{1});
     auto wavelet_stack = WaveletStack::create(size, n_word_bits);
     while (true) {
-        RandomIt mid_it = median_of_medians(wavelet_stack, first, iter_proj);
-        int64_t mid_rank = 0;
+        RandomIt pivot_it = median_of_medians(wavelet_stack, first, iter_proj);
+        int64_t pivot_rank = 0;
         for (int64_t i = 0; i < wavelet_stack.count(); i++) {
-            if (iter_proj(first + wavelet_stack.select(i)) < iter_proj(mid_it)) {
-                mid_rank++;
+            if (iter_proj(first + wavelet_stack.select(i)) < iter_proj(pivot_it)) {
+                pivot_rank++;
             }
         }
-        if (mid_rank == k) {
-            return mid_it;
+        if (pivot_rank == k) {
+            return pivot_it;
         }
-        if (mid_rank < k) {
+        if (pivot_rank < k) {
             wavelet_stack.update(
-                [&](int64_t i) { return iter_proj(first + i) > iter_proj(mid_it); });
-            k -= mid_rank + 1;
+                [&](int64_t i) { return iter_proj(first + i) > iter_proj(pivot_it); });
+            k -= pivot_rank + 1;
         } else {
             wavelet_stack.update(
-                [&](int64_t i) { return iter_proj(first + i) < iter_proj(mid_it); });
+                [&](int64_t i) { return iter_proj(first + i) < iter_proj(pivot_it); });
         }
     }
 }
