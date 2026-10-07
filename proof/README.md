@@ -399,6 +399,14 @@ buffer region *unchanged*, which is sound because the buffer's keys are pairwise
 (`KeysNodup` from `uniqueLimitRange_spec`), so re-sorting it erases any permutation the
 C++ may have left there.
 
+The model of the *whole* routine (the `stableMerge` the assembly defines: same branch
+tests, same `uniqueLimitRange`/`alignBlocksLimit`, data region `stable_sort_by_key`, buffer
+region re-sorted, same two finishing merges) was then compared **element-wise** against the
+C++ simulation, with each element carrying its original index so that equality witnesses
+stability: 12376 exhaustive cases of length ≤ 11, plus 20000 random cases of length ≤ 200
+covering 5005 double-buffer, 12494 single-buffer and 2501 `bubble_sort` runs - **0
+mismatches**. That is the sense in which the Lean theorem below is about this C++.
+
 One consequence worth recording: the block *order* does not matter for the data region
 (`seqMergeTag`'s result only depends on the tagged elements, not on how the blocks were
 ordered), which is why `blkSortTag` is proved only to permute the blocks and keep each one
