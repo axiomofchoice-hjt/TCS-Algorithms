@@ -85,7 +85,7 @@ struct BitVectorStub {
     int64_t count() const { return count_; }
     int64_t rank(int64_t index) const {
         assert_or_throw(index >= 0 && index <= size_);
-        return rank_[index];
+        return index == size_ ? count_ : rank_[index];
     }
     int64_t select(int64_t k) const {
         assert_or_throw(k >= 0 && k < count_);
