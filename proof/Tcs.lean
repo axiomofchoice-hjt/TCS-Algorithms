@@ -9,6 +9,7 @@ import Tcs.Bfprt
 import Tcs.Merge
 import Tcs.UnstableMerge
 import Tcs.StableMerge
+import Tcs.StableBlock
 import Tcs.Cost
 import Tcs.Cost.UnstableMerge
 import Tcs.Cost.Bfprt
