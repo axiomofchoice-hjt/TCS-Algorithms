@@ -6,8 +6,13 @@
 // above, and the pivot always leaves the candidate set. Ties break by position,
 // so the result is the element a stable sort would place at k.
 //
-// Time-space complexity: O(n log n) time, O(n) bits of extra space under
-// TCS_NO_TEMP_IMPL (O(n) words otherwise).
+// The per-block median selection comes from bfprt.hpp (worst-case linear) when
+// TCS_NO_TEMP_IMPL is defined; otherwise it falls back to
+// std::ranges::nth_element.
+//
+// Time-space complexity: under TCS_NO_TEMP_IMPL, O(n) worst-case time and
+// O(n) bits of extra space; otherwise O(n) expected time (O(n log n) worst
+// case) and O(n) words.
 //
 // Blog:
 
@@ -27,6 +32,7 @@
 #include <vector>
 
 #ifdef TCS_NO_TEMP_IMPL
+#include "tcs/bfprt.hpp"
 #include "tcs/ds/compact_bit_vector.hpp"
 #endif
 
@@ -44,6 +50,15 @@ constexpr int64_t n_machine_word_bits = sizeof(uint64_t) * CHAR_BIT;
 inline int64_t ceil_log2(int64_t x) {
     assert_or_throw(x > 0, "ceil_log2: argument must be positive");
     return std::bit_width(static_cast<uint64_t>(x) - 1);
+}
+
+template <typename RandomIt, typename Proj = std::identity>
+void select_ref(RandomIt first, RandomIt nth, RandomIt last, Proj proj = {}) {
+#ifdef TCS_NO_TEMP_IMPL
+    tcs::bfprt::bfprt(first, nth, last, proj);
+#else
+    std::ranges::nth_element(first, nth, last, {}, proj);
+#endif
 }
 
 #ifdef TCS_NO_TEMP_IMPL
@@ -167,11 +182,11 @@ RandomIt median_of_medians(const BitVector& bit_vector, RandomIt first, IterProj
             buffer.push_back(first + bit_vector.select(j));
         }
         int64_t mid_index = (static_cast<int64_t>(buffer.size()) - 1) / 2;
-        std::ranges::nth_element(buffer, buffer.begin() + mid_index, std::less{}, iter_proj);
+        select_ref(buffer.begin(), buffer.begin() + mid_index, buffer.end(), iter_proj);
         medians.push_back(buffer[mid_index]);
     }
     int64_t mid_index = (static_cast<int64_t>(medians.size()) - 1) / 2;
-    std::ranges::nth_element(medians, medians.begin() + mid_index, std::less{}, iter_proj);
+    select_ref(medians.begin(), medians.begin() + mid_index, medians.end(), iter_proj);
     return medians[mid_index];
 }
 
