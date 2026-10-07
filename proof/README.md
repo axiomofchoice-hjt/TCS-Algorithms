@@ -409,6 +409,12 @@ covering 5005 double-buffer, 12494 single-buffer and 2501 `bubble_sort` runs, pl
 `bubble_sort`; 1820 exhaustive cases of length ≤ 12) - **0 mismatches** throughout. That is
 the sense in which the Lean theorem below is about this C++.
 
+The C++ side carries the other half: `tests/inplace/test_stable_merge.cpp` asserts exactly
+`arr.is_stable() && arr == expected` (stability plus equality with a reference stable
+merge) over its random families, sizes up to 100000, and the single-key/empty-half edge
+cases; `xmake build test && ./build/tests/test --filter inplace_stable_merge` is
+`121 passed, 0 failed`.
+
 One consequence worth recording: the block *order* does not matter for the data region
 (`seqMergeTag`'s result only depends on the tagged elements, not on how the blocks were
 ordered), which is why `blkSortTag` is proved only to permute the blocks and keep each one
