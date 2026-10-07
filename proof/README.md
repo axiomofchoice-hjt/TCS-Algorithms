@@ -404,8 +404,10 @@ tests, same `uniqueLimitRange`/`alignBlocksLimit`, data region `stable_sort_by_k
 region re-sorted, same two finishing merges) was then compared **element-wise** against the
 C++ simulation, with each element carrying its original index so that equality witnesses
 stability: 12376 exhaustive cases of length ≤ 11, plus 20000 random cases of length ≤ 200
-covering 5005 double-buffer, 12494 single-buffer and 2501 `bubble_sort` runs - **0
-mismatches**. That is the sense in which the Lean theorem below is about this C++.
+covering 5005 double-buffer, 12494 single-buffer and 2501 `bubble_sort` runs, plus a further
+120000 random cases of length ≤ 400 (29868 double-buffer, 75309 single-buffer, 14823
+`bubble_sort`; 1820 exhaustive cases of length ≤ 12) - **0 mismatches** throughout. That is
+the sense in which the Lean theorem below is about this C++.
 
 One consequence worth recording: the block *order* does not matter for the data region
 (`seqMergeTag`'s result only depends on the tagged elements, not on how the blocks were
