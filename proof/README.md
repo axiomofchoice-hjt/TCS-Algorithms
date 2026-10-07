@@ -425,9 +425,13 @@ Two faithful-abstraction details that are *not* proved, only cross-checked: (i) 
 reads label *values* whose relative order stands in for the block order, and its label
 array `buf1 + 1` overlaps the scratch block `buf2` by one slot (`labels[n_blocks]` is
 `buf2[0]`), so late in the loop a label can be a scrambled scratch element; (ii) the C++
-permutes the scratch block, while the model leaves it alone. Both are invisible in the
-cross-check above, which is why it is stated as a differential test rather than a
-refinement proof.
+moves buffer elements in and out of the scratch window, so the scratch region only
+survives the block phase as a *multiset*. Both are invisible in the cross-check above,
+which is why it is stated as a differential test rather than a refinement proof. The part
+of (ii) that could bite the model is closed by proof: `Tcs/StableBuffer.lean` shows that
+`bubble_sort` is insensitive to the order of a list whose keys are pairwise different
+(`bubbleSort_eq_of_perm_of_keysNodup`, using `KeysNodup` from `uniqueLimitRange_spec`), so
+however the C++ scrambles the scratch region, re-sorting it gives the model's result.
 
 Core lemmas that are *not* choice-free in this toolchain and therefore have constructive
 replacements in the development: `List.take_add` (`Tcs.take_add'`), `List.drop_take`
