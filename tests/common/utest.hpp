@@ -129,7 +129,7 @@ inline bool parse_int64(std::string_view sv, int64_t& out) {
 // the second dash, "-10--1" at the third. A field with no '-' must be a single
 // integer.
 inline std::optional<Interval> parse_interval(std::string_view sv) {
-    if (sv.find('-') == std::string_view::npos) {
+    if (!sv.contains('-')) {
         int64_t v = 0;
         if (!parse_int64(sv, v)) {
             return std::nullopt;
@@ -182,7 +182,7 @@ inline bool interval_matches(int64_t value, const std::vector<Interval>& interva
 
 struct CliOptions {
     // How a test case relates to the command-line selection.
-    enum class Selection {
+    enum class Selection : std::uint8_t {
         kSelected,       // the filter and every parameter spec match
         kParamMismatch,  // the filter matches, but the packed parameter count differs
         kRejected,       // the filter or a parameter value does not match
@@ -406,6 +406,13 @@ inline constexpr int kBadUsage = 2;
 inline constexpr int kNothingSelected = 3;
 inline constexpr int kOverBudget = 4;
 
+// Timings are accumulated in milliseconds and reported in seconds.
+inline constexpr double kMsPerSecond = 1000.0;
+
+// Minimum width of the "file" column in the --time table, wide enough for the
+// table header and for typical relative paths so the numeric columns stay put.
+inline constexpr std::size_t kMinFileColumnWidth = 44;
+
 inline void print_usage(Output& out, std::string_view program) {
     out.line("usage: {} [options]", program);
     out.line("  --filter <substring>  only run tests whose suite.name contains <substring>");
@@ -431,7 +438,7 @@ struct FileStats {
     double total_ms = 0;
     double max_ms = 0;
 
-    double total_seconds() const { return total_ms / 1000; }
+    double total_seconds() const { return total_ms / kMsPerSecond; }
     bool over_budget() const { return total_seconds() > kFileBudgetSeconds; }
 };
 
@@ -538,7 +545,7 @@ inline int run(int argc, char* argv[]) {
             [](const auto& a, const auto& b) { return a.second.total_ms > b.second.total_ms; });
         // Widen past the minimum so a long (e.g. absolute) path cannot push the
         // numeric columns out of alignment.
-        std::size_t width = 44;
+        std::size_t width = kMinFileColumnWidth;
         for (const auto& row : rows) {
             width = std::max(width, row.first.size());
         }
@@ -548,7 +555,7 @@ inline int run(int argc, char* argv[]) {
             const bool over = kBudgetConfig && s.over_budget();
             over_budget += over ? 1 : 0;
             out.line("{:<{}} {:>6} {:>5} {:>10.3f}s {:>10.3f}s{}", file, width, s.cases, s.failed,
-                s.total_seconds(), s.max_ms / 1000, over ? "  <-- over budget" : "");
+                s.total_seconds(), s.max_ms / kMsPerSecond, over ? "  <-- over budget" : "");
         }
         // Say so rather than let a partial or differently-built measurement pass
         // for the budget AGENTS.md actually specifies.
