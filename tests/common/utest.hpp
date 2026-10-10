@@ -121,36 +121,52 @@ inline bool parse_int64(std::string_view sv, int64_t& out) {
     return ec == std::errc() && ptr == last;
 }
 
-// Parses one --params spec: a comma-separated list of the intervals
-// N | LO-HI | LO- | -HI | -. Returns nullopt for an empty or malformed spec so
-// the caller can reject it with a usage error; a mistyped spec used to fall
-// through to [0, 0] (or [MIN, MAX]) and silently select the wrong subset.
+// Parses one interval: N | LO-HI | LO- | -HI | -, where a bound may be negative.
+// A leading '-' is an open lower bound, never a sign, so "-5" is [MIN, 5] and
+// "-10-" is [-10, MAX]; the exact value -5 is written "-5--5". That makes the
+// separator ambiguous once negative bounds exist, so every '-' is tried from the
+// right and the first split whose two sides both parse wins: "-5--5" splits at
+// the second dash, "-10--1" at the third. A field with no '-' must be a single
+// integer.
+inline std::optional<Interval> parse_interval(std::string_view sv) {
+    if (sv.find('-') == std::string_view::npos) {
+        int64_t v = 0;
+        if (!parse_int64(sv, v)) {
+            return std::nullopt;
+        }
+        return Interval{v, v};
+    }
+    for (auto dash = sv.rfind('-'); dash != std::string_view::npos;
+        dash = dash == 0 ? std::string_view::npos : sv.rfind('-', dash - 1)) {
+        auto lo_sv = sv.substr(0, dash);
+        auto hi_sv = sv.substr(dash + 1);
+        int64_t lo = std::numeric_limits<int64_t>::min();
+        int64_t hi = std::numeric_limits<int64_t>::max();
+        if ((!lo_sv.empty() && !parse_int64(lo_sv, lo)) ||
+            (!hi_sv.empty() && !parse_int64(hi_sv, hi))) {
+            continue;
+        }
+        return Interval{lo, hi};
+    }
+    // No dash position splits the field into two parseable bounds ("5-10-15").
+    return std::nullopt;
+}
+
+// Parses one --params spec: a comma-separated list of the intervals above.
+// Returns nullopt for an empty or malformed spec so the caller can reject it with
+// a usage error; a mistyped spec used to fall through to [0, 0] (or [MIN, MAX])
+// and silently select the wrong subset.
 inline std::optional<std::vector<Interval>> parse_param_spec(std::string_view spec) {
     if (spec.empty()) {
         return std::nullopt;
     }
     std::vector<Interval> intervals;
     for (auto part : spec | std::views::split(',')) {
-        auto sv = std::string_view(part.begin(), part.end());
-        if (auto dash = sv.find('-'); dash != std::string_view::npos) {
-            auto lo_sv = sv.substr(0, dash);
-            auto hi_sv = sv.substr(dash + 1);
-            int64_t lo = std::numeric_limits<int64_t>::min();
-            int64_t hi = std::numeric_limits<int64_t>::max();
-            if (!lo_sv.empty() && !parse_int64(lo_sv, lo)) {
-                return std::nullopt;
-            }
-            if (!hi_sv.empty() && !parse_int64(hi_sv, hi)) {
-                return std::nullopt;
-            }
-            intervals.emplace_back(lo, hi);
-        } else {
-            int64_t v = 0;
-            if (!parse_int64(sv, v)) {
-                return std::nullopt;
-            }
-            intervals.emplace_back(v, v);
+        auto interval = parse_interval(std::string_view(part.begin(), part.end()));
+        if (!interval) {
+            return std::nullopt;
         }
+        intervals.push_back(*interval);
     }
     return intervals;
 }
@@ -260,6 +276,14 @@ struct CliOptions {
                     reject_value(option);
                 }
                 opts.help = true;
+            } else if (arg == "--") {
+                // Conventional end-of-options marker. This harness accepts no
+                // positional arguments, so anything after it is a usage error
+                // rather than something to silently ignore.
+                if (i + 1 < argc) {
+                    reject(std::format("unexpected argument '{}'", argv[i + 1]));
+                }
+                break;
             } else if (!arg.empty() && arg.front() == '-') {
                 reject(std::format("unknown option '{}'", arg));
             } else {
@@ -267,6 +291,11 @@ struct CliOptions {
                 // filter is exactly the false green this harness avoids.
                 reject(std::format("unexpected argument '{}'", arg));
             }
+        }
+        // --list never runs a case, so a timing table would have nothing to
+        // measure. Reject the combination instead of silently dropping --time.
+        if (opts.list && opts.time) {
+            reject("option '--time' cannot be combined with '--list'");
         }
         return opts;
     }
@@ -308,11 +337,44 @@ inline std::string format_params(const std::vector<int64_t>& params) {
     return out;
 }
 
+// All harness diagnostics go through this. std::println to a std::FILE* throws
+// std::system_error when the write fails, and the usual cause is benign: a
+// consumer that closes the pipe early (`./build/tests/test --list | head`). In a
+// process that ignores SIGPIPE -- which many CI wrappers and shells do -- that
+// exception would escape run() and abort through std::terminate (exit 134)
+// instead of the run simply finishing. Once a stream has failed, the harness
+// stops writing to it and still returns its real exit status.
+class Output {
+   public:
+    explicit Output(std::FILE* stream) : stream_(stream) {}
+
+    template <typename... Args>
+    void line(std::format_string<Args...> fmt, Args&&... args) {
+        if (broken_) {
+            return;
+        }
+        try {
+            std::println(stream_, fmt, std::forward<Args>(args)...);
+        } catch (const std::system_error&) {
+            broken_ = true;
+        }
+    }
+
+    void flush() {
+        if (!broken_) {
+            std::fflush(stream_);
+        }
+    }
+
+   private:
+    std::FILE* stream_;
+    bool broken_ = false;
+};
+
 // One aggregated line instead of one warning per non-matching test.
-inline void print_param_skipped(int64_t skipped, std::size_t expected_words) {
+inline void print_param_skipped(Output& out, int64_t skipped, std::size_t expected_words) {
     if (skipped > 0) {
-        std::println(
-            "utest: skipped {} test(s) whose parameter count != {}", skipped, expected_words);
+        out.line("utest: skipped {} test(s) whose parameter count != {}", skipped, expected_words);
     }
 }
 
@@ -323,11 +385,15 @@ inline void print_param_skipped(int64_t skipped, std::size_t expected_words) {
 inline constexpr double kFileBudgetSeconds = 1.0;
 
 // The budget only describes the configuration AGENTS.md names. A release build
-// (NDEBUG) or one using the true in-place primitives is a different measurement,
-// so --time still prints the table there but does not fail the run: otherwise a
-// fast release build would silently certify a budget that only the debug build
-// is required to meet.
-#if defined(NDEBUG) || defined(TCS_NO_TEMP_IMPL)
+// (NDEBUG), one using the true in-place primitives, or a sanitized build is a
+// different measurement: ASan/UBSan slow the suite by 4-7x, so enforcing the cap
+// there would report a file as over budget that never is without the
+// instrumentation. --time still prints the table in all of them, but only the
+// plain debug build can fail the run. __SANITIZE_ADDRESS__ covers GCC invoked
+// directly; TCS_SANITIZE is defined by xmake's tcs_sanitize option, which also
+// covers compilers that do not predefine it (Clang).
+#if defined(NDEBUG) || defined(TCS_NO_TEMP_IMPL) || defined(__SANITIZE_ADDRESS__) || \
+    defined(TCS_SANITIZE)
 inline constexpr bool kBudgetConfig = false;
 #else
 inline constexpr bool kBudgetConfig = true;
@@ -340,24 +406,23 @@ inline constexpr int kBadUsage = 2;
 inline constexpr int kNothingSelected = 3;
 inline constexpr int kOverBudget = 4;
 
-inline void print_usage(std::FILE* out, std::string_view program) {
-    std::println(out, "usage: {} [options]", program);
-    std::println(
-        out, "  --filter <substring>  only run tests whose suite.name contains <substring>");
-    std::println(out, "  --params <spec> ...   only run tests whose i-th packed parameter matches");
-    std::println(out,
+inline void print_usage(Output& out, std::string_view program) {
+    out.line("usage: {} [options]", program);
+    out.line("  --filter <substring>  only run tests whose suite.name contains <substring>");
+    out.line("  --params <spec> ...   only run tests whose i-th packed parameter matches");
+    out.line(
         "                        the i-th <spec>: N | LO-HI | LO- | -HI | - (comma separated)");
-    std::println(out, "  --list                list the matching tests instead of running them");
-    std::println(out,
-        "  --time                print per-file timing and enforce the {:.1f}s/file budget",
+    out.line("                        bounds may be negative, but a leading '-' is an open bound");
+    out.line("                        (-5 is '<=' 5, and the exact -5 is written -5--5)");
+    out.line("  --list                list the matching tests instead of running them");
+    out.line("  --time                print per-file timing and enforce the {:.1f}s/file budget",
         kFileBudgetSeconds);
-    std::println(out, "  --help, -h            print this help and exit");
-    std::println(out,
-        "exit status: {} ok, {} test failure, {} bad command line, {} nothing selected,", kOk,
+    out.line("  --help, -h            print this help and exit");
+    out.line("exit status: {} ok, {} test failure, {} bad command line, {} nothing selected,", kOk,
         kTestFailed, kBadUsage, kNothingSelected);
-    std::println(out, "             {} a file was over the {:.1f}s budget (debug builds without",
+    out.line("             {} a file was over the {:.1f}s budget (enforced only in a debug build",
         kOverBudget, kFileBudgetSeconds);
-    std::println(out, "             TCS_NO_TEMP_IMPL only)");
+    out.line("             without TCS_NO_TEMP_IMPL or sanitizers)");
 }
 
 struct FileStats {
@@ -371,14 +436,16 @@ struct FileStats {
 };
 
 inline int run(int argc, char* argv[]) {
+    Output out(stdout);
+    Output err(stderr);
     auto opts = CliOptions::parse(argc, argv);
     if (!opts.error.empty()) {
-        std::println(stderr, "utest: {}", opts.error);
-        print_usage(stderr, argv[0]);
+        err.line("utest: {}", opts.error);
+        print_usage(err, argv[0]);
         return kBadUsage;
     }
     if (opts.help) {
-        print_usage(stdout, argv[0]);
+        print_usage(out, argv[0]);
         return kOk;
     }
 
@@ -396,12 +463,12 @@ inline int run(int argc, char* argv[]) {
             if (selection != CliOptions::Selection::kSelected) {
                 continue;
             }
-            std::println(
+            out.line(
                 "{}.{} [{}]  {}:{}", tc.suite, tc.name, format_params(tc.params), tc.file, tc.line);
             listed++;
         }
-        print_param_skipped(param_skipped, opts.param_specs.size());
-        std::println("{} test(s) listed", listed);
+        print_param_skipped(out, param_skipped, opts.param_specs.size());
+        out.line("{} test(s) listed", listed);
         return listed > 0 ? kOk : kNothingSelected;
     }
 
@@ -443,7 +510,7 @@ inline int run(int argc, char* argv[]) {
             ms = std::chrono::duration<double, std::milli>(elapsed).count();
         }
         if (!ok) {
-            std::println(
+            out.line(
                 "Test {}.{} [{}] failed: {}", tc.suite, tc.name, format_params(tc.params), failure);
             failed++;
         }
@@ -455,11 +522,11 @@ inline int run(int argc, char* argv[]) {
         }
     }
 
-    print_param_skipped(param_skipped, opts.param_specs.size());
+    print_param_skipped(out, param_skipped, opts.param_specs.size());
 
     if (total == 0) {
-        std::fflush(stdout);  // keep the diagnostic after the stdout notes in merged logs
-        std::println(stderr, "utest: no test matched the selection");
+        out.flush();  // keep the diagnostic after the stdout notes in merged logs
+        err.line("utest: no test matched the selection");
         return kNothingSelected;
     }
 
@@ -475,39 +542,39 @@ inline int run(int argc, char* argv[]) {
         for (const auto& row : rows) {
             width = std::max(width, row.first.size());
         }
-        std::println(
+        out.line(
             "{:<{}} {:>6} {:>5} {:>11} {:>11}", "file", width, "cases", "fail", "total", "max");
         for (const auto& [file, s] : rows) {
             const bool over = kBudgetConfig && s.over_budget();
             over_budget += over ? 1 : 0;
-            std::println("{:<{}} {:>6} {:>5} {:>10.3f}s {:>10.3f}s{}", file, width, s.cases,
-                s.failed, s.total_seconds(), s.max_ms / 1000, over ? "  <-- over budget" : "");
+            out.line("{:<{}} {:>6} {:>5} {:>10.3f}s {:>10.3f}s{}", file, width, s.cases, s.failed,
+                s.total_seconds(), s.max_ms / 1000, over ? "  <-- over budget" : "");
         }
         // Say so rather than let a partial or differently-built measurement pass
         // for the budget AGENTS.md actually specifies.
         if (!kBudgetConfig) {
-            std::fflush(stdout);
-            std::println(stderr,
+            out.flush();
+            err.line(
                 "utest: --time is running outside the AGENTS.md budget config (debug without "
-                "TCS_NO_TEMP_IMPL); the {:.1f}s/file budget is reported but not enforced",
+                "TCS_NO_TEMP_IMPL or sanitizers); the {:.1f}s/file budget is reported but not "
+                "enforced",
                 kFileBudgetSeconds);
         }
         if (!opts.filter.empty() || !opts.param_specs.empty()) {
-            std::fflush(stdout);
-            std::println(stderr,
+            out.flush();
+            err.line(
                 "utest: --time was given a filter or --params, so each file's total covers only "
                 "the selected cases");
         }
     }
 
-    std::println("{} passed, {} failed", total - failed, failed);
+    out.line("{} passed, {} failed", total - failed, failed);
 
     // Report over-budget even when a test also failed, so the budget signal is
     // never lost; a test failure still takes precedence in the exit status.
     if (over_budget > 0) {
-        std::fflush(stdout);
-        std::println(
-            stderr, "utest: {} file(s) over the {:.1f}s budget", over_budget, kFileBudgetSeconds);
+        out.flush();
+        err.line("utest: {} file(s) over the {:.1f}s budget", over_budget, kFileBudgetSeconds);
     }
     if (failed > 0) {
         return kTestFailed;

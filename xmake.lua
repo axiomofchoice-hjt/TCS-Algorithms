@@ -43,6 +43,11 @@ local function apply_sanitize()
     -- `{force = true}`: xmake's linker-flag auto-check otherwise drops
     -- -fsanitize here, which would leave ASan symbols unresolved at link time.
     add_ldflags("-fsanitize=address,undefined", {force = true})
+    -- Mark the build so the test harness can exclude it from the per-file time
+    -- budget: instrumentation slows the suite by 4-7x, so enforcing the budget
+    -- here would report files as over budget that are not. This also covers
+    -- compilers that do not predefine __SANITIZE_ADDRESS__ (Clang).
+    add_defines("TCS_SANITIZE")
 end
 
 -- Header-only library target
