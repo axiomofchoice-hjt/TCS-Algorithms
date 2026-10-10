@@ -21,3 +21,15 @@ xmake f -m debug && xmake
 同时有用例失败和文件超预算时退出码取 `1`，但超预算提示仍会打印。
 
 超时就缩小用例规模（n、repeat、参数扫描范围），不要为此删掉断言。
+
+## 禁止运行 clang-tidy
+
+**不要自己跑 `clang-tidy`**（单文件、整目录、脚本里、CI 复现都算），也不要运行包含它的 `scripts/code-quality.sh`。
+
+静态检查的告警由用户提供：拿到告警后只做两件事——按告警改代码，或按用户要求调整 `.clang-tidy` 的 `Checks`。改完用 `clang-format --dry-run --Werror`、构建和 `./build/tests/test` 自证，不要靠重跑 clang-tidy 验证。
+
+## 命令超时上限 20 秒
+
+**每条命令都必须显式设置超时，且最长 20 秒**（bash 工具传 `timeoutMs: 20000`），不允许不设超时，也不允许为了等结果把上限调大。
+
+预计会超过 20 秒的工作（全量构建、全量测试、sanitizer 构建、`scripts/*.sh` 的整轮检查等）改用后台任务运行（`run_in_background: true`），再用 `job_output` 收结果，而不是放宽超时。
