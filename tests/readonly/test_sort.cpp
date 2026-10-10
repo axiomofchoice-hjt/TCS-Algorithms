@@ -25,6 +25,10 @@
 
 namespace {
 constexpr int kRandomSeed = 42;
+constexpr int64_t kAllEqualShapeKey = 7;
+constexpr int64_t kSingleElementKey = 42;
+constexpr int64_t kShapeCount = 6;
+constexpr int64_t kWorkspaceSweepMaxKey = 8;
 
 struct TestParam {
     int64_t size;
@@ -53,16 +57,29 @@ std::vector<IndexedElement> make_input(int64_t size, int64_t max_key, std::mt199
 
 // Deterministic input shapes: 0 ascending, 1 descending, 2 all keys equal,
 // 3 two interleaved values, 4 organ pipe (up then down), 5 one odd element out.
+int64_t shape_key(int64_t size, int64_t shape, int64_t i) {
+    if (shape == 0) {
+        return i;
+    }
+    if (shape == 1) {
+        return size - 1 - i;
+    }
+    if (shape == 2) {
+        return kAllEqualShapeKey;
+    }
+    if (shape == 3) {
+        return i % 2;
+    }
+    if (shape == 4) {
+        return std::min(i, size - 1 - i);
+    }
+    return i == size / 2 ? 1 : 0;
+}
+
 std::vector<IndexedElement> make_shape(int64_t size, int64_t shape) {
     std::vector<IndexedElement> arr(static_cast<size_t>(size));
     for (int64_t i = 0; i < size; i++) {
-        int64_t key = shape == 0   ? i
-                      : shape == 1 ? size - 1 - i
-                      : shape == 2 ? 7
-                      : shape == 3 ? i % 2
-                      : shape == 4 ? std::min(i, size - 1 - i)
-                                   : (i == size / 2 ? 1 : 0);
-        arr[static_cast<size_t>(i)] = {key, i};
+        arr[static_cast<size_t>(i)] = {shape_key(size, shape, i), i};
     }
     return arr;
 }
@@ -160,12 +177,12 @@ void empty_input_test() {
 }
 
 void single_element_test() {
-    std::vector<IndexedElement> arr{{42, 0}};
+    std::vector<IndexedElement> arr{{kSingleElementKey, 0}};
     std::vector<IndexedElement> out(2, IndexedElement{-1, -1});
     tcs::readonly::sort::sort(arr.cbegin(), arr.cend(), out.begin(), 1, IndexedElement::proj);
-    utest::assert_or_throw(out[0].key == 42 && out[0].index == 0);
+    utest::assert_or_throw(out[0].key == kSingleElementKey && out[0].index == 0);
     utest::assert_or_throw(out[1].key == -1 && out[1].index == -1);
-    utest::assert_or_throw(arr[0].key == 42 && arr[0].index == 0);
+    utest::assert_or_throw(arr[0].key == kSingleElementKey && arr[0].index == 0);
 }
 
 // Invalid preconditions must be rejected with a std::runtime_error.
@@ -213,7 +230,7 @@ auto sweep = utest::register_test([] {
 
 // Every small size (exhaustive below 17) over deterministic shapes.
 auto shapes = utest::register_test([] {
-    for (int64_t shape = 0; shape < 6; shape++) {
+    for (int64_t shape = 0; shape < kShapeCount; shape++) {
         for (int64_t n : {int64_t{0}, int64_t{1}, int64_t{2}, int64_t{3}, int64_t{4}, int64_t{5},
                  int64_t{6}, int64_t{7}, int64_t{8}, int64_t{9}, int64_t{10}, int64_t{11},
                  int64_t{12}, int64_t{13}, int64_t{14}, int64_t{15}, int64_t{16}, int64_t{24},
@@ -232,7 +249,10 @@ auto workspace_sweep = utest::register_test([] {
         for (int64_t workspace : {int64_t{1}, int64_t{2}, int64_t{3}, int64_t{4}, int64_t{5},
                  int64_t{8}, int64_t{16}, int64_t{37}, int64_t{64}, int64_t{1000}}) {
             utest::test("readonly_sort", "workspace", random_test,
-                TestParam{.size = n, .max_key = 8, .workspace = workspace, .repeat = 2});
+                TestParam{.size = n,
+                    .max_key = kWorkspaceSweepMaxKey,
+                    .workspace = workspace,
+                    .repeat = 2});
         }
     }
 });

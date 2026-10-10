@@ -26,6 +26,8 @@ struct ShapeParam {
 
 constexpr int kRandomSeed = 42;
 constexpr int64_t kSweepMaxSize = 64;
+constexpr int64_t kAllEqualShapeKey = 7;
+constexpr int64_t kSingleElementKey = 42;
 
 // select orders by (proj(element), iterator-position), which is stable: for a
 // vector whose index field equals its position, the expected k-th element is
@@ -51,14 +53,23 @@ std::vector<IndexedElement> make_signed_input(int64_t size, int64_t max_key, std
 // Deterministic shapes: ascending / descending / all equal / two interleaved
 // values. The last two force the pivot search onto extreme elements, which is
 // where a pivot split that keeps the pivot on one side would stop shrinking.
+int64_t shape_key(int64_t size, int64_t shape, int64_t i) {
+    if (shape == 0) {
+        return i;
+    }
+    if (shape == 1) {
+        return size - 1 - i;
+    }
+    if (shape == 2) {
+        return kAllEqualShapeKey;
+    }
+    return i % 2 == 0 ? 0 : 1;
+}
+
 std::vector<IndexedElement> make_shape(int64_t size, int64_t shape) {
     std::vector<IndexedElement> arr(size);
     for (int64_t i = 0; i < size; i++) {
-        int64_t key = shape == 0   ? i
-                      : shape == 1 ? size - 1 - i
-                      : shape == 2 ? 7
-                                   : (i % 2 == 0 ? 0 : 1);
-        arr[i] = {key, i};
+        arr[i] = {shape_key(size, shape, i), i};
     }
     return arr;
 }
@@ -139,10 +150,10 @@ void identity_proj_test(TestParam param) {
 
 // A single element is always the 0-th order statistic.
 void single_element_test() {
-    std::vector<int64_t> arr{42};
+    std::vector<int64_t> arr{kSingleElementKey};
     auto result = tcs::readonly::bit_vector_select::bit_vector_select(arr.begin(), arr.end(), 0);
     utest::assert_or_throw(result == arr.begin());
-    utest::assert_or_throw(*result == 42);
+    utest::assert_or_throw(*result == kSingleElementKey);
 }
 
 // Invalid preconditions must be rejected with a std::runtime_error.
