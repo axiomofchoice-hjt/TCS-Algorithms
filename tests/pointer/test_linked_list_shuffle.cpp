@@ -64,50 +64,41 @@ auto test_shuffle = utest::register_test([] {
 });
 
 auto test_empty = utest::register_test([] {
-    utest::test(
-        "linked_list_shuffle", "empty",
-        [](int64_t) {
-            IntList list;
-            std::mt19937 gen(kRandomSeed);
-            shuffle_inplace(list, gen);
-            utest::assert_or_throw(list.empty(), "empty list should stay empty");
-        },
-        int64_t{0});
+    utest::test("linked_list_shuffle", "empty", [] {
+        IntList list;
+        std::mt19937 gen(kRandomSeed);
+        shuffle_inplace(list, gen);
+        utest::assert_or_throw(list.empty(), "empty list should stay empty");
+    });
 });
 
 // Same seed must reproduce the same shuffle: the by-value Rand copies all
 // refer to the one captured generator, so the outcome is deterministic.
 auto test_deterministic = utest::register_test([] {
-    utest::test(
-        "linked_list_shuffle", "deterministic",
-        [](int64_t) {
-            IntList a(kSorted6.begin(), kSorted6.end());
-            IntList b(kSorted6.begin(), kSorted6.end());
-            std::mt19937 gen_a(kRandomSeed);
-            std::mt19937 gen_b(kRandomSeed);
-            shuffle_inplace(a, gen_a);
-            shuffle_inplace(b, gen_b);
-            utest::assert_or_throw(
-                to_vector(a) == to_vector(b), "same seed must give the same shuffle");
-        },
-        int64_t{0});
+    utest::test("linked_list_shuffle", "deterministic", [] {
+        IntList a(kSorted6.begin(), kSorted6.end());
+        IntList b(kSorted6.begin(), kSorted6.end());
+        std::mt19937 gen_a(kRandomSeed);
+        std::mt19937 gen_b(kRandomSeed);
+        shuffle_inplace(a, gen_a);
+        shuffle_inplace(b, gen_b);
+        utest::assert_or_throw(
+            to_vector(a) == to_vector(b), "same seed must give the same shuffle");
+    });
 });
 
 // The generator is consumed through the reference capture, so the shuffle
 // really randomizes: a different seed must give a different order.
 auto test_seed_sensitivity = utest::register_test([] {
-    utest::test(
-        "linked_list_shuffle", "seed_sensitivity",
-        [](int64_t) {
-            IntList a(kSorted6.begin(), kSorted6.end());
-            IntList b(kSorted6.begin(), kSorted6.end());
-            std::mt19937 gen_a(kRandomSeed);
-            std::mt19937 gen_b(kRandomSeed + 1);
-            shuffle_inplace(a, gen_a);
-            shuffle_inplace(b, gen_b);
-            utest::assert_or_throw(
-                to_vector(a) != to_vector(b), "different seeds should give different shuffles");
-        },
-        int64_t{0});
+    utest::test("linked_list_shuffle", "seed_sensitivity", [] {
+        IntList a(kSorted6.begin(), kSorted6.end());
+        IntList b(kSorted6.begin(), kSorted6.end());
+        std::mt19937 gen_a(kRandomSeed);
+        std::mt19937 gen_b(kRandomSeed + 1);
+        shuffle_inplace(a, gen_a);
+        shuffle_inplace(b, gen_b);
+        utest::assert_or_throw(
+            to_vector(a) != to_vector(b), "different seeds should give different shuffles");
+    });
 });
 }  // namespace

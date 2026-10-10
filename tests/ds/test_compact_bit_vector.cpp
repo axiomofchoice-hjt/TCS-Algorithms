@@ -376,8 +376,7 @@ void empty_test() {
     }
 }
 
-auto empty = utest::register_test(
-    [] { utest::test("compact_bit_vector", "empty", [](int64_t) { empty_test(); }, int64_t{0}); });
+auto empty = utest::register_test([] { utest::test("compact_bit_vector", "empty", empty_test); });
 
 // ------------------------------------------------------------------- projection
 
@@ -623,7 +622,6 @@ void invalid_test() {
         "value too wide must throw");
 }
 
-auto invalid = utest::register_test([] {
-    utest::test("compact_bit_vector", "invalid", [](int64_t) { invalid_test(); }, int64_t{0});
-});
+auto invalid =
+    utest::register_test([] { utest::test("compact_bit_vector", "invalid", invalid_test); });
 }  // namespace

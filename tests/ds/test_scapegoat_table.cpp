@@ -189,8 +189,7 @@ void empty_test() {
     utest::assert_or_throw(!table.lower_bound(0).has_value());
 }
 
-auto empty = utest::register_test(
-    [] { utest::test("scapegoat_table", "empty", [](TestParam) { empty_test(); }, TestParam{}); });
+auto empty = utest::register_test([] { utest::test("scapegoat_table", "empty", empty_test); });
 
 void counts_invariant_test(TestParam param) {
     for (int64_t rep = 0; rep < param.repeat; rep++) {

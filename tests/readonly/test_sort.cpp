@@ -152,14 +152,14 @@ void descending_proj_test(TestParam param) {
     }
 }
 
-void empty_input_test([[maybe_unused]] int64_t unused) {
+void empty_input_test() {
     std::vector<IndexedElement> empty;
     std::vector<IndexedElement> out{{-1, -1}};
     tcs::readonly::sort::sort(empty.cbegin(), empty.cend(), out.begin(), 1, IndexedElement::proj);
     utest::assert_or_throw(out[0].key == -1 && out[0].index == -1);
 }
 
-void single_element_test([[maybe_unused]] int64_t unused) {
+void single_element_test() {
     std::vector<IndexedElement> arr{{42, 0}};
     std::vector<IndexedElement> out(2, IndexedElement{-1, -1});
     tcs::readonly::sort::sort(arr.cbegin(), arr.cend(), out.begin(), 1, IndexedElement::proj);
@@ -169,7 +169,7 @@ void single_element_test([[maybe_unused]] int64_t unused) {
 }
 
 // Invalid preconditions must be rejected with a std::runtime_error.
-void invalid_input_throws([[maybe_unused]] int64_t unused) {
+void invalid_input_throws() {
     std::vector<IndexedElement> arr{{3, 0}, {1, 1}, {2, 2}};
     std::vector<IndexedElement> out(3, IndexedElement{-1, -1});
 
@@ -284,8 +284,8 @@ auto descending_proj = utest::register_test([] {
 });
 
 auto edges = utest::register_test([] {
-    utest::test("readonly_sort", "empty_input", empty_input_test, int64_t{0});
-    utest::test("readonly_sort", "single_element", single_element_test, int64_t{0});
-    utest::test("readonly_sort", "invalid", invalid_input_throws, int64_t{0});
+    utest::test("readonly_sort", "empty_input", empty_input_test);
+    utest::test("readonly_sort", "single_element", single_element_test);
+    utest::test("readonly_sort", "invalid", invalid_input_throws);
 });
 }  // namespace

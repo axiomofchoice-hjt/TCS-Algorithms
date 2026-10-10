@@ -109,7 +109,7 @@ void identity_proj_test(TestParam param) {
 }
 
 // Invalid preconditions must be rejected with a std::runtime_error.
-void invalid_input_throws([[maybe_unused]] int64_t unused) {
+void invalid_input_throws() {
     std::vector<int64_t> arr{3, 1, 2};
 
     // n_layers must be positive.
@@ -237,6 +237,5 @@ auto identity = utest::register_test([] {
     }
 });
 
-auto invalid = utest::register_test(
-    [] { utest::test("select", "invalid", invalid_input_throws, int64_t{0}); });
+auto invalid = utest::register_test([] { utest::test("select", "invalid", invalid_input_throws); });
 }  // namespace

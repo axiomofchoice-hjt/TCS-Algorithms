@@ -138,7 +138,7 @@ void identity_proj_test(TestParam param) {
 }
 
 // A single element is always the 0-th order statistic.
-void single_element_test([[maybe_unused]] int64_t unused) {
+void single_element_test() {
     std::vector<int64_t> arr{42};
     auto result = tcs::readonly::bit_vector_select::bit_vector_select(arr.begin(), arr.end(), 0);
     utest::assert_or_throw(result == arr.begin());
@@ -146,7 +146,7 @@ void single_element_test([[maybe_unused]] int64_t unused) {
 }
 
 // Invalid preconditions must be rejected with a std::runtime_error.
-void invalid_input_throws([[maybe_unused]] int64_t unused) {
+void invalid_input_throws() {
     std::vector<int64_t> arr{3, 1, 2};
 
     // k must be within [0, size).
@@ -273,8 +273,8 @@ auto identity = utest::register_test([] {
 });
 
 auto edge = utest::register_test(
-    [] { utest::test("bit_vector_select", "single_element", single_element_test, int64_t{0}); });
+    [] { utest::test("bit_vector_select", "single_element", single_element_test); });
 
-auto invalid = utest::register_test(
-    [] { utest::test("bit_vector_select", "invalid", invalid_input_throws, int64_t{0}); });
+auto invalid =
+    utest::register_test([] { utest::test("bit_vector_select", "invalid", invalid_input_throws); });
 }  // namespace
