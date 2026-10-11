@@ -9,7 +9,7 @@
 // Time-space complexity: O(n) worst-case time, and O(n) bits of extra space
 // (O(n / log n) machine words).
 //
-// Blog:
+// Blog: https://axiomofchoice-hjt.github.io/pages/887ea0/
 
 #pragma once
 
