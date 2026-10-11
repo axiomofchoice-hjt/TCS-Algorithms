@@ -14,6 +14,8 @@
 #include <cmath>
 #include <cstdint>
 #include <format>
+#include <functional>
+#include <optional>
 #include <source_location>
 #include <stdexcept>
 #include <string_view>

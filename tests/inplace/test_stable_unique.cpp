@@ -1,6 +1,8 @@
 
 #include <algorithm>
+#include <optional>
 #include <random>
+#include <ranges>
 #include <vector>
 
 #include "common/test_array.hpp"

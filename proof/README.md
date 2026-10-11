@@ -138,11 +138,6 @@ Cross-checked against the C++ (element-wise, with original indices attached):
 * `inplace_merge_with_rotation` alone is the stable merge of its two runs — 0
   mismatches in 41,000 randomized cases.
 
-Still to model: the assembly (see the section at the end of this file). The
-four-argument `stable_unique_limit`, `align_blocks_limit`, the dispatch of
-`inplace_merge_with_rotation` and the labelled block phase are all modelled and
-proved; the block phase is `Tcs/StableBlock.lean`.
-
 ## Running time
 
 The correctness proofs above say *what* each algorithm computes. `Tcs/Cost.lean` and

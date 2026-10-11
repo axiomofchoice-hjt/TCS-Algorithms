@@ -18,6 +18,8 @@
 #include <ranges>
 #include <source_location>
 #include <span>
+#include <stdexcept>
+#include <string_view>
 #include <tuple>
 #include <vector>
 

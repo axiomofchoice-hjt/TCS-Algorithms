@@ -1,3 +1,12 @@
+// Read-only sort
+// --------------------------------------------------------------------------
+// Sorts a random-access range without modifying it: the input is only read,
+// the sorted permutation goes to a caller-provided output range, and the
+// caller's workspace budget is the only extra space. MTrees index the input
+// and a heap over their sub-vector minima emits the elements in order.
+//
+// Time-space complexity: the workspace budget trades space for time.
+
 #pragma once
 
 #include <algorithm>
@@ -8,6 +17,8 @@
 #include <functional>
 #include <optional>
 #include <source_location>
+#include <stdexcept>
+#include <string_view>
 #include <tuple>
 #include <vector>
 
