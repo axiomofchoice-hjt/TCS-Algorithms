@@ -5,7 +5,8 @@
 // caller's workspace budget is the only extra space. MTrees index the input
 // and a heap over their sub-vector minima emits the elements in order.
 //
-// Time-space complexity: the workspace budget trades space for time.
+// Time-space complexity: T * S = O(n^2) for Θ(log n) <= S <= Θ(n / log n),
+// where S is the workspace budget in bits.
 
 #pragma once
 
