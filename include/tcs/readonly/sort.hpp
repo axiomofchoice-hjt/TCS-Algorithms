@@ -20,6 +20,7 @@
 #include <stdexcept>
 #include <string_view>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 namespace tcs::readonly::sort {
@@ -34,7 +35,7 @@ inline void assert_or_throw(bool condition, std::string_view message = "empty me
 constexpr int64_t n_machine_word_bits = sizeof(uint64_t) * CHAR_BIT;
 
 inline int64_t floor_log2(int64_t x) {
-    assert_or_throw(x > 0, "ceil_log2: argument must be positive");
+    assert_or_throw(x > 0, "floor_log2: argument must be positive");
     return std::bit_width(static_cast<uint64_t>(x)) - 1;
 }
 
@@ -88,15 +89,15 @@ struct MTree {
     int64_t block_size_ = 0;
     BitVector state_;
     BitVector mu_;
-    IterOptProj iter_opt_proj;
+    IterOptProj iter_opt_proj_;
 
     static MTree create(MTreeAttributes<RandomIt, IterOptProj> attrs) {
         int64_t n_blocks = int64_t{1} << attrs.height;
         int64_t block_size = attrs.sub_block_size * n_blocks;
-        int64_t size = block_size * n_blocks;
+        int64_t capacity = block_size * n_blocks;
         auto state = BitVector::create(n_blocks, attrs.n_word_bits);
         auto mu = BitVector::create(n_blocks, attrs.n_word_bits);
-        assert_or_throw(attrs.first < attrs.last && attrs.last - attrs.first <= size);
+        assert_or_throw(attrs.first < attrs.last && attrs.last - attrs.first <= capacity);
         MTree tree{
             .first_ = attrs.first,
             .last_ = attrs.last,
@@ -135,8 +136,8 @@ struct MTree {
         std::optional<RandomIt> res;
         for (int64_t i = l; i < r; i++) {
             if (i < last_ - first_ &&
-                (!filter_.has_value() || iter_opt_proj(first_ + i) > iter_opt_proj(filter_)) &&
-                iter_opt_proj(first_ + i) < iter_opt_proj(res)) {
+                (!filter_.has_value() || iter_opt_proj_(first_ + i) > iter_opt_proj_(filter_)) &&
+                iter_opt_proj_(first_ + i) < iter_opt_proj_(res)) {
                 res = first_ + i;
             }
         }
@@ -147,12 +148,12 @@ struct MTree {
         assert_or_throw(node_id >= 1 && node_id < n_blocks_);
         auto l_min = min(node_id * 2);
         auto r_min = min((node_id * 2) + 1);
-        int64_t hid = floor_log2(node_id);
-        int64_t level_block_size = int64_t{1} << hid;
+        int64_t level_id = floor_log2(node_id);
+        int64_t level_block_size = int64_t{1} << level_id;
         if (!l_min.has_value() && !r_min.has_value()) {
             state_.set(node_id, false);
             mu_.set(node_id, false);
-        } else if (iter_opt_proj(l_min) < iter_opt_proj(r_min)) {
+        } else if (iter_opt_proj_(l_min) < iter_opt_proj_(r_min)) {
             state_.set(node_id, false);
             mu_.set(node_id,
                 (l_min.value() - first_) / sub_block_size_ % n_blocks_ / level_block_size % 2 == 1);
@@ -198,18 +199,18 @@ void sort(RandomIt first, RandomIt last, OutputIt output, int64_t workspace, Pro
     int64_t n_blocks = int64_t{1} << height;
     int64_t sub_block_size = std::max(size / (workspace * n_blocks), int64_t{1});
     int64_t block_size = sub_block_size * n_blocks;
-    int64_t sub_vector = block_size * n_blocks;
-    int64_t n_sub_vectors = (size + sub_vector - 1) / sub_vector;
+    int64_t sub_vector_size = block_size * n_blocks;
+    int64_t n_sub_vectors = (size + sub_vector_size - 1) / sub_vector_size;
     int64_t n_word_bits = logn;
 
     std::vector<std::optional<RandomIt>> heap;
     std::vector<MTree<RandomIt, decltype(iter_opt_proj)>> trees;
     for (int64_t i = 0; i < n_sub_vectors; i++) {
-        int64_t block_start = i * sub_vector;
-        int64_t block_end = std::min(size, block_start + sub_vector);
+        int64_t sub_vector_start = i * sub_vector_size;
+        int64_t sub_vector_end = std::min(size, sub_vector_start + sub_vector_size);
         auto tree = MTree<RandomIt, decltype(iter_opt_proj)>::create(
-            MTreeAttributes{.first = first + block_start,
-                .last = first + block_end,
+            MTreeAttributes{.first = first + sub_vector_start,
+                .last = first + sub_vector_end,
                 .height = height,
                 .sub_block_size = sub_block_size,
                 .n_word_bits = n_word_bits,
@@ -220,11 +221,11 @@ void sort(RandomIt first, RandomIt last, OutputIt output, int64_t workspace, Pro
     std::ranges::make_heap(heap, std::greater{}, iter_opt_proj);
     for (int64_t i = 0; i < size; i++) {
         assert_or_throw(heap[0].has_value());
-        auto x = heap[0].value();
-        *output = *x;
+        RandomIt min_it = heap[0].value();
+        *output = *min_it;
         ++output;
         std::ranges::pop_heap(heap, std::greater{}, iter_opt_proj);
-        int64_t sub_vector_id = (x - first) / sub_vector;
+        int64_t sub_vector_id = (min_it - first) / sub_vector_size;
         trees[sub_vector_id].pop();
         heap.back() = trees[sub_vector_id].min();
         std::ranges::push_heap(heap, std::greater{}, iter_opt_proj);
