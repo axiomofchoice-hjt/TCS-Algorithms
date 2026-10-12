@@ -31,8 +31,9 @@ inline void assert_or_throw(bool condition, std::string_view message = "empty me
 template <typename RandomIt, typename IterOptProj>
 std::optional<RandomIt> next_element(
     RandomIt first, RandomIt last, std::optional<RandomIt> filter, IterOptProj iter_opt_proj) {
+    assert_or_throw(first <= last);
     std::optional<RandomIt> res;
-    for (RandomIt i = first; i < last; i++) {
+    for (RandomIt i = first; i != last; i++) {
         if ((!filter.has_value() || iter_opt_proj(i) > iter_opt_proj(filter)) &&
             iter_opt_proj(i) < iter_opt_proj(res)) {
             res = i;
@@ -61,11 +62,10 @@ void multiway_mergesort(
 
     std::vector<std::optional<RandomIt>> heap;
     for (int64_t i = 0; i < n_blocks; i++) {
-        int64_t start = i * block_size;
-        int64_t end = std::min(size, start + block_size);
-        assert_or_throw(start < end);
-        heap.push_back(
-            next_element(first + start, first + end, std::optional<RandomIt>{}, iter_opt_proj));
+        int64_t block_start = i * block_size;
+        int64_t block_end = std::min(size, block_start + block_size);
+        heap.push_back(next_element(
+            first + block_start, first + block_end, std::optional<RandomIt>{}, iter_opt_proj));
     }
 
     std::ranges::make_heap(heap, std::greater{}, iter_opt_proj);
@@ -76,10 +76,10 @@ void multiway_mergesort(
         ++output;
         std::ranges::pop_heap(heap, std::greater{}, iter_opt_proj);
         int64_t block_id = (min_it - first) / block_size;
-        int64_t start = block_id * block_size;
-        int64_t end = std::min(size, start + block_size);
+        int64_t block_start = block_id * block_size;
+        int64_t block_end = std::min(size, block_start + block_size);
         heap.back() = next_element(
-            first + start, first + end, std::optional<RandomIt>{min_it}, iter_opt_proj);
+            first + block_start, first + block_end, std::optional<RandomIt>{min_it}, iter_opt_proj);
         std::ranges::push_heap(heap, std::greater{}, iter_opt_proj);
     }
 }
