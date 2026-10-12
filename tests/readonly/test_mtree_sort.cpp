@@ -1,4 +1,4 @@
-// Tests for tcs::readonly::sort::sort.
+// Tests for tcs::readonly::mtree_sort::mtree_sort.
 //
 // The algorithm reads its input through const (read-only) random-access
 // iterators and writes the sorted permutation into a caller-provided output
@@ -21,7 +21,7 @@
 
 #include "common/indexed_element.hpp"
 #include "common/utest.hpp"
-#include "tcs/readonly/sort.hpp"
+#include "tcs/readonly/mtree_sort.hpp"
 
 namespace {
 constexpr int kRandomSeed = 42;
@@ -95,7 +95,7 @@ void run_checked(const std::vector<IndexedElement>& arr, int64_t workspace) {
     const auto& carr = arr;  // const -> const_iterator: the input stays read-only
     // One extra sentinel slot catches any write at output[n].
     std::vector<IndexedElement> out(un + 1, IndexedElement{-1, -1});
-    tcs::readonly::sort::sort(
+    tcs::readonly::mtree_sort::mtree_sort(
         carr.begin(), carr.end(), out.begin(), workspace, IndexedElement::proj);
 
     utest::assert_or_throw_lazy(std::ranges::equal(out.begin(), out.begin() + n, expected.begin(),
@@ -136,7 +136,8 @@ void default_proj_test(TestParam param) {
         auto snapshot = arr;
         const auto& carr = arr;
         std::vector<int64_t> out(static_cast<size_t>(param.size), 0);
-        tcs::readonly::sort::sort(carr.begin(), carr.end(), out.begin(), param.workspace);
+        tcs::readonly::mtree_sort::mtree_sort(
+            carr.begin(), carr.end(), out.begin(), param.workspace);
 
         utest::assert_or_throw_lazy(out == expected,
             [&] { return std::format("default proj mismatch: n={}", param.size); });
@@ -158,7 +159,8 @@ void descending_proj_test(TestParam param) {
         auto snapshot = arr;
         const auto& carr = arr;
         std::vector<IndexedElement> out(static_cast<size_t>(param.size), IndexedElement{-1, -1});
-        tcs::readonly::sort::sort(carr.begin(), carr.end(), out.begin(), param.workspace, proj);
+        tcs::readonly::mtree_sort::mtree_sort(
+            carr.begin(), carr.end(), out.begin(), param.workspace, proj);
 
         utest::assert_or_throw_lazy(
             std::ranges::equal(out, expected, {}, key_and_index, key_and_index),
@@ -172,14 +174,16 @@ void descending_proj_test(TestParam param) {
 void empty_input_test() {
     std::vector<IndexedElement> empty;
     std::vector<IndexedElement> out{{-1, -1}};
-    tcs::readonly::sort::sort(empty.cbegin(), empty.cend(), out.begin(), 1, IndexedElement::proj);
+    tcs::readonly::mtree_sort::mtree_sort(
+        empty.cbegin(), empty.cend(), out.begin(), 1, IndexedElement::proj);
     utest::assert_or_throw(out[0].key == -1 && out[0].index == -1);
 }
 
 void single_element_test() {
     std::vector<IndexedElement> arr{{kSingleElementKey, 0}};
     std::vector<IndexedElement> out(2, IndexedElement{-1, -1});
-    tcs::readonly::sort::sort(arr.cbegin(), arr.cend(), out.begin(), 1, IndexedElement::proj);
+    tcs::readonly::mtree_sort::mtree_sort(
+        arr.cbegin(), arr.cend(), out.begin(), 1, IndexedElement::proj);
     utest::assert_or_throw(out[0].key == kSingleElementKey && out[0].index == 0);
     utest::assert_or_throw(out[1].key == -1 && out[1].index == -1);
     utest::assert_or_throw(arr[0].key == kSingleElementKey && arr[0].index == 0);
@@ -194,7 +198,7 @@ void invalid_input_throws() {
     for (int64_t bad_workspace : {int64_t{0}, int64_t{-1}}) {
         bool threw = false;
         try {
-            tcs::readonly::sort::sort(
+            tcs::readonly::mtree_sort::mtree_sort(
                 arr.cbegin(), arr.cend(), out.begin(), bad_workspace, IndexedElement::proj);
         } catch (const std::runtime_error&) {
             threw = true;
@@ -205,7 +209,8 @@ void invalid_input_throws() {
     // first must not be past last.
     bool threw = false;
     try {
-        tcs::readonly::sort::sort(arr.cend(), arr.cbegin(), out.begin(), 1, IndexedElement::proj);
+        tcs::readonly::mtree_sort::mtree_sort(
+            arr.cend(), arr.cbegin(), out.begin(), 1, IndexedElement::proj);
     } catch (const std::runtime_error&) {
         threw = true;
     }
@@ -221,7 +226,7 @@ auto sweep = utest::register_test([] {
              int64_t{64}, int64_t{65}}) {
         for (int64_t max_key : {int64_t{1}, int64_t{64}}) {
             for (int64_t workspace : {int64_t{1}, int64_t{3}, int64_t{64}}) {
-                utest::test("readonly_sort", "sweep", random_test,
+                utest::test("readonly_mtree_sort", "sweep", random_test,
                     TestParam{.size = n, .max_key = max_key, .workspace = workspace, .repeat = 2});
             }
         }
@@ -235,7 +240,7 @@ auto shapes = utest::register_test([] {
                  int64_t{6}, int64_t{7}, int64_t{8}, int64_t{9}, int64_t{10}, int64_t{11},
                  int64_t{12}, int64_t{13}, int64_t{14}, int64_t{15}, int64_t{16}, int64_t{24},
                  int64_t{32}, int64_t{48}, int64_t{64}}) {
-            utest::test("readonly_sort", "shapes", shape_test,
+            utest::test("readonly_mtree_sort", "shapes", shape_test,
                 ShapeParam{.size = n, .shape = shape, .workspace = 1, .repeat = 1});
         }
     }
@@ -248,7 +253,7 @@ auto workspace_sweep = utest::register_test([] {
         {int64_t{1}, int64_t{2}, int64_t{3}, int64_t{5}, int64_t{16}, int64_t{37}, int64_t{64}}) {
         for (int64_t workspace : {int64_t{1}, int64_t{2}, int64_t{3}, int64_t{4}, int64_t{5},
                  int64_t{8}, int64_t{16}, int64_t{37}, int64_t{64}, int64_t{1000}}) {
-            utest::test("readonly_sort", "workspace", random_test,
+            utest::test("readonly_mtree_sort", "workspace", random_test,
                 TestParam{.size = n,
                     .max_key = kWorkspaceSweepMaxKey,
                     .workspace = workspace,
@@ -270,10 +275,10 @@ auto regression = utest::register_test([] {
         {1000, 1, 32, 2},     // all keys equal, larger input
         {300, 300, 1, 1},     // minimal workspace, several tree levels
         {2000, 1000, 32, 1},  // several sub-vectors, partial last one
-        {3000, 10, 1024, 1},  // sub_block_size = 1, 12 sub-vectors
+        {2000, 10, 64, 1},    // sub_block_size = 1, many sub-blocks
     };
     for (const auto& param : kCases) {
-        utest::test("readonly_sort", "kCases", random_test, param);
+        utest::test("readonly_mtree_sort", "kCases", random_test, param);
     }
 });
 
@@ -287,7 +292,7 @@ auto default_proj = utest::register_test([] {
         {1000, 10, 32, 2},
     };
     for (const auto& param : kCases) {
-        utest::test("readonly_sort", "default_proj", default_proj_test, param);
+        utest::test("readonly_mtree_sort", "default_proj", default_proj_test, param);
     }
 });
 
@@ -299,13 +304,13 @@ auto descending_proj = utest::register_test([] {
         {1000, 1, 32, 1},  // all keys equal: the projection decides the order
     };
     for (const auto& param : kCases) {
-        utest::test("readonly_sort", "descending_proj", descending_proj_test, param);
+        utest::test("readonly_mtree_sort", "descending_proj", descending_proj_test, param);
     }
 });
 
 auto edges = utest::register_test([] {
-    utest::test("readonly_sort", "empty_input", empty_input_test);
-    utest::test("readonly_sort", "single_element", single_element_test);
-    utest::test("readonly_sort", "invalid", invalid_input_throws);
+    utest::test("readonly_mtree_sort", "empty_input", empty_input_test);
+    utest::test("readonly_mtree_sort", "single_element", single_element_test);
+    utest::test("readonly_mtree_sort", "invalid", invalid_input_throws);
 });
 }  // namespace
