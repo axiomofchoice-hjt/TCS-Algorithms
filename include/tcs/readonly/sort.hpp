@@ -109,7 +109,7 @@ struct MTree {
             .block_size_ = block_size,
             .state_ = state,
             .mu_ = mu,
-            .iter_opt_proj = attrs.iter_opt_proj,
+            .iter_opt_proj_ = attrs.iter_opt_proj,
         };
         for (int64_t node_id = n_blocks - 1; node_id >= 1; node_id--) {
             tree.update(node_id);
