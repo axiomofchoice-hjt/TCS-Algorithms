@@ -1,5 +1,13 @@
 # AGENTS.md
 
+## 禁止修改 include/ 下的代码
+
+**除非用户明确要求，否则不要修改 `include/` 下的任何代码。**
+
+授权只在用户提出要求的那一次交互中有效：**下一次交互自动回到"不允许"**。不要沿用之前任何一次允许（包括用户自己改过、或上一次已经同意过的改法），也不要因为"上次被允许了"就继续改。
+
+需要改 `include/` 时只报告结论和建议；除非用户在当前这次请求里明确让你改，否则不要动手。
+
 ## 测试运行时间上限
 
 `tests/` 下每个算法的测试文件在 **debug 配置、不定义 `TCS_NO_TEMP_IMPL`、不开 sanitizer** 时必须 **1s 以内**。
@@ -7,7 +15,7 @@
 ```sh
 xmake f -m debug && xmake
 ./build/tests/test                             # 全部用例
-./build/tests/test --filter readonly_sort      # 例：只跑一个 suite
+./build/tests/test --filter readonly_mtree_sort   # 例：只跑一个 suite
 ./build/tests/test --list --filter readonly    # 列出匹配的用例及其注册位置
 ./build/tests/test --time                      # 按文件列出 cases / fail / total / max
 ```
