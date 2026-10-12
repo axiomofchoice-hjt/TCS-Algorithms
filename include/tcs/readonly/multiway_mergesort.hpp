@@ -1,8 +1,11 @@
 // Stable multi-way merge sort (read-only input)
 // --------------------------------------------------------------------------
-// Sorts the input range [first, last) and writes the (stably) sorted result to
-// the random-access output range starting at `output`, using a caller-provided
-// scratch buffer of iterators. The input range is only read, never mutated.
+// Writes the stably sorted permutation of [first, last) to the output range
+// starting at `output`; the input is only read, never mutated.
+//
+// The input is cut into at most `workspace` consecutive blocks of size
+// ceil(size / workspace), merged by a heap holding the smallest not-yet-emitted
+// element of each block. All scratch space is allocated here.
 //
 // Blog: ...
 
