@@ -261,8 +261,8 @@ void mtree_sort(RandomIt first, RandomIt last, OutputIt output, int64_t workspac
         .iter_opt_proj = iter_opt_proj});
     for (int64_t i = 0; i < size; i++) {
         std::optional<RandomIt> min_opt = tree.min();
-        assert_or_throw(min_opt.has_value());
         tree.pop();
+        assert_or_throw(min_opt.has_value());
         *output = *min_opt.value();
         ++output;
     }
