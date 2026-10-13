@@ -55,83 +55,49 @@ struct BitVector {
         return {.n_word_bits_ = n_word_bits, .size_ = 0, .data_ = {}};
     }
 
-    bool get(int64_t index) const {
-        assert_or_throw(index >= 0 && index < size_);
-        return (data_[index / n_word_bits_] >> (index % n_word_bits_) & 1) == 1;
+    int64_t size() const { return size_; }
+
+    void resize(int64_t new_size) {
+        data_.resize((new_size + n_word_bits_ - 1) / n_word_bits_, 0);
+        if (new_size % n_word_bits_ != 0) {
+            data_.back() &= low_mask(new_size % n_word_bits_);
+        }
+        size_ = new_size;
     }
 
-    void set(int64_t index, bool value) {
-        assert_or_throw(index >= 0 && index < size_);
-        uint64_t& word = data_[index / n_word_bits_];
-        uint64_t mask = uint64_t{1} << (index % n_word_bits_);
-        word = value ? word | mask : word & ~mask;
-    }
-
-    uint64_t get_range(int64_t l, int64_t r) const {
-        assert_or_throw(l >= 0 && l <= r && r <= size_);
-        assert_or_throw(r - l <= n_word_bits_);
-        if (l == r) {
+    uint64_t load(int64_t pos, int64_t len) const {
+        assert_or_throw(pos >= 0 && len >= 0 && pos + len <= size_);
+        assert_or_throw(len <= n_word_bits_);
+        if (len == 0) {
             return 0;
         }
-        int64_t off = l % n_word_bits_;
+        int64_t off = pos % n_word_bits_;
         int64_t n_low = n_word_bits_ - off;
-        int64_t len = r - l;
-        uint64_t low = data_[l / n_word_bits_] >> off;
+        uint64_t low = data_[pos / n_word_bits_] >> off;
         if (len <= n_low) {
             return low & low_mask(len);
         }
-        return (low & low_mask(n_low)) | (data_[r / n_word_bits_] & low_mask(len - n_low)) << n_low;
+        return (low & low_mask(n_low)) | (data_[(pos + len) / n_word_bits_] & low_mask(len - n_low))
+                                             << n_low;
     }
 
-    void set_range(int64_t l, int64_t r, uint64_t value) {
-        assert_or_throw(l >= 0 && l <= r && r <= size_);
-        assert_or_throw(r - l <= n_word_bits_);
-        assert_or_throw(std::bit_width(value) <= r - l);
-        if (l == r) {
+    void store(int64_t pos, int64_t len, uint64_t value) {
+        assert_or_throw(pos >= 0 && len >= 0 && pos + len <= size_);
+        assert_or_throw(len <= n_word_bits_);
+        assert_or_throw(std::bit_width(value) <= len);
+        if (len == 0) {
             return;
         }
-        int64_t off = l % n_word_bits_;
+        int64_t off = pos % n_word_bits_;
         int64_t n_low = n_word_bits_ - off;
-        uint64_t& low_word = data_[l / n_word_bits_];
-        if (r - l <= n_low) {
-            low_word = (low_word & ~(low_mask(r - l) << off)) | (value << off);
+        uint64_t& low_word = data_[pos / n_word_bits_];
+        if (len <= n_low) {
+            low_word = (low_word & ~(low_mask(len) << off)) | (value << off);
         } else {
             low_word = ((low_word & low_mask(off)) | (value << off)) & low_mask(n_word_bits_);
-            uint64_t& high_word = data_[r / n_word_bits_];
-            high_word = (high_word & ~low_mask(r - l - n_low)) | (value >> n_low);
+            uint64_t& high_word = data_[(pos + len) / n_word_bits_];
+            high_word = (high_word & ~low_mask(len - n_low)) | (value >> n_low);
         }
-    }
-
-    void push_back(bool value) {
-        size_++;
-        if (static_cast<int64_t>(data_.size()) * n_word_bits_ < size_) {
-            data_.push_back(0);
-        }
-        assert_or_throw(static_cast<int64_t>(data_.size()) * n_word_bits_ >= size_);
-        set(size_ - 1, value);
-    }
-
-    void pop_back() {
-        assert_or_throw(size_ > 0);
-        set(size_ - 1, false);
-        size_--;
-    }
-
-    void push_back_range(uint64_t value, int64_t n_bits) {
-        assert_or_throw(n_bits >= 0 && n_bits <= n_word_bits_);
-        size_ += n_bits;
-        if (static_cast<int64_t>(data_.size()) * n_word_bits_ < size_) {
-            data_.push_back(0);
-        }
-        assert_or_throw(static_cast<int64_t>(data_.size()) * n_word_bits_ >= size_);
-        set_range(size_ - n_bits, size_, value);
-    }
-
-    void pop_back_range(int64_t n_bits) {
-        assert_or_throw(n_bits >= 0 && n_bits <= n_word_bits_);
-        assert_or_throw(size_ >= n_bits);
-        set_range(size_ - n_bits, size_, 0);
-        size_ -= n_bits;
     }
 };
 
@@ -173,12 +139,6 @@ struct MTree {
         auto state = BitVector::create(n_word_bits);
         auto mu = BitVector::create(n_word_bits);
         assert_or_throw(first < last && last - first <= capacity);
-        for (int64_t level = 0; level < height; level++) {
-            for (int64_t i = 0; i < (int64_t{1} << level); i++) {
-                state.push_back_range(0, height - level);
-                mu.push_back_range(0, height - level);
-            }
-        }
         MTree tree{
             .first_ = first,
             .last_ = last,
@@ -191,6 +151,8 @@ struct MTree {
             .mu_ = mu,
             .iter_opt_proj_ = iter_opt_proj,
         };
+        tree.state_.resize(tree.data_offset(height, 0));
+        tree.mu_.resize(tree.data_offset(height, 0));
         for (int64_t level = height - 1; level >= 0; level--) {
             for (int64_t i = 0; i < (int64_t{1} << level); i++) {
                 tree.update(level, i);
@@ -203,10 +165,10 @@ struct MTree {
         assert_or_throw(level >= 0 && level <= height_);
         assert_or_throw(offset >= 0 && offset < (int64_t{1} << level));
         int64_t n_sub_blocks = int64_t{1} << (height_ - level);
-        int64_t off_l = data_offset(level, offset);
-        int64_t off_r = data_offset(level, offset + 1);
-        int64_t state_v = state_.get_range(off_l, off_r);
-        int64_t mu_v = mu_.get_range(off_l, off_r);
+        int64_t off = data_offset(level, offset);
+        int64_t len = height_ - level;
+        int64_t state_v = state_.load(off, len);
+        int64_t mu_v = mu_.load(off, len);
         int64_t l = (((offset * n_sub_blocks) + state_v) * block_size_) +
                     (mu_v * block_size_ / n_sub_blocks);
         int64_t r = l + (block_size_ / n_sub_blocks);
@@ -234,26 +196,26 @@ struct MTree {
         auto lchild_min = min(level + 1, offset * 2);
         auto rchild_min = min(level + 1, (offset * 2) + 1);
         int64_t n_level_nodes = int64_t{1} << level;
-        int64_t off_l = data_offset(level, offset);
-        int64_t off_r = data_offset(level, offset + 1);
+        int64_t off = data_offset(level, offset);
+        int64_t len = height_ - level;
         if (!lchild_min.has_value() && !rchild_min.has_value()) {
-            state_.set_range(off_l, off_r, 0);
-            mu_.set_range(off_l, off_r, 0);
+            state_.store(off, len, 0);
+            mu_.store(off, len, 0);
         } else if (iter_opt_proj_(lchild_min) < iter_opt_proj_(rchild_min)) {
-            int64_t child_off_l = data_offset(level + 1, offset * 2);
-            int64_t child_off_r = data_offset(level + 1, (offset * 2) + 1);
-            state_.set_range(off_l, off_r, state_.get_range(child_off_l, child_off_r));
-            mu_.set_range(off_l, off_r,
-                (mu_.get_range(child_off_l, child_off_r) << 1) |
+            int64_t child_off = data_offset(level + 1, offset * 2);
+            int64_t child_len = len - 1;
+            state_.store(off, len, state_.load(child_off, child_len));
+            mu_.store(off, len,
+                (mu_.load(child_off, child_len) << 1) |
                     ((lchild_min.value() - first_) / root_sub_block_size_ % n_blocks_ /
                         n_level_nodes % 2));
         } else {
-            int64_t child_off_l = data_offset(level + 1, (offset * 2) + 1);
-            int64_t child_off_r = data_offset(level + 1, (offset * 2) + 2);
-            state_.set_range(off_l, off_r,
-                state_.get_range(child_off_l, child_off_r) | (int64_t{1} << (height_ - level - 1)));
-            mu_.set_range(off_l, off_r,
-                (mu_.get_range(child_off_l, child_off_r) << 1) |
+            int64_t child_off = data_offset(level + 1, (offset * 2) + 1);
+            int64_t child_len = len - 1;
+            state_.store(off, len,
+                state_.load(child_off, child_len) | (int64_t{1} << (height_ - level - 1)));
+            mu_.store(off, len,
+                (mu_.load(child_off, child_len) << 1) |
                     ((rchild_min.value() - first_) / root_sub_block_size_ % n_blocks_ /
                         n_level_nodes % 2));
         }
