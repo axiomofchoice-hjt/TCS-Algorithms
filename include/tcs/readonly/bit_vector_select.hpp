@@ -57,9 +57,9 @@ void select_ref(RandomIt first, RandomIt nth, RandomIt last, Proj proj = {}) {
 }
 
 #ifdef TCS_NO_TEMP_IMPL
-using BitVectorType = tcs::ds::compact_bit_vector::CompactBitVector;
+using CompactBitVectorType = tcs::ds::compact_bit_vector::CompactBitVector;
 #else
-struct BitVectorStub {
+struct CompactBitVectorStub {
     int64_t size_;
     int64_t count_;
     std::vector<bool> data_;
@@ -67,7 +67,7 @@ struct BitVectorStub {
     std::vector<int64_t> select_;
 
     template <typename Placement>
-    static BitVectorStub create(
+    static CompactBitVectorStub create(
         int64_t size, Placement placement, [[maybe_unused]] int64_t n_word_bits) {
         static_assert(std::is_invocable_r_v<bool, Placement&, int64_t>);
         assert_or_throw(size >= 0);
@@ -102,13 +102,13 @@ struct BitVectorStub {
         return select_[k];
     }
 };
-using BitVectorType = BitVectorStub;
+using CompactBitVectorType = CompactBitVectorStub;
 #endif
 
 struct WaveletStack {
     int64_t size_ = 0;
     int64_t n_word_bits_ = 0;
-    std::vector<BitVectorType> stack_;
+    std::vector<CompactBitVectorType> stack_;
 
     static WaveletStack create(int64_t size, int64_t n_word_bits) {
         assert_or_throw(size >= 0);
@@ -118,7 +118,7 @@ struct WaveletStack {
 
     template <typename Placement>
     void update(Placement placement) {
-        auto bit_vector = BitVectorType::create(
+        auto bit_vector = CompactBitVectorType::create(
             count(),
             [this, placement](int64_t k) {
                 int64_t index = select(k);
