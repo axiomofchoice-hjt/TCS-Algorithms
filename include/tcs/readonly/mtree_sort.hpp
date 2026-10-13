@@ -58,6 +58,7 @@ struct BitVector {
     int64_t size() const { return size_; }
 
     void resize(int64_t new_size) {
+        assert_or_throw(new_size >= 0);
         data_.resize((new_size + n_word_bits_ - 1) / n_word_bits_, 0);
         if (new_size % n_word_bits_ != 0) {
             data_.back() &= low_mask(new_size % n_word_bits_);
