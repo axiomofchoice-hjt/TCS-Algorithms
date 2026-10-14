@@ -11,7 +11,6 @@
 
 #include <algorithm>
 #include <bit>
-#include <climits>
 #include <cstdint>
 #include <functional>
 #include <iterator>

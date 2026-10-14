@@ -11,7 +11,6 @@
 
 #include <algorithm>
 #include <array>
-#include <bit>
 #include <climits>
 #include <cmath>
 #include <cstdint>
@@ -303,11 +302,13 @@ void inplace_stable_01_unpartition(RandomIt first, RandomIt last, Proj proj, Pla
     int64_t max_word_bits = common::ceil_log2(len);
     int64_t buffer_len = std::floor(std::sqrt(len));
     int64_t max_blocks_for_word = 1;
-    while ((max_blocks_for_word + 1) * common::ceil_log2(max_blocks_for_word + 1) <= max_word_bits) {
+    while (
+        (max_blocks_for_word + 1) * common::ceil_log2(max_blocks_for_word + 1) <= max_word_bits) {
         max_blocks_for_word++;
     }
     int64_t max_blocks_for_buffer = 1;
-    while ((max_blocks_for_buffer + 1) * common::ceil_log2(max_blocks_for_buffer + 1) <= buffer_len) {
+    while (
+        (max_blocks_for_buffer + 1) * common::ceil_log2(max_blocks_for_buffer + 1) <= buffer_len) {
         max_blocks_for_buffer++;
     }
     // buffer area
