@@ -13,23 +13,13 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <format>
 #include <functional>
 #include <optional>
-#include <source_location>
-#include <stdexcept>
-#include <string_view>
 #include <utility>
 
-namespace tcs::readonly::constant_space_select {
-inline void assert_or_throw(bool condition, std::string_view message = "empty message",
-    const std::source_location& loc = std::source_location::current()) {
-    if (!condition) [[unlikely]] {
-        throw std::runtime_error(
-            std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
-    }
-}
+#include "tcs/common/assert.hpp"
 
+namespace tcs::readonly::constant_space_select {
 template <typename RandomIt, typename IterProj>
 bool in_range(RandomIt it, RandomIt lower_it, RandomIt upper_it, IterProj iter_proj) {
     return iter_proj(it) >= iter_proj(lower_it) && iter_proj(it) <= iter_proj(upper_it);
@@ -38,7 +28,7 @@ bool in_range(RandomIt it, RandomIt lower_it, RandomIt upper_it, IterProj iter_p
 template <typename RandomIt, typename IterProj>
 int64_t count_in_range(
     RandomIt first, RandomIt last, RandomIt lower_it, RandomIt upper_it, IterProj iter_proj) {
-    assert_or_throw(first <= last);
+    common::assert_or_throw(first <= last);
     int64_t result = 0;
     for (RandomIt it = first; it < last; it++) {
         if (in_range(it, lower_it, upper_it, iter_proj)) {
@@ -50,7 +40,7 @@ int64_t count_in_range(
 
 template <typename RandomIt, typename IterProj>
 RandomIt min_greater(RandomIt first, RandomIt last, RandomIt pivot_it, IterProj iter_proj) {
-    assert_or_throw(first <= last);
+    common::assert_or_throw(first <= last);
     std::optional<RandomIt> result;
     for (RandomIt it = first; it < last; it++) {
         if (iter_proj(it) > iter_proj(pivot_it) &&
@@ -58,13 +48,13 @@ RandomIt min_greater(RandomIt first, RandomIt last, RandomIt pivot_it, IterProj 
             result = it;
         }
     }
-    assert_or_throw(result.has_value());
+    common::assert_or_throw(result.has_value());
     return result.value();
 }
 
 template <typename RandomIt, typename IterProj>
 RandomIt max_smaller(RandomIt first, RandomIt last, RandomIt pivot_it, IterProj iter_proj) {
-    assert_or_throw(first <= last);
+    common::assert_or_throw(first <= last);
     std::optional<RandomIt> result;
     for (RandomIt it = first; it < last; it++) {
         if (iter_proj(it) < iter_proj(pivot_it) &&
@@ -72,19 +62,19 @@ RandomIt max_smaller(RandomIt first, RandomIt last, RandomIt pivot_it, IterProj 
             result = it;
         }
     }
-    assert_or_throw(result.has_value());
+    common::assert_or_throw(result.has_value());
     return result.value();
 }
 
 template <typename RandomIt, typename IterProj>
 RandomIt select_recursive(RandomIt first, RandomIt last, RandomIt lower_it, RandomIt upper_it,
     int64_t k, int64_t n_layers, IterProj iter_proj) {
-    assert_or_throw(first < last);
-    assert_or_throw(n_layers > 0);
+    common::assert_or_throw(first < last);
+    common::assert_or_throw(n_layers > 0);
     int64_t size = last - first;
     while (true) {
         int64_t n_candidates = count_in_range(first, last, lower_it, upper_it, iter_proj);
-        assert_or_throw(k >= 0 && k < n_candidates);
+        common::assert_or_throw(k >= 0 && k < n_candidates);
         RandomIt pivot_it;
         if (n_layers == 1) {
             for (RandomIt it = first; it < last; it++) {
@@ -140,7 +130,7 @@ RandomIt select_recursive(RandomIt first, RandomIt last, RandomIt lower_it, Rand
 template <typename RandomIt, typename Proj = std::identity>
 RandomIt constant_space_select(
     RandomIt first, RandomIt last, int64_t k, int64_t n_layers, Proj proj = {}) {
-    assert_or_throw(k >= 0 && k < (last - first));
+    common::assert_or_throw(k >= 0 && k < (last - first));
     auto iter_proj = [proj](RandomIt it) { return std::pair{proj(*it), it}; };
     RandomIt lower_it = first;
     RandomIt upper_it = first;

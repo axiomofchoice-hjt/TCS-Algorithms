@@ -11,23 +11,13 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <format>
 #include <functional>
 #include <iterator>
-#include <source_location>
-#include <stdexcept>
-#include <string_view>
 #include <utility>
 
-namespace tcs::bfprt {
-inline void assert_or_throw(bool condition, std::string_view message = "empty message",
-    const std::source_location& loc = std::source_location::current()) {
-    if (!condition) [[unlikely]] {
-        throw std::runtime_error(
-            std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
-    }
-}
+#include "tcs/common/assert.hpp"
 
+namespace tcs::bfprt {
 template <typename RandomIt, typename Proj = std::identity>
 void bubble_sort(RandomIt first, RandomIt last, Proj proj = {}) {
     int64_t len = last - first;
@@ -43,7 +33,7 @@ void bubble_sort(RandomIt first, RandomIt last, Proj proj = {}) {
 template <typename RandomIt, typename Proj = std::identity>
 void bfprt(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
     using T = std::iter_value_t<RandomIt>;
-    assert_or_throw(first <= mid && mid < last, "bfprt: mid must lie in [first, last)");
+    common::assert_or_throw(first <= mid && mid < last, "bfprt: mid must lie in [first, last)");
     int64_t len = last - first;
     constexpr int64_t group_size = 5;
     if (len < group_size) {

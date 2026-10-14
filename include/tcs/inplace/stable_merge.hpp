@@ -12,23 +12,13 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <format>
 #include <functional>
-#include <source_location>
-#include <stdexcept>
-#include <string_view>
 #include <tuple>
 #include <utility>
 
-namespace tcs::inplace::stable_merge {
-inline void assert_or_throw(bool condition, std::string_view message = "empty message",
-    const std::source_location& loc = std::source_location::current()) {
-    if (!condition) [[unlikely]] {
-        throw std::runtime_error(
-            std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
-    }
-}
+#include "tcs/common/assert.hpp"
 
+namespace tcs::inplace::stable_merge {
 template <typename RandomIt, typename Proj = std::identity>
 std::tuple<RandomIt, RandomIt, RandomIt> merge_with_swap(
     RandomIt output, RandomIt first, RandomIt mid, RandomIt last, RandomIt labels, Proj proj = {}) {
@@ -167,9 +157,9 @@ std::tuple<RandomIt, RandomIt, RandomIt, RandomIt> stable_unique_limit(
 template <typename RandomIt, typename Proj = std::identity>
 std::tuple<RandomIt, RandomIt, RandomIt, RandomIt> align_blocks_limit(RandomIt first, RandomIt mid,
     RandomIt last, int64_t block_size, int64_t n_blocks, Proj proj = {}) {
-    assert_or_throw(block_size > 0 && n_blocks > 0,
+    common::assert_or_throw(block_size > 0 && n_blocks > 0,
         "align_blocks_limit: block size and block count must be positive");
-    assert_or_throw(block_size * n_blocks <= static_cast<int64_t>(last - first),
+    common::assert_or_throw(block_size * n_blocks <= static_cast<int64_t>(last - first),
         "align_blocks_limit: block layout exceeds the range");
     RandomIt original_mid = mid;
     RandomIt original_last = last;
@@ -240,16 +230,18 @@ void bubble_sort(RandomIt first, RandomIt last, Proj proj = {}) {
 
 template <typename RandomIt, typename Proj = std::identity>
 void inplace_stable_merge(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
-    assert_or_throw(first <= mid && mid <= last, "Error: invalid input");
-    assert_or_throw(std::ranges::is_sorted(first, mid, std::less{}, proj), "Error: invalid input");
-    assert_or_throw(std::ranges::is_sorted(mid, last, std::less{}, proj), "Error: invalid input");
+    common::assert_or_throw(first <= mid && mid <= last, "Error: invalid input");
+    common::assert_or_throw(
+        std::ranges::is_sorted(first, mid, std::less{}, proj), "Error: invalid input");
+    common::assert_or_throw(
+        std::ranges::is_sorted(mid, last, std::less{}, proj), "Error: invalid input");
     RandomIt orig_first = first;
     RandomIt orig_last = last;
     int64_t len = last - first;
     int64_t block_size = std::floor(std::sqrt(len));
     if (block_size <= 4) {
         bubble_sort(first, last, proj);
-        assert_or_throw(std::ranges::is_sorted(orig_first, orig_last, std::less{}, proj),
+        common::assert_or_throw(std::ranges::is_sorted(orig_first, orig_last, std::less{}, proj),
             "inplace_stable_merge: result is not sorted");
         return;
     }
@@ -258,7 +250,7 @@ void inplace_stable_merge(RandomIt first, RandomIt mid, RandomIt last, Proj proj
     std::tie(buf1, first, mid, last) =
         stable_unique_limit(first, mid, last, n_blocks + block_size, proj);
     // buf1 [buffer] first [left_elements] mid [right_elements]
-    assert_or_throw(std::ranges::is_sorted(buf1, first, std::less{}, proj),
+    common::assert_or_throw(std::ranges::is_sorted(buf1, first, std::less{}, proj),
         "stable_merge: buffer region is not sorted");
     int64_t buffer_len = first - buf1;
     if (buffer_len == n_blocks + block_size) {  // enough unique values
@@ -287,7 +279,7 @@ void inplace_stable_merge(RandomIt first, RandomIt mid, RandomIt last, Proj proj
         first = buf1;
         inplace_merge_with_rotation(first, last, original_last, proj);
     }
-    assert_or_throw(std::ranges::is_sorted(orig_first, orig_last, std::less{}, proj),
+    common::assert_or_throw(std::ranges::is_sorted(orig_first, orig_last, std::less{}, proj),
         "inplace_stable_merge: result is not sorted");
 }
 }  // namespace tcs::inplace::stable_merge

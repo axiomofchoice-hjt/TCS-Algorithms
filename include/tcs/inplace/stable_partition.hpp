@@ -15,26 +15,16 @@
 #include <climits>
 #include <cmath>
 #include <cstdint>
-#include <format>
 #include <functional>
-#include <source_location>
-#include <stdexcept>
-#include <string_view>
 #include <tuple>
 #include <type_traits>
 #include <utility>
 
-namespace tcs::inplace::stable_partition {
-inline void assert_or_throw(bool condition, std::string_view message = "empty message",
-    const std::source_location& loc = std::source_location::current()) {
-    if (!condition) [[unlikely]] {
-        throw std::runtime_error(
-            std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
-    }
-}
+#include "tcs/common/assert.hpp"
 
+namespace tcs::inplace::stable_partition {
 inline int64_t ceil_log2(int64_t x) {
-    assert_or_throw(x > 0, "ceil_log2: argument must be positive");
+    common::assert_or_throw(x > 0, "ceil_log2: argument must be positive");
     return std::bit_width(static_cast<uint64_t>(x) - 1);
 }
 
@@ -60,16 +50,16 @@ template <typename RandomIt, typename Proj = std::identity>
 void homogenize_blocks(RandomIt first, RandomIt last, int64_t block_size, Proj proj) {
     using T = std::iter_value_t<RandomIt>;
     static_assert(std::is_invocable_v<Proj, T>);
-    assert_or_throw((last - first) % block_size == 0,
+    common::assert_or_throw((last - first) % block_size == 0,
         "stable_partition: range must be a whole number of blocks");
     int64_t n_blocks = (last - first) / block_size;
     for (int64_t i = 0; i + 2 <= n_blocks; i++) {
         RandomIt left = first + (i * block_size);
         RandomIt mid = left + block_size;
         RandomIt right = mid + block_size;
-        assert_or_throw(std::ranges::is_sorted(left, mid, {}, proj),
+        common::assert_or_throw(std::ranges::is_sorted(left, mid, {}, proj),
             "homogenize_blocks: left block is not sorted");
-        assert_or_throw(std::ranges::is_sorted(mid, right, {}, proj),
+        common::assert_or_throw(std::ranges::is_sorted(mid, right, {}, proj),
             "homogenize_blocks: right block is not sorted");
         RandomIt split_left = std::ranges::find_if(left, mid, proj);
         RandomIt split_right = std::ranges::find_if(mid, right, proj);
@@ -88,7 +78,7 @@ template <typename RandomIt, typename Pred>
 int64_t block_count_if(RandomIt first, RandomIt last, int64_t block_size, Pred pred) {
     using T = std::iter_value_t<RandomIt>;
     static_assert(std::is_invocable_r_v<bool, Pred, T>);
-    assert_or_throw((last - first) % block_size == 0,
+    common::assert_or_throw((last - first) % block_size == 0,
         "stable_partition: range must be a whole number of blocks");
     int64_t n_blocks = (last - first) / block_size;
     int64_t res = 0;
@@ -111,19 +101,19 @@ struct WordStorage {
     uint64_t word;
 
     static WordStorage create(StorageAttributes attr) {
-        assert_or_throw(attr.n_bits <= static_cast<int64_t>(sizeof(uint64_t) * CHAR_BIT),
+        common::assert_or_throw(attr.n_bits <= static_cast<int64_t>(sizeof(uint64_t) * CHAR_BIT),
             "WordStorage: n_bits exceeds a word");
         return WordStorage{.n_bits = attr.n_bits, .element_bits = attr.element_bits, .word = 0};
     }
 
     uint64_t get(int64_t index) const {
-        assert_or_throw(index < n_bits / element_bits, "storage index exceeds capacity");
+        common::assert_or_throw(index < n_bits / element_bits, "storage index exceeds capacity");
         return (word >> (index * element_bits)) & ((uint64_t{1} << element_bits) - 1);
     }
 
     void set(int64_t index, uint64_t value) {
-        assert_or_throw(index < n_bits / element_bits, "storage index exceeds capacity");
-        assert_or_throw(
+        common::assert_or_throw(index < n_bits / element_bits, "storage index exceeds capacity");
+        common::assert_or_throw(
             value < (uint64_t{1} << element_bits), "value does not fit in element_bits");
         auto slot_mask = ((uint64_t{1} << element_bits) - 1) << (index * element_bits);
         word = (word & ~slot_mask) | (value << (index * element_bits));
@@ -152,7 +142,7 @@ struct BufferStorage {
     }
 
     uint64_t get(int64_t index) const {
-        assert_or_throw(index < n_bits / element_bits, "storage index exceeds capacity");
+        common::assert_or_throw(index < n_bits / element_bits, "storage index exceeds capacity");
         uint64_t res = 0;
         for (int64_t i = 0; i < element_bits; i++) {
             res |= uint64_t(proj(buf0[(index * element_bits) + i])) << i;
@@ -161,8 +151,8 @@ struct BufferStorage {
     }
 
     void set(int64_t index, uint64_t value) {
-        assert_or_throw(index < n_bits / element_bits, "storage index exceeds capacity");
-        assert_or_throw(
+        common::assert_or_throw(index < n_bits / element_bits, "storage index exceeds capacity");
+        common::assert_or_throw(
             value < (uint64_t{1} << element_bits), "value does not fit in element_bits");
         for (int64_t i = 0; i < element_bits; i++) {
             if (uint64_t(proj(buf0[(index * element_bits) + i])) != ((value >> i) & 1)) {
@@ -213,14 +203,14 @@ void sort_blocks_using_word(
     RandomIt first, RandomIt last, int64_t block_size, Proj proj, int64_t word_bits) {
     using T = std::iter_value_t<RandomIt>;
     static_assert(std::is_invocable_v<Proj, T>);
-    assert_or_throw((last - first) % block_size == 0,
+    common::assert_or_throw((last - first) % block_size == 0,
         "stable_partition: range must be a whole number of blocks");
     int64_t n_blocks = (last - first) / block_size;
     if (n_blocks <= 1) {
         return;
     }
     int64_t element_bits = ceil_log2(n_blocks);
-    assert_or_throw(n_blocks * element_bits <= word_bits,
+    common::assert_or_throw(n_blocks * element_bits <= word_bits,
         std::format("{} {} {}", n_blocks, element_bits, word_bits));
     auto storage = WordStorage::create({.n_bits = word_bits, .element_bits = element_bits});
     sort_blocks_impl(first, last, block_size, proj, storage);
@@ -231,14 +221,14 @@ void sort_blocks_using_buffer(RandomIt first, RandomIt last, int64_t block_size,
     RandomIt buf1, int64_t buffer_len, Proj proj) {
     using T = std::iter_value_t<RandomIt>;
     static_assert(std::is_invocable_v<Proj, T>);
-    assert_or_throw((last - first) % block_size == 0,
+    common::assert_or_throw((last - first) % block_size == 0,
         "stable_partition: range must be a whole number of blocks");
     int64_t n_blocks = (last - first) / block_size;
     if (n_blocks <= 1) {
         return;
     }
     int64_t element_bits = ceil_log2(n_blocks);
-    assert_or_throw(n_blocks * element_bits <= buffer_len,
+    common::assert_or_throw(n_blocks * element_bits <= buffer_len,
         std::format("{} {} {}", n_blocks, element_bits, buffer_len));
     auto storage = BufferStorage<RandomIt, Proj>::create(
         {.n_bits = buffer_len, .element_bits = element_bits}, buf0, buf1, proj);
@@ -253,7 +243,7 @@ void inplace_01_merge(RandomIt first, RandomIt last, Proj proj) {
     RandomIt mid = std::ranges::find_if(split_left, last, [proj](T x) { return proj(x) == 0; });
     RandomIt split_right = std::ranges::find_if(mid, last, proj);
     std::ranges::rotate(split_left, mid, split_right);
-    assert_or_throw(std::ranges::is_sorted(first, last, {}, proj),
+    common::assert_or_throw(std::ranges::is_sorted(first, last, {}, proj),
         "inplace_01_merge: merge result is not sorted");
 }
 
@@ -320,7 +310,7 @@ RandomIt inplace_stable_01_partition(RandomIt first, RandomIt last, Proj proj) {
         }
         block_size = merge_size;
     }
-    assert_or_throw(
+    common::assert_or_throw(
         block_size >= len, "inplace_stable_01_partition: block_size did not cover the range");
 
     inplace_01_merge(buf0, last, proj);
@@ -331,10 +321,10 @@ template <typename RandomIt, typename Pred>
 RandomIt inplace_stable_partition(RandomIt first, RandomIt last, Pred pred) {
     using T = std::iter_value_t<RandomIt>;
     static_assert(std::is_invocable_r_v<bool, Pred, T>);
-    assert_or_throw(first <= last, "inplace_stable_partition: first must not be past last");
+    common::assert_or_throw(first <= last, "inplace_stable_partition: first must not be past last");
     RandomIt boundary =
         inplace_stable_01_partition(first, last, [pred](T x) { return pred(x) ? 0 : 1; });
-    assert_or_throw(std::ranges::is_partitioned(first, last, pred),
+    common::assert_or_throw(std::ranges::is_partitioned(first, last, pred),
         "inplace_stable_partition: result is not partitioned");
     return boundary;
 }

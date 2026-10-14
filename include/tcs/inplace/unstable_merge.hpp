@@ -12,22 +12,12 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <format>
 #include <functional>
-#include <source_location>
-#include <stdexcept>
-#include <string_view>
 #include <utility>
 
-namespace tcs::inplace::unstable_merge {
-inline void assert_or_throw(bool condition, std::string_view message = "empty message",
-    const std::source_location& loc = std::source_location::current()) {
-    if (!condition) [[unlikely]] {
-        throw std::runtime_error(
-            std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
-    }
-}
+#include "tcs/common/assert.hpp"
 
+namespace tcs::inplace::unstable_merge {
 template <typename RandomIt, typename Proj = std::identity>
 void merge_with_swap(RandomIt output, RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
     RandomIt left_it = first;
@@ -113,9 +103,11 @@ void bubble_sort(RandomIt first, RandomIt last, Proj proj = {}) {
 
 template <typename RandomIt, typename Proj = std::identity>
 void inplace_unstable_merge(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
-    assert_or_throw(first <= mid && mid <= last, "Error: invalid input");
-    assert_or_throw(std::ranges::is_sorted(first, mid, std::less{}, proj), "Error: invalid input");
-    assert_or_throw(std::ranges::is_sorted(mid, last, std::less{}, proj), "Error: invalid input");
+    common::assert_or_throw(first <= mid && mid <= last, "Error: invalid input");
+    common::assert_or_throw(
+        std::ranges::is_sorted(first, mid, std::less{}, proj), "Error: invalid input");
+    common::assert_or_throw(
+        std::ranges::is_sorted(mid, last, std::less{}, proj), "Error: invalid input");
     int64_t len = last - first;
     if (len <= 1) {
         return;
@@ -132,7 +124,7 @@ void inplace_unstable_merge(RandomIt first, RandomIt mid, RandomIt last, Proj pr
     block_merge_pairwise(first, first + aligned_len, block_size, proj);
     bubble_sort(first + aligned_len - block_size, last, proj);
     inplace_merge_with_rotation(first, first + aligned_len - block_size, last, proj);
-    assert_or_throw(std::ranges::is_sorted(first, last, std::less{}, proj),
+    common::assert_or_throw(std::ranges::is_sorted(first, last, std::less{}, proj),
         "inplace_unstable_merge: result is not sorted");
 }
 }  // namespace tcs::inplace::unstable_merge

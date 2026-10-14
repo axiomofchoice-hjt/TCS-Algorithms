@@ -2,7 +2,6 @@
 
 #include <print>
 #include <ranges>
-#include <string_view>
 
 inline void print_arr(const auto& arr, std::string_view label) {
     std::print("{}: [", label);

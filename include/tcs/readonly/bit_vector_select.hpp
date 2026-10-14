@@ -17,14 +17,12 @@
 #include <bit>
 #include <climits>
 #include <cstdint>
-#include <format>
 #include <functional>
-#include <source_location>
-#include <stdexcept>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
+
+#include "tcs/common/assert.hpp"
 
 #ifdef TCS_NO_TEMP_IMPL
 #include "tcs/bfprt.hpp"
@@ -32,18 +30,10 @@
 #endif
 
 namespace tcs::readonly::bit_vector_select {
-inline void assert_or_throw(bool condition, std::string_view message = "empty message",
-    const std::source_location& loc = std::source_location::current()) {
-    if (!condition) [[unlikely]] {
-        throw std::runtime_error(
-            std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
-    }
-}
-
 constexpr int64_t n_machine_word_bits = sizeof(uint64_t) * CHAR_BIT;
 
 inline int64_t ceil_log2(int64_t x) {
-    assert_or_throw(x > 0, "ceil_log2: argument must be positive");
+    common::assert_or_throw(x > 0, "ceil_log2: argument must be positive");
     return std::bit_width(static_cast<uint64_t>(x) - 1);
 }
 
@@ -70,8 +60,8 @@ struct CompactBitVectorStub {
     static CompactBitVectorStub create(
         int64_t size, Placement placement, [[maybe_unused]] int64_t n_word_bits) {
         static_assert(std::is_invocable_r_v<bool, Placement&, int64_t>);
-        assert_or_throw(size >= 0);
-        assert_or_throw(n_word_bits > 0 && n_word_bits <= n_machine_word_bits);
+        common::assert_or_throw(size >= 0);
+        common::assert_or_throw(n_word_bits > 0 && n_word_bits <= n_machine_word_bits);
         std::vector<bool> data;
         std::vector<int64_t> rank;
         std::vector<int64_t> select;
@@ -88,17 +78,17 @@ struct CompactBitVectorStub {
         return {.size_ = size, .count_ = count, .data_ = data, .rank_ = rank, .select_ = select};
     }
     bool get(int64_t index) const {
-        assert_or_throw(index >= 0 && index < size_);
+        common::assert_or_throw(index >= 0 && index < size_);
         return data_[index];
     }
     int64_t size() const { return size_; }
     int64_t count() const { return count_; }
     int64_t rank(int64_t index) const {
-        assert_or_throw(index >= 0 && index <= size_);
+        common::assert_or_throw(index >= 0 && index <= size_);
         return index == size_ ? count_ : rank_[index];
     }
     int64_t select(int64_t k) const {
-        assert_or_throw(k >= 0 && k < count_);
+        common::assert_or_throw(k >= 0 && k < count_);
         return select_[k];
     }
 };
@@ -111,8 +101,8 @@ struct WaveletStack {
     std::vector<CompactBitVectorType> stack_;
 
     static WaveletStack create(int64_t size, int64_t n_word_bits) {
-        assert_or_throw(size >= 0);
-        assert_or_throw(n_word_bits > 0 && n_word_bits <= n_machine_word_bits);
+        common::assert_or_throw(size >= 0);
+        common::assert_or_throw(n_word_bits > 0 && n_word_bits <= n_machine_word_bits);
         return {.size_ = size, .n_word_bits_ = n_word_bits, .stack_ = {}};
     }
 
@@ -129,7 +119,7 @@ struct WaveletStack {
     }
 
     bool get(int64_t index) const {
-        assert_or_throw(index >= 0 && index < size_);
+        common::assert_or_throw(index >= 0 && index < size_);
         for (const auto& bit_vector : stack_) {
             if (!bit_vector.get(index)) {
                 return false;
@@ -143,7 +133,7 @@ struct WaveletStack {
     int64_t count() const { return stack_.empty() ? size_ : stack_.back().count(); }
 
     int64_t rank(int64_t index) const {
-        assert_or_throw(index >= 0 && index <= size_);
+        common::assert_or_throw(index >= 0 && index <= size_);
         for (const auto& bit_vector : stack_) {
             index = bit_vector.rank(index);
         }
@@ -152,7 +142,7 @@ struct WaveletStack {
 
     int64_t select(int64_t k) const {
         if (stack_.empty()) {
-            assert_or_throw(k >= 0 && k < size_);
+            common::assert_or_throw(k >= 0 && k < size_);
         }
         for (auto it = stack_.rbegin(); it != stack_.rend(); ++it) {
             k = it->select(k);
@@ -165,7 +155,7 @@ template <typename BitVector, typename RandomIt, typename IterProj>
 RandomIt median_of_medians(const BitVector& bit_vector, RandomIt first, IterProj iter_proj) {
     int64_t size = bit_vector.size();
     int64_t n_candidates = bit_vector.count();
-    assert_or_throw(size > 0 && n_candidates > 0);
+    common::assert_or_throw(size > 0 && n_candidates > 0);
     int64_t block_size = std::max(size / std::max(ceil_log2(size), int64_t{1}), int64_t{1});
     int64_t n_blocks = (n_candidates + block_size - 1) / block_size;
     std::vector<RandomIt> medians;
@@ -188,9 +178,9 @@ RandomIt median_of_medians(const BitVector& bit_vector, RandomIt first, IterProj
 template <typename RandomIt, typename Proj = std::identity>
 RandomIt bit_vector_select(RandomIt first, RandomIt last, int64_t k, Proj proj = {}) {
     auto iter_proj = [proj](RandomIt it) { return std::pair{proj(*it), it}; };
-    assert_or_throw(first < last);
+    common::assert_or_throw(first < last);
     int64_t size = last - first;
-    assert_or_throw(k >= 0 && k < size);
+    common::assert_or_throw(k >= 0 && k < size);
     int64_t n_word_bits = std::max(ceil_log2(size), int64_t{1});
     auto wavelet_stack = WaveletStack::create(size, n_word_bits);
     while (true) {

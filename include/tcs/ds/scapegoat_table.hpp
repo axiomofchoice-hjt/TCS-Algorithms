@@ -12,26 +12,16 @@
 #include <algorithm>
 #include <bit>
 #include <cstdint>
-#include <format>
 #include <functional>
 #include <optional>
 #include <ranges>
-#include <source_location>
 #include <span>
-#include <stdexcept>
-#include <string_view>
 #include <tuple>
 #include <vector>
 
-namespace tcs::ds::scapegoat_table {
-inline void assert_or_throw(bool condition, std::string_view message = "empty message",
-    const std::source_location& loc = std::source_location::current()) {
-    if (!condition) [[unlikely]] {
-        throw std::runtime_error(
-            std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
-    }
-}
+#include "tcs/common/assert.hpp"
 
+namespace tcs::ds::scapegoat_table {
 template <typename T, typename Proj = std::identity>
 struct ScapegoatTable {
     static constexpr double tau_root = 0.25;
@@ -95,12 +85,12 @@ struct ScapegoatTable {
             return;
         }
         int64_t len = (r - l) * block_size_;
-        assert_or_throw(static_cast<int64_t>(keys.size()) <= len,
+        common::assert_or_throw(static_cast<int64_t>(keys.size()) <= len,
             "scapegoat_table: too many keys for the target range");
         for (int64_t i = 0; i < len; i++) {
             data_[(l * block_size_) + i] = keys[i * keys.size() / len];
         }
-        assert_or_throw(proj_(keys.back()) == proj_(data_[(r * block_size_) - 1]),
+        common::assert_or_throw(proj_(keys.back()) == proj_(data_[(r * block_size_) - 1]),
             "scapegoat_table: redistribute lost the max key");
     }
 
@@ -120,7 +110,7 @@ struct ScapegoatTable {
     }
 
     void assign(int64_t size, T value) {
-        assert_or_throw(size <= max_capacity, "scapegoat_table: size exceeds max_capacity");
+        common::assert_or_throw(size <= max_capacity, "scapegoat_table: size exceeds max_capacity");
         std::tie(capacity_, block_size_, n_blocks_, height_) = dimensions(size);
         data_.assign(capacity_, value);
         counts_.assign(n_blocks_ * 2, 0);
@@ -128,7 +118,7 @@ struct ScapegoatTable {
     }
 
     void resize(int64_t size) {
-        assert_or_throw(size <= max_capacity, "scapegoat_table: size exceeds max_capacity");
+        common::assert_or_throw(size <= max_capacity, "scapegoat_table: size exceeds max_capacity");
         auto keys = genuine_keys(0, n_blocks_);
         std::tie(capacity_, block_size_, n_blocks_, height_) = dimensions(size);
         data_.resize(capacity_, T{});
@@ -201,7 +191,7 @@ struct ScapegoatTable {
             rebalance(left / block_size_);
             return;
         }
-        assert_or_throw(false, "scapegoat_table: no dummy slot available to insert");
+        common::assert_or_throw(false, "scapegoat_table: no dummy slot available to insert");
     }
 
     bool contains(const T& value) const {

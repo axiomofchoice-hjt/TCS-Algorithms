@@ -12,29 +12,19 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <format>
 #include <functional>
 #include <iterator>
 #include <optional>
-#include <source_location>
-#include <stdexcept>
-#include <string_view>
 #include <tuple>
 #include <utility>
+
+#include "tcs/common/assert.hpp"
 
 #ifdef TCS_NO_TEMP_IMPL
 #include "tcs/inplace/stable_partition.hpp"
 #endif
 
 namespace tcs::inplace::stable_cyclesort {
-inline void assert_or_throw(bool condition, std::string_view message = "empty message",
-    const std::source_location& loc = std::source_location::current()) {
-    if (!condition) [[unlikely]] {
-        throw std::runtime_error(
-            std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
-    }
-}
-
 template <typename RandomIt, typename Pred>
 RandomIt inplace_stable_partition_ref(RandomIt first, RandomIt last, Pred pred) {
 #ifdef TCS_NO_TEMP_IMPL
@@ -94,7 +84,7 @@ std::optional<std::iter_value_t<RandomIt>> unordered_upper_bound(
 template <typename RandomIt, typename Proj>
 void inplace_stable_cyclesort(RandomIt first, RandomIt last, Proj proj) {
     using T = std::iter_value_t<RandomIt>;
-    assert_or_throw(first <= last, "stable_cyclesort: first must not be past last");
+    common::assert_or_throw(first <= last, "stable_cyclesort: first must not be past last");
     if (last - first <= 1) {
         return;
     }
@@ -116,7 +106,7 @@ void inplace_stable_cyclesort(RandomIt first, RandomIt last, Proj proj) {
             dest = next_dest;
         }
     }
-    assert_or_throw(std::ranges::is_sorted(first, last, std::less{}, proj),
+    common::assert_or_throw(std::ranges::is_sorted(first, last, std::less{}, proj),
         "inplace_stable_cyclesort: result is not sorted");
 }
 }  // namespace tcs::inplace::stable_cyclesort

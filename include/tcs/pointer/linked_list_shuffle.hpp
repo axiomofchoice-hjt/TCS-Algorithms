@@ -9,23 +9,11 @@
 #pragma once
 
 #include <cstdint>
-#include <format>
 #include <iterator>
 #include <list>
-#include <source_location>
-#include <stdexcept>
-#include <string_view>
 #include <utility>
 
 namespace tcs::pointer::linked_list_shuffle {
-inline void assert_or_throw(bool condition, std::string_view message = "empty message",
-    const std::source_location& loc = std::source_location::current()) {
-    if (!condition) [[unlikely]] {
-        throw std::runtime_error(
-            std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
-    }
-}
-
 // `rand(lo, hi)` must return a uniform integer in [lo, hi]. It is passed by
 // value into every recursive call, so give it shared state through a
 // reference capture (e.g. a [&] lambda wrapping an std::mt19937).

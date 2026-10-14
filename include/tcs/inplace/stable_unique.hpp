@@ -12,25 +12,15 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <format>
 #include <functional>
 #include <iterator>
 #include <optional>
-#include <source_location>
-#include <stdexcept>
-#include <string_view>
 #include <tuple>
 #include <utility>
 
-namespace tcs::inplace::stable_unique {
-inline void assert_or_throw(bool condition, std::string_view message = "empty message",
-    const std::source_location& loc = std::source_location::current()) {
-    if (!condition) [[unlikely]] {
-        throw std::runtime_error(
-            std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
-    }
-}
+#include "tcs/common/assert.hpp"
 
+namespace tcs::inplace::stable_unique {
 template <typename RandomIt, typename Proj = std::identity>
 RandomIt stable_unique_limit(RandomIt first, RandomIt last, int64_t max, Proj proj = {}) {
     RandomIt left = first;
@@ -87,7 +77,7 @@ std::tuple<RandomIt, RandomIt> build_blocks(
 
 template <typename RandomIt, typename Proj = std::identity>
 RandomIt partition_blocks(RandomIt first, RandomIt last, int64_t block_size, Proj proj = {}) {
-    assert_or_throw(
+    common::assert_or_throw(
         (last - first) % block_size == 0, "stable_unique: block size must divide the range");
     int64_t n_blocks = (last - first) / block_size;
     RandomIt mid = last;
@@ -107,7 +97,7 @@ RandomIt partition_blocks(RandomIt first, RandomIt last, int64_t block_size, Pro
 
 template <typename RandomIt, typename Proj = std::identity>
 void sort_blocks(RandomIt first, RandomIt last, int64_t block_size, Proj proj = {}) {
-    assert_or_throw(
+    common::assert_or_throw(
         (last - first) % block_size == 0, "stable_unique: block size must divide the range");
     for (RandomIt cur = first; cur < last; cur += block_size) {
         RandomIt min = cur;
@@ -124,7 +114,7 @@ void sort_blocks(RandomIt first, RandomIt last, int64_t block_size, Proj proj = 
 
 template <typename RandomIt, typename Proj = std::identity>
 RandomIt inplace_stable_unique(RandomIt first, RandomIt last, Proj proj = {}) {
-    assert_or_throw(first <= last, "Error: invalid input");
+    common::assert_or_throw(first <= last, "Error: invalid input");
     int64_t len = last - first;
     int64_t block_size = std::floor(std::sqrt(len));
     if (block_size < 2) {

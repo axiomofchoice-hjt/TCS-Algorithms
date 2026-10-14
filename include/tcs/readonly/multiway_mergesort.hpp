@@ -13,28 +13,18 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <format>
 #include <functional>
 #include <optional>
-#include <source_location>
-#include <stdexcept>
-#include <string_view>
 #include <tuple>
 #include <vector>
 
-namespace tcs::readonly::multiway_mergesort {
-inline void assert_or_throw(bool condition, std::string_view message = "empty message",
-    const std::source_location& loc = std::source_location::current()) {
-    if (!condition) [[unlikely]] {
-        throw std::runtime_error(
-            std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
-    }
-}
+#include "tcs/common/assert.hpp"
 
+namespace tcs::readonly::multiway_mergesort {
 template <typename RandomIt, typename IterOptProj>
 std::optional<RandomIt> next_element(
     RandomIt first, RandomIt last, std::optional<RandomIt> filter, IterOptProj iter_opt_proj) {
-    assert_or_throw(first <= last);
+    common::assert_or_throw(first <= last);
     std::optional<RandomIt> res;
     for (RandomIt i = first; i != last; i++) {
         if ((!filter.has_value() || iter_opt_proj(i) > iter_opt_proj(filter)) &&
@@ -48,8 +38,8 @@ std::optional<RandomIt> next_element(
 template <typename RandomIt, typename OutputIt, typename Proj = std::identity>
 void multiway_mergesort(
     RandomIt first, RandomIt last, OutputIt output, int64_t workspace, Proj proj = {}) {
-    assert_or_throw(first <= last);
-    assert_or_throw(workspace > 0);
+    common::assert_or_throw(first <= last);
+    common::assert_or_throw(workspace > 0);
     int64_t size = last - first;
     if (size == 0) {
         return;
@@ -73,7 +63,7 @@ void multiway_mergesort(
 
     std::ranges::make_heap(heap, std::greater{}, iter_opt_proj);
     for (int64_t i = 0; i < size; i++) {
-        assert_or_throw(heap[0].has_value());
+        common::assert_or_throw(heap[0].has_value());
         RandomIt min_it = heap[0].value();
         *output = *min_it;
         ++output;

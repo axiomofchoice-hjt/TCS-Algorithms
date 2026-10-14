@@ -13,28 +13,18 @@
 #include <bit>
 #include <climits>
 #include <cstdint>
-#include <format>
 #include <functional>
 #include <iterator>
-#include <source_location>
-#include <stdexcept>
-#include <string_view>
 #include <type_traits>
 #include <vector>
 
-namespace tcs::ds::compact_bit_vector {
-inline void assert_or_throw(bool condition, std::string_view message = "empty message",
-    const std::source_location& loc = std::source_location::current()) {
-    if (!condition) [[unlikely]] {
-        throw std::runtime_error(
-            std::format("Assertion failed at {}:{}: {}", loc.file_name(), loc.line(), message));
-    }
-}
+#include "tcs/common/assert.hpp"
 
+namespace tcs::ds::compact_bit_vector {
 constexpr int64_t n_machine_word_bits = sizeof(uint64_t) * CHAR_BIT;
 
 inline int64_t ceil_log2(int64_t x) {
-    assert_or_throw(x > 0, "ceil_log2: argument must be positive");
+    common::assert_or_throw(x > 0, "ceil_log2: argument must be positive");
     return std::bit_width(static_cast<uint64_t>(x) - 1);
 }
 
@@ -44,30 +34,30 @@ struct BitVector {
     std::vector<uint64_t> data_;
 
     static uint64_t low_mask(int64_t len) {
-        assert_or_throw(len >= 0 && len <= n_machine_word_bits);
+        common::assert_or_throw(len >= 0 && len <= n_machine_word_bits);
         return len == n_machine_word_bits ? ~uint64_t{0} : (uint64_t{1} << len) - 1;
     }
 
     static BitVector create(int64_t n_word_bits) {
-        assert_or_throw(n_word_bits > 0 && n_word_bits <= n_machine_word_bits);
+        common::assert_or_throw(n_word_bits > 0 && n_word_bits <= n_machine_word_bits);
         return {.n_word_bits_ = n_word_bits, .size_ = 0, .data_ = {}};
     }
 
     bool get(int64_t index) const {
-        assert_or_throw(index >= 0 && index < size_);
+        common::assert_or_throw(index >= 0 && index < size_);
         return (data_[index / n_word_bits_] >> (index % n_word_bits_) & 1) == 1;
     }
 
     void set(int64_t index, bool value) {
-        assert_or_throw(index >= 0 && index < size_);
+        common::assert_or_throw(index >= 0 && index < size_);
         uint64_t& word = data_[index / n_word_bits_];
         uint64_t mask = uint64_t{1} << (index % n_word_bits_);
         word = value ? word | mask : word & ~mask;
     }
 
     uint64_t get_range(int64_t l, int64_t r) const {
-        assert_or_throw(l >= 0 && l <= r && r <= size_);
-        assert_or_throw(r - l <= n_word_bits_);
+        common::assert_or_throw(l >= 0 && l <= r && r <= size_);
+        common::assert_or_throw(r - l <= n_word_bits_);
         if (l == r) {
             return 0;
         }
@@ -82,9 +72,9 @@ struct BitVector {
     }
 
     void set_range(int64_t l, int64_t r, uint64_t value) {
-        assert_or_throw(l >= 0 && l <= r && r <= size_);
-        assert_or_throw(r - l <= n_word_bits_);
-        assert_or_throw(std::bit_width(value) <= r - l);
+        common::assert_or_throw(l >= 0 && l <= r && r <= size_);
+        common::assert_or_throw(r - l <= n_word_bits_);
+        common::assert_or_throw(std::bit_width(value) <= r - l);
         if (l == r) {
             return;
         }
@@ -105,29 +95,29 @@ struct BitVector {
         if (static_cast<int64_t>(data_.size()) * n_word_bits_ < size_) {
             data_.push_back(0);
         }
-        assert_or_throw(static_cast<int64_t>(data_.size()) * n_word_bits_ >= size_);
+        common::assert_or_throw(static_cast<int64_t>(data_.size()) * n_word_bits_ >= size_);
         set(size_ - 1, value);
     }
 
     void pop_back() {
-        assert_or_throw(size_ > 0);
+        common::assert_or_throw(size_ > 0);
         set(size_ - 1, false);
         size_--;
     }
 
     void push_back_range(uint64_t value, int64_t n_bits) {
-        assert_or_throw(n_bits >= 0 && n_bits <= n_word_bits_);
+        common::assert_or_throw(n_bits >= 0 && n_bits <= n_word_bits_);
         size_ += n_bits;
         if (static_cast<int64_t>(data_.size()) * n_word_bits_ < size_) {
             data_.push_back(0);
         }
-        assert_or_throw(static_cast<int64_t>(data_.size()) * n_word_bits_ >= size_);
+        common::assert_or_throw(static_cast<int64_t>(data_.size()) * n_word_bits_ >= size_);
         set_range(size_ - n_bits, size_, value);
     }
 
     void pop_back_range(int64_t n_bits) {
-        assert_or_throw(n_bits >= 0 && n_bits <= n_word_bits_);
-        assert_or_throw(size_ >= n_bits);
+        common::assert_or_throw(n_bits >= 0 && n_bits <= n_word_bits_);
+        common::assert_or_throw(size_ >= n_bits);
         set_range(size_ - n_bits, size_, 0);
         size_ -= n_bits;
     }
@@ -138,18 +128,18 @@ struct PackedVector {
     BitVector data_;
 
     static PackedVector create(int64_t n_element_bits, int64_t n_word_bits) {
-        assert_or_throw(n_word_bits > 0 && n_word_bits <= n_machine_word_bits);
-        assert_or_throw(n_element_bits > 0 && n_element_bits <= n_word_bits);
+        common::assert_or_throw(n_word_bits > 0 && n_word_bits <= n_machine_word_bits);
+        common::assert_or_throw(n_element_bits > 0 && n_element_bits <= n_word_bits);
         return {.n_element_bits_ = n_element_bits, .data_ = BitVector::create(n_word_bits)};
     }
 
     uint64_t get(int64_t block_index) const {
-        assert_or_throw(block_index >= 0 && block_index < size());
+        common::assert_or_throw(block_index >= 0 && block_index < size());
         return data_.get_range(block_index * n_element_bits_, (block_index + 1) * n_element_bits_);
     }
 
     void set(int64_t block_index, uint64_t value) {
-        assert_or_throw(block_index >= 0 && block_index < size());
+        common::assert_or_throw(block_index >= 0 && block_index < size());
         data_.set_range(block_index * n_element_bits_, (block_index + 1) * n_element_bits_, value);
     }
 
@@ -169,7 +159,8 @@ struct RankIndexer {
         int64_t size = data.size_;
         int64_t n_word_bits = data.n_word_bits_;
         int64_t logn = std::max(ceil_log2(std::max(size, int64_t{1})), int64_t{1});
-        assert_or_throw(logn <= n_word_bits, "n_word_bits must be at least ceil_log2(size)");
+        common::assert_or_throw(
+            logn <= n_word_bits, "n_word_bits must be at least ceil_log2(size)");
         int64_t n_block_bits = std::max(logn / 2, int64_t{1});
         int64_t n_index_bits = logn;
 
@@ -191,7 +182,7 @@ struct RankIndexer {
 
     int64_t operator()(
         int64_t index, const BitVector& data, const PackedVector& popcount_table) const {
-        assert_or_throw(index >= 0 && index <= data.size_);
+        common::assert_or_throw(index >= 0 && index <= data.size_);
         if (index == data.size_) {
             return count_;
         }
@@ -217,7 +208,8 @@ struct SelectIndexer {
         int64_t n_word_bits = data.n_word_bits_;
         int64_t size = data.size_;
         int64_t logn = std::max(ceil_log2(std::max(size, int64_t{1})), int64_t{1});
-        assert_or_throw(logn <= n_word_bits, "n_word_bits must be at least ceil_log2(size)");
+        common::assert_or_throw(
+            logn <= n_word_bits, "n_word_bits must be at least ceil_log2(size)");
         int64_t n_index_bits = logn;
         int64_t n_ones_per_segment = logn;
         int64_t count = 0;
@@ -235,7 +227,8 @@ struct SelectIndexer {
             }
             segment.push_back(index);
             if ((i + 1) % n_ones_per_segment == 0 || i + 1 == count) {
-                assert_or_throw(compact.size_ / n_align_bits <= (int64_t{1} << n_index_bits) - 1,
+                common::assert_or_throw(
+                    compact.size_ / n_align_bits <= (int64_t{1} << n_index_bits) - 1,
                     "segment offset does not fit in n_index_bits");
                 compact_offsets.push_back(compact.size_ / n_align_bits);
                 int64_t span =
@@ -294,7 +287,7 @@ struct SelectIndexer {
     }
 
     int64_t operator()(int64_t k, const PackedVector& popcount_table) const {
-        assert_or_throw(k >= 0 && k < count_);
+        common::assert_or_throw(k >= 0 && k < count_);
         int64_t offset =
             static_cast<int64_t>(compact_offsets_.get(k / n_ones_per_segment_)) * n_align_bits;
         int64_t segment_first =
@@ -327,7 +320,7 @@ struct SelectIndexer {
             segment_rank -= ones;
             local_high += end - i - ones;
         }
-        assert_or_throw(found, "select: segment high bits are inconsistent");
+        common::assert_or_throw(found, "select: segment high bits are inconsistent");
         offset += high_len;
         offset += k % n_ones_per_segment_ * n_low_bits;
         int64_t local_low = static_cast<int64_t>(compact_.get_range(offset, offset + n_low_bits));
@@ -359,7 +352,7 @@ struct CompactBitVector {
     template <typename Placement>
     static CompactBitVector create(int64_t size, Placement placement, int64_t n_word_bits) {
         static_assert(std::is_invocable_r_v<bool, Placement&, int64_t>);
-        assert_or_throw(size >= 0, "create: size must not be negative");
+        common::assert_or_throw(size >= 0, "create: size must not be negative");
         auto data = BitVector::create(n_word_bits);
         for (int64_t i = 0; i < size; i++) {
             data.push_back(placement(i));
