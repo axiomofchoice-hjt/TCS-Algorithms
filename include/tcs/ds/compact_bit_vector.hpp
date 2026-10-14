@@ -33,17 +33,17 @@ struct PackedVector {
 
     uint64_t get(int64_t block_index) const {
         common::assert_or_throw(block_index >= 0 && block_index < size());
-        return data_.get_range(block_index * n_element_bits_, (block_index + 1) * n_element_bits_);
+        return data_.load(block_index * n_element_bits_, n_element_bits_);
     }
 
     void set(int64_t block_index, uint64_t value) {
         common::assert_or_throw(block_index >= 0 && block_index < size());
-        data_.set_range(block_index * n_element_bits_, (block_index + 1) * n_element_bits_, value);
+        data_.store(block_index * n_element_bits_, n_element_bits_, value);
     }
 
-    void push_back(uint64_t value) { data_.push_back_range(value, n_element_bits_); }
+    void push_back(uint64_t value) { data_.push_back(value, n_element_bits_); }
 
-    void pop_back() { data_.pop_back_range(n_element_bits_); }
+    void pop_back() { data_.pop_back(n_element_bits_); }
 
     int64_t size() const { return data_.size_ / n_element_bits_; }
 };
@@ -62,7 +62,7 @@ struct RankIndexer {
         auto block_rank = PackedVector::create(n_index_bits);
         int64_t count = 0;
         for (int64_t i = 0; i < size; i++) {
-            bool value = data.get(i);
+            bool value = data.load(i);
             if (i % n_block_bits == 0) {
                 block_rank.push_back(count);
             }
@@ -82,7 +82,7 @@ struct RankIndexer {
             return count_;
         }
         int64_t range =
-            static_cast<int64_t>(data.get_range(index / n_block_bits_ * n_block_bits_, index));
+            static_cast<int64_t>(data.load(index - (index % n_block_bits_), index % n_block_bits_));
         return static_cast<int64_t>(
             block_rank_.get(index / n_block_bits_) + popcount_table.get(range));
     }
@@ -106,7 +106,7 @@ struct SelectIndexer {
         int64_t n_ones_per_segment = logn;
         int64_t count = 0;
         for (int64_t i = 0; i < size; i++) {
-            count += int64_t{data.get(i)};
+            count += int64_t{data.load(i)};
         }
 
         auto compact_offsets = PackedVector::create(n_index_bits);
@@ -114,7 +114,7 @@ struct SelectIndexer {
         int64_t index = 0;
         PackedVector segment = PackedVector::create(n_index_bits);
         for (int64_t i = 0; i < count; i++) {
-            while (index < size && !data.get(index)) {
+            while (index < size && !data.load(index)) {
                 index++;
             }
             segment.push_back(index);
@@ -125,25 +125,25 @@ struct SelectIndexer {
                 compact_offsets.push_back(compact.size_ / n_align_bits);
                 int64_t span =
                     static_cast<int64_t>(segment.get(segment.size() - 1) - segment.get(0) + 1);
-                compact.push_back_range(segment.get(0), n_index_bits);
+                compact.push_back(segment.get(0), n_index_bits);
                 int64_t n_span_bits = common::ceil_log2(span);
                 int64_t n_low_bits =
                     common::ceil_log2((span + n_ones_per_segment - 1) / n_ones_per_segment);
                 int64_t high_len = (int64_t{1} << (n_span_bits - n_low_bits)) + segment.size();
-                compact.push_back_range(n_span_bits, n_index_bits);
-                compact.push_back_range(n_low_bits, n_index_bits);
+                compact.push_back(n_span_bits, n_index_bits);
+                compact.push_back(n_low_bits, n_index_bits);
                 for (int64_t j = 0; j < high_len; j++) {
                     compact.push_back(false);
                 }
                 for (int64_t j = 0; j < segment.size(); j++) {
                     int64_t value =
                         static_cast<int64_t>(segment.get(j) - segment.get(0)) >> n_low_bits;
-                    compact.set(compact.size_ - high_len + j + value, true);
+                    compact.store(compact.size_ - high_len + j + value, true);
                 }
                 for (int64_t j = 0; j < segment.size(); j++) {
                     int64_t value = static_cast<int64_t>(segment.get(j) - segment.get(0)) &
                                     ((int64_t{1} << n_low_bits) - 1);
-                    compact.push_back_range(value, n_low_bits);
+                    compact.push_back(value, n_low_bits);
                 }
                 while (compact.size_ % n_align_bits != 0) {
                     compact.push_back(false);
@@ -182,14 +182,11 @@ struct SelectIndexer {
         common::assert_or_throw(k >= 0 && k < count_);
         int64_t offset =
             static_cast<int64_t>(compact_offsets_.get(k / n_ones_per_segment_)) * n_align_bits;
-        int64_t segment_first =
-            static_cast<int64_t>(compact_.get_range(offset, offset + n_index_bits_));
+        int64_t segment_first = static_cast<int64_t>(compact_.load(offset, n_index_bits_));
         offset += n_index_bits_;
-        int64_t n_span_bits =
-            static_cast<int64_t>(compact_.get_range(offset, offset + n_index_bits_));
+        int64_t n_span_bits = static_cast<int64_t>(compact_.load(offset, n_index_bits_));
         offset += n_index_bits_;
-        int64_t n_low_bits =
-            static_cast<int64_t>(compact_.get_range(offset, offset + n_index_bits_));
+        int64_t n_low_bits = static_cast<int64_t>(compact_.load(offset, n_index_bits_));
         offset += n_index_bits_;
         int64_t segment_index = k / n_ones_per_segment_;
         int64_t segment_size = segment_index + 1 == compact_offsets_.size()
@@ -201,7 +198,7 @@ struct SelectIndexer {
         bool found = false;
         for (int64_t i = 0; i < high_len; i += n_select_table_bits_) {
             int64_t end = std::min(i + n_select_table_bits_, high_len);
-            uint64_t chunk = compact_.get_range(offset + i, offset + end);
+            uint64_t chunk = compact_.load(offset + i, end - i);
             int64_t ones = static_cast<int64_t>(popcount_table.get(static_cast<int64_t>(chunk)));
             if (segment_rank < ones) {
                 int64_t slot = (static_cast<int64_t>(chunk) * n_select_table_bits_) + segment_rank;
@@ -215,7 +212,7 @@ struct SelectIndexer {
         common::assert_or_throw(found, "select: segment high bits are inconsistent");
         offset += high_len;
         offset += k % n_ones_per_segment_ * n_low_bits;
-        int64_t local_low = static_cast<int64_t>(compact_.get_range(offset, offset + n_low_bits));
+        int64_t local_low = static_cast<int64_t>(compact_.load(offset, n_low_bits));
         return segment_first + ((local_high << n_low_bits) | local_low);
     }
 };
@@ -273,7 +270,7 @@ struct CompactBitVector {
         };
     }
 
-    bool get(int64_t index) const { return data_.get(index); }
+    bool get(int64_t index) const { return data_.load(index); }
     int64_t rank(int64_t index) const { return rank_indexer_(index, data_, popcount_table_); }
     int64_t select(int64_t k) const { return select_indexer_(k, popcount_table_); }
     int64_t size() const { return size_; }

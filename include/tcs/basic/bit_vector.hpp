@@ -30,6 +30,18 @@ struct BitVector {
         size_ = new_size;
     }
 
+    bool load(int64_t index) const {
+        common::assert_or_throw(index >= 0 && index < size_);
+        return (data_[index / n_word_bits] >> (index % n_word_bits) & 1) == 1;
+    }
+
+    void store(int64_t index, bool value) {
+        common::assert_or_throw(index >= 0 && index < size_);
+        uint64_t& word = data_[index / n_word_bits];
+        uint64_t mask = uint64_t{1} << (index % n_word_bits);
+        word = value ? word | mask : word & ~mask;
+    }
+
     uint64_t load(int64_t pos, int64_t len) const {
         common::assert_or_throw(pos >= 0 && len >= 0 && pos + len <= size_);
         common::assert_or_throw(len <= n_word_bits);
@@ -65,82 +77,35 @@ struct BitVector {
         }
     }
 
-    bool get(int64_t index) const {
-        common::assert_or_throw(index >= 0 && index < size_);
-        return (data_[index / n_word_bits] >> (index % n_word_bits) & 1) == 1;
-    }
-
-    void set(int64_t index, bool value) {
-        common::assert_or_throw(index >= 0 && index < size_);
-        uint64_t& word = data_[index / n_word_bits];
-        uint64_t mask = uint64_t{1} << (index % n_word_bits);
-        word = value ? word | mask : word & ~mask;
-    }
-
-    uint64_t get_range(int64_t l, int64_t r) const {
-        common::assert_or_throw(l >= 0 && l <= r && r <= size_);
-        common::assert_or_throw(r - l <= n_word_bits);
-        if (l == r) {
-            return 0;
-        }
-        int64_t off = l % n_word_bits;
-        int64_t n_low = n_word_bits - off;
-        int64_t len = r - l;
-        uint64_t low = data_[l / n_word_bits] >> off;
-        if (len <= n_low) {
-            return low & low_mask(len);
-        }
-        return (low & low_mask(n_low)) | (data_[r / n_word_bits] & low_mask(len - n_low)) << n_low;
-    }
-
-    void set_range(int64_t l, int64_t r, uint64_t value) {
-        common::assert_or_throw(l >= 0 && l <= r && r <= size_);
-        common::assert_or_throw(r - l <= n_word_bits);
-        common::assert_or_throw(std::bit_width(value) <= r - l);
-        if (l == r) {
-            return;
-        }
-        int64_t off = l % n_word_bits;
-        int64_t n_low = n_word_bits - off;
-        uint64_t& low_word = data_[l / n_word_bits];
-        if (r - l <= n_low) {
-            low_word = (low_word & ~(low_mask(r - l) << off)) | (value << off);
-        } else {
-            low_word = ((low_word & low_mask(off)) | (value << off)) & low_mask(n_word_bits);
-            uint64_t& high_word = data_[r / n_word_bits];
-            high_word = (high_word & ~low_mask(r - l - n_low)) | (value >> n_low);
-        }
-    }
-
     void push_back(bool value) {
         size_++;
         if (static_cast<int64_t>(data_.size()) * n_word_bits < size_) {
             data_.push_back(0);
         }
         common::assert_or_throw(static_cast<int64_t>(data_.size()) * n_word_bits >= size_);
-        set(size_ - 1, value);
+        store(size_ - 1, value);
     }
 
     void pop_back() {
         common::assert_or_throw(size_ > 0);
-        set(size_ - 1, false);
+        store(size_ - 1, false);
         size_--;
     }
 
-    void push_back_range(uint64_t value, int64_t n_bits) {
+    void push_back(uint64_t value, int64_t n_bits) {
         common::assert_or_throw(n_bits >= 0 && n_bits <= n_word_bits);
         size_ += n_bits;
         if (static_cast<int64_t>(data_.size()) * n_word_bits < size_) {
             data_.push_back(0);
         }
         common::assert_or_throw(static_cast<int64_t>(data_.size()) * n_word_bits >= size_);
-        set_range(size_ - n_bits, size_, value);
+        store(size_ - n_bits, n_bits, value);
     }
 
-    void pop_back_range(int64_t n_bits) {
+    void pop_back(int64_t n_bits) {
         common::assert_or_throw(n_bits >= 0 && n_bits <= n_word_bits);
         common::assert_or_throw(size_ >= n_bits);
-        set_range(size_ - n_bits, size_, 0);
+        store(size_ - n_bits, n_bits, 0);
         size_ -= n_bits;
     }
 };
