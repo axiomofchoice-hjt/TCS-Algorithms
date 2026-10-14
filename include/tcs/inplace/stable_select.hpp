@@ -31,13 +31,9 @@
 #endif
 
 #include "tcs/common/assert.hpp"
+#include "tcs/common/bit.hpp"
 
 namespace tcs::inplace::stable_select {
-inline int64_t ceil_log2(int64_t x) {
-    common::assert_or_throw(x > 0, "ceil_log2: argument must be positive");
-    return std::bit_width(static_cast<uint64_t>(x) - 1);
-}
-
 template <typename RandomIt, typename Pred>
 RandomIt inplace_stable_partition_ref(RandomIt first, RandomIt last, Pred pred) {
 #ifdef TCS_NO_TEMP_IMPL
@@ -256,7 +252,7 @@ struct Stack {
 
 inline int64_t restoring_select_buffer_size(int64_t len) {
     constexpr int64_t group_size = 5;
-    int64_t scalar_bits = ceil_log2(len + 1);
+    int64_t scalar_bits = common::ceil_log2(len + 1);
     int64_t buffer_size = 0;
     buffer_size += 4 * scalar_bits;
     while (true) {
@@ -279,7 +275,7 @@ std::iter_value_t<RandomIt> restoring_select(RandomIt first, RandomIt mid, Rando
     RandomIt original = first;
     Stack stack =
         Stack<RandomIt, Proj>::create({.buffer = buf, .buffer_len = buffer_len, .proj = proj});
-    int64_t scalar_bits = ceil_log2(last - first + 1);
+    int64_t scalar_bits = common::ceil_log2(last - first + 1);
     if (scalar_bits <= 1) {
         return *strided_topk(first, last, 1, mid - first, proj);
     }

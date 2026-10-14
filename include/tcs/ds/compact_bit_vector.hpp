@@ -19,27 +19,21 @@
 #include <vector>
 
 #include "tcs/common/assert.hpp"
+#include "tcs/common/bit.hpp"
 
 namespace tcs::ds::compact_bit_vector {
-constexpr int64_t n_machine_word_bits = sizeof(uint64_t) * CHAR_BIT;
-
-inline int64_t ceil_log2(int64_t x) {
-    common::assert_or_throw(x > 0, "ceil_log2: argument must be positive");
-    return std::bit_width(static_cast<uint64_t>(x) - 1);
-}
-
 struct BitVector {
     int64_t n_word_bits_ = 0;
     int64_t size_ = 0;
     std::vector<uint64_t> data_;
 
     static uint64_t low_mask(int64_t len) {
-        common::assert_or_throw(len >= 0 && len <= n_machine_word_bits);
-        return len == n_machine_word_bits ? ~uint64_t{0} : (uint64_t{1} << len) - 1;
+        common::assert_or_throw(len >= 0 && len <= common::n_machine_word_bits);
+        return len == common::n_machine_word_bits ? ~uint64_t{0} : (uint64_t{1} << len) - 1;
     }
 
     static BitVector create(int64_t n_word_bits) {
-        common::assert_or_throw(n_word_bits > 0 && n_word_bits <= n_machine_word_bits);
+        common::assert_or_throw(n_word_bits > 0 && n_word_bits <= common::n_machine_word_bits);
         return {.n_word_bits_ = n_word_bits, .size_ = 0, .data_ = {}};
     }
 
@@ -128,7 +122,7 @@ struct PackedVector {
     BitVector data_;
 
     static PackedVector create(int64_t n_element_bits, int64_t n_word_bits) {
-        common::assert_or_throw(n_word_bits > 0 && n_word_bits <= n_machine_word_bits);
+        common::assert_or_throw(n_word_bits > 0 && n_word_bits <= common::n_machine_word_bits);
         common::assert_or_throw(n_element_bits > 0 && n_element_bits <= n_word_bits);
         return {.n_element_bits_ = n_element_bits, .data_ = BitVector::create(n_word_bits)};
     }
@@ -158,9 +152,9 @@ struct RankIndexer {
     static RankIndexer create(const BitVector& data) {
         int64_t size = data.size_;
         int64_t n_word_bits = data.n_word_bits_;
-        int64_t logn = std::max(ceil_log2(std::max(size, int64_t{1})), int64_t{1});
+        int64_t logn = std::max(common::ceil_log2(std::max(size, int64_t{1})), int64_t{1});
         common::assert_or_throw(
-            logn <= n_word_bits, "n_word_bits must be at least ceil_log2(size)");
+            logn <= n_word_bits, "n_word_bits must be at least common::ceil_log2(size)");
         int64_t n_block_bits = std::max(logn / 2, int64_t{1});
         int64_t n_index_bits = logn;
 
@@ -207,9 +201,9 @@ struct SelectIndexer {
     static SelectIndexer create(const BitVector& data) {
         int64_t n_word_bits = data.n_word_bits_;
         int64_t size = data.size_;
-        int64_t logn = std::max(ceil_log2(std::max(size, int64_t{1})), int64_t{1});
+        int64_t logn = std::max(common::ceil_log2(std::max(size, int64_t{1})), int64_t{1});
         common::assert_or_throw(
-            logn <= n_word_bits, "n_word_bits must be at least ceil_log2(size)");
+            logn <= n_word_bits, "n_word_bits must be at least common::ceil_log2(size)");
         int64_t n_index_bits = logn;
         int64_t n_ones_per_segment = logn;
         int64_t count = 0;
@@ -234,9 +228,9 @@ struct SelectIndexer {
                 int64_t span =
                     static_cast<int64_t>(segment.get(segment.size() - 1) - segment.get(0) + 1);
                 compact.push_back_range(segment.get(0), n_index_bits);
-                int64_t n_span_bits = ceil_log2(span);
+                int64_t n_span_bits = common::ceil_log2(span);
                 int64_t n_low_bits =
-                    ceil_log2((span + n_ones_per_segment - 1) / n_ones_per_segment);
+                    common::ceil_log2((span + n_ones_per_segment - 1) / n_ones_per_segment);
                 int64_t high_len = (int64_t{1} << (n_span_bits - n_low_bits)) + segment.size();
                 compact.push_back_range(n_span_bits, n_index_bits);
                 compact.push_back_range(n_low_bits, n_index_bits);
@@ -262,7 +256,8 @@ struct SelectIndexer {
             index++;
         }
         int64_t n_select_table_bits = std::max(logn / 2, int64_t{1});
-        auto select_table = PackedVector::create(ceil_log2(n_select_table_bits + 1), n_word_bits);
+        auto select_table =
+            PackedVector::create(common::ceil_log2(n_select_table_bits + 1), n_word_bits);
         for (int64_t i = 0; i < (int64_t{1} << n_select_table_bits); i++) {
             int64_t k = 0;
             for (int64_t j = 0; j < n_select_table_bits; j++) {
@@ -362,7 +357,7 @@ struct CompactBitVector {
 
     static CompactBitVector create(const BitVector& data, int64_t n_word_bits) {
         int64_t size = data.size_;
-        int64_t logn = std::max(ceil_log2(std::max(size, int64_t{1})), int64_t{1});
+        int64_t logn = std::max(common::ceil_log2(std::max(size, int64_t{1})), int64_t{1});
         int64_t n_block_bits = std::max(logn / 2, int64_t{1});
         auto popcount_table = PackedVector::create(logn, n_word_bits);
         popcount_table.push_back(0);

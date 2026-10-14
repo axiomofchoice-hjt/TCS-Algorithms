@@ -18,13 +18,9 @@
 #include <utility>
 
 #include "tcs/common/assert.hpp"
+#include "tcs/common/bit.hpp"
 
 namespace tcs::inplace::unstable_select {
-inline int64_t ceil_log2(int64_t x) {
-    common::assert_or_throw(x > 0, "ceil_log2: argument must be positive");
-    return std::bit_width(static_cast<uint64_t>(x) - 1);
-}
-
 struct BitStackAttributes {
     int64_t word_bits;
     int64_t element_bits;
@@ -50,7 +46,7 @@ struct BitStack {
     void push(uint64_t value) {
         common::assert_or_throw(
             (size + 1) * element_bits <= N * word_bits, "BitStack: push would overflow storage");
-        common::assert_or_throw(ceil_log2(static_cast<int64_t>(value + 1)) <= element_bits,
+        common::assert_or_throw(common::ceil_log2(static_cast<int64_t>(value + 1)) <= element_bits,
             "BitStack: value does not fit in element_bits");
         for (int64_t i = 0; i < element_bits; i++) {
             int64_t bit_offset = (size * element_bits) + i;
@@ -101,7 +97,7 @@ bool prepare_buffer(RandomIt first, RandomIt last, int64_t n_bits, Proj proj = {
 
 template <typename RandomIt, typename Proj = std::identity>
 bool write_buffer(RandomIt buffer, uint64_t value, int64_t n_bits, Proj proj = {}) {
-    common::assert_or_throw(ceil_log2(static_cast<int64_t>(value + 1)) <= n_bits,
+    common::assert_or_throw(common::ceil_log2(static_cast<int64_t>(value + 1)) <= n_bits,
         "write_buffer: value does not fit in n_bits");
 
     for (int64_t i = 0; i < n_bits; i++) {
@@ -154,7 +150,7 @@ void inplace_unstable_select(RandomIt first, RandomIt mid, RandomIt last, Proj p
         bubble_sort(first, last, proj);
         return;
     }
-    int64_t word_bits = ceil_log2(len);
+    int64_t word_bits = common::ceil_log2(len);
     constexpr int64_t max_stage_size = 4;
     constexpr int64_t max_tail_size = 8;
     BitStack<max_stage_size> stages{word_bits, 2};

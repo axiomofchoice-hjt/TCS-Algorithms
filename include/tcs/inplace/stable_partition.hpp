@@ -21,13 +21,9 @@
 #include <utility>
 
 #include "tcs/common/assert.hpp"
+#include "tcs/common/bit.hpp"
 
 namespace tcs::inplace::stable_partition {
-inline int64_t ceil_log2(int64_t x) {
-    common::assert_or_throw(x > 0, "ceil_log2: argument must be positive");
-    return std::bit_width(static_cast<uint64_t>(x) - 1);
-}
-
 template <typename RandomIt, typename Pred>
 std::tuple<RandomIt, RandomIt, RandomIt> stable_collect_first_n(
     RandomIt first, RandomIt last, int64_t n, Pred pred) {
@@ -209,7 +205,7 @@ void sort_blocks_using_word(
     if (n_blocks <= 1) {
         return;
     }
-    int64_t element_bits = ceil_log2(n_blocks);
+    int64_t element_bits = common::ceil_log2(n_blocks);
     common::assert_or_throw(n_blocks * element_bits <= word_bits,
         std::format("{} {} {}", n_blocks, element_bits, word_bits));
     auto storage = WordStorage::create({.n_bits = word_bits, .element_bits = element_bits});
@@ -227,7 +223,7 @@ void sort_blocks_using_buffer(RandomIt first, RandomIt last, int64_t block_size,
     if (n_blocks <= 1) {
         return;
     }
-    int64_t element_bits = ceil_log2(n_blocks);
+    int64_t element_bits = common::ceil_log2(n_blocks);
     common::assert_or_throw(n_blocks * element_bits <= buffer_len,
         std::format("{} {} {}", n_blocks, element_bits, buffer_len));
     auto storage = BufferStorage<RandomIt, Proj>::create(
@@ -255,14 +251,14 @@ RandomIt inplace_stable_01_partition(RandomIt first, RandomIt last, Proj proj) {
         return std::ranges::find_if(first, last, proj);
     }
     int64_t len = last - first;
-    int64_t max_word_bits = ceil_log2(len);
+    int64_t max_word_bits = common::ceil_log2(len);
     int64_t buffer_len = std::floor(std::sqrt(len));
     int64_t max_blocks_for_word = 1;
-    while ((max_blocks_for_word + 1) * ceil_log2(max_blocks_for_word + 1) <= max_word_bits) {
+    while ((max_blocks_for_word + 1) * common::ceil_log2(max_blocks_for_word + 1) <= max_word_bits) {
         max_blocks_for_word++;
     }
     int64_t max_blocks_for_buffer = 1;
-    while ((max_blocks_for_buffer + 1) * ceil_log2(max_blocks_for_buffer + 1) <= buffer_len) {
+    while ((max_blocks_for_buffer + 1) * common::ceil_log2(max_blocks_for_buffer + 1) <= buffer_len) {
         max_blocks_for_buffer++;
     }
     // buffer area

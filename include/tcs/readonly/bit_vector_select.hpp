@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "tcs/common/assert.hpp"
+#include "tcs/common/bit.hpp"
 
 #ifdef TCS_NO_TEMP_IMPL
 #include "tcs/bfprt.hpp"
@@ -30,13 +31,6 @@
 #endif
 
 namespace tcs::readonly::bit_vector_select {
-constexpr int64_t n_machine_word_bits = sizeof(uint64_t) * CHAR_BIT;
-
-inline int64_t ceil_log2(int64_t x) {
-    common::assert_or_throw(x > 0, "ceil_log2: argument must be positive");
-    return std::bit_width(static_cast<uint64_t>(x) - 1);
-}
-
 template <typename RandomIt, typename Proj = std::identity>
 void select_ref(RandomIt first, RandomIt nth, RandomIt last, Proj proj = {}) {
 #ifdef TCS_NO_TEMP_IMPL
@@ -61,7 +55,7 @@ struct CompactBitVectorStub {
         int64_t size, Placement placement, [[maybe_unused]] int64_t n_word_bits) {
         static_assert(std::is_invocable_r_v<bool, Placement&, int64_t>);
         common::assert_or_throw(size >= 0);
-        common::assert_or_throw(n_word_bits > 0 && n_word_bits <= n_machine_word_bits);
+        common::assert_or_throw(n_word_bits > 0 && n_word_bits <= common::n_machine_word_bits);
         std::vector<bool> data;
         std::vector<int64_t> rank;
         std::vector<int64_t> select;
@@ -102,7 +96,7 @@ struct WaveletStack {
 
     static WaveletStack create(int64_t size, int64_t n_word_bits) {
         common::assert_or_throw(size >= 0);
-        common::assert_or_throw(n_word_bits > 0 && n_word_bits <= n_machine_word_bits);
+        common::assert_or_throw(n_word_bits > 0 && n_word_bits <= common::n_machine_word_bits);
         return {.size_ = size, .n_word_bits_ = n_word_bits, .stack_ = {}};
     }
 
@@ -156,7 +150,7 @@ RandomIt median_of_medians(const BitVector& bit_vector, RandomIt first, IterProj
     int64_t size = bit_vector.size();
     int64_t n_candidates = bit_vector.count();
     common::assert_or_throw(size > 0 && n_candidates > 0);
-    int64_t block_size = std::max(size / std::max(ceil_log2(size), int64_t{1}), int64_t{1});
+    int64_t block_size = std::max(size / std::max(common::ceil_log2(size), int64_t{1}), int64_t{1});
     int64_t n_blocks = (n_candidates + block_size - 1) / block_size;
     std::vector<RandomIt> medians;
     for (int64_t i = 0; i < n_blocks; i++) {
@@ -181,7 +175,7 @@ RandomIt bit_vector_select(RandomIt first, RandomIt last, int64_t k, Proj proj =
     common::assert_or_throw(first < last);
     int64_t size = last - first;
     common::assert_or_throw(k >= 0 && k < size);
-    int64_t n_word_bits = std::max(ceil_log2(size), int64_t{1});
+    int64_t n_word_bits = std::max(common::ceil_log2(size), int64_t{1});
     auto wavelet_stack = WaveletStack::create(size, n_word_bits);
     while (true) {
         RandomIt pivot_it = median_of_medians(wavelet_stack, first, iter_proj);

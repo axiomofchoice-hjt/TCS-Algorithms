@@ -21,27 +21,21 @@
 #include <vector>
 
 #include "tcs/common/assert.hpp"
+#include "tcs/common/bit.hpp"
 
 namespace tcs::readonly::mtree_sort {
-constexpr int64_t n_machine_word_bits = sizeof(uint64_t) * CHAR_BIT;
-
-inline int64_t ceil_log2(int64_t x) {
-    common::assert_or_throw(x > 0, "ceil_log2: argument must be positive");
-    return std::bit_width(static_cast<uint64_t>(x) - 1);
-}
-
 struct BitVector {
     int64_t n_word_bits_ = 0;
     int64_t size_ = 0;
     std::vector<uint64_t> data_;
 
     static uint64_t low_mask(int64_t len) {
-        common::assert_or_throw(len >= 0 && len <= n_machine_word_bits);
-        return len == n_machine_word_bits ? ~uint64_t{0} : (uint64_t{1} << len) - 1;
+        common::assert_or_throw(len >= 0 && len <= common::n_machine_word_bits);
+        return len == common::n_machine_word_bits ? ~uint64_t{0} : (uint64_t{1} << len) - 1;
     }
 
     static BitVector create(int64_t n_word_bits) {
-        common::assert_or_throw(n_word_bits > 0 && n_word_bits <= n_machine_word_bits);
+        common::assert_or_throw(n_word_bits > 0 && n_word_bits <= common::n_machine_word_bits);
         return {.n_word_bits_ = n_word_bits, .size_ = 0, .data_ = {}};
     }
 
@@ -238,10 +232,10 @@ void mtree_sort(RandomIt first, RandomIt last, OutputIt output, int64_t workspac
         }
         return std::tuple{false, proj(*opt.value()), opt.value()};
     };
-    int64_t height = std::max(ceil_log2(workspace), int64_t{1});
+    int64_t height = std::max(common::ceil_log2(workspace), int64_t{1});
     int64_t n_blocks = int64_t{1} << height;
     int64_t root_sub_block_size = (size + (n_blocks * n_blocks) - 1) / (n_blocks * n_blocks);
-    int64_t n_word_bits = std::max(ceil_log2(size), int64_t{1});
+    int64_t n_word_bits = std::max(common::ceil_log2(size), int64_t{1});
 
     auto tree = MTree<RandomIt, decltype(iter_opt_proj)>::create(MTreeAttributes{.first = first,
         .last = first + size,

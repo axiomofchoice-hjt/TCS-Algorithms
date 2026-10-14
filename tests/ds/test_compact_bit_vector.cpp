@@ -13,9 +13,9 @@
 
 namespace {
 using tcs::ds::compact_bit_vector::BitVector;
-using tcs::ds::compact_bit_vector::ceil_log2;
+using tcs::common::ceil_log2;
 using tcs::ds::compact_bit_vector::CompactBitVector;
-using tcs::ds::compact_bit_vector::n_machine_word_bits;
+using tcs::common::n_machine_word_bits;
 using tcs::ds::compact_bit_vector::PackedVector;
 
 // Named constants instead of bare literals (readability-magic-numbers).
