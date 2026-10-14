@@ -10,7 +10,6 @@
 #pragma once
 
 #include <algorithm>
-#include <bit>
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -20,6 +19,7 @@
 #include <vector>
 
 #include "tcs/common/assert.hpp"
+#include "tcs/common/bit.hpp"
 
 namespace tcs::ds::scapegoat_table {
 template <typename T, typename Proj = std::identity>
@@ -56,12 +56,10 @@ struct ScapegoatTable {
         int64_t capacity = 2;
         while (capacity < size) {
             block_size++;
-            capacity =
-                block_size << (block_size -
-                               static_cast<int64_t>(std::bit_width(uint64_t(block_size))) + 1);
+            capacity = block_size << (block_size - common::bit_width(block_size) + 1);
         }
         int64_t n_blocks = capacity / block_size;
-        int64_t height = std::bit_width(uint64_t(n_blocks)) - 1;
+        int64_t height = common::bit_width(n_blocks) - 1;
         return {capacity, block_size, n_blocks, height};
     }
 
