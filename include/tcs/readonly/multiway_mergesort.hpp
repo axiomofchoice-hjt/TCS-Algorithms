@@ -48,8 +48,6 @@ void multiway_mergesort(
     int64_t block_size = (size + workspace - 1) / workspace;
     int64_t n_blocks = (size + block_size - 1) / block_size;
 
-    // One slot per block that still has an element left; a block that runs out
-    // drops its slot, so the heap never holds a sentinel.
     std::vector<RandomIt> heap;
     for (int64_t i = 0; i < n_blocks; i++) {
         int64_t block_start = i * block_size;
@@ -65,8 +63,6 @@ void multiway_mergesort(
         common::assert_or_throw(!heap.empty());
         *output = *heap.front();
         ++output;
-        // pop_heap moves the emitted element into the last slot, which is the
-        // slot of the block it came from.
         std::ranges::pop_heap(heap, std::greater{}, iter_proj);
         RandomIt min_it = heap.back();
         heap.pop_back();
