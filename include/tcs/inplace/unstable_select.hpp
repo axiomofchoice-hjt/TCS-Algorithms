@@ -10,13 +10,13 @@
 
 #include <algorithm>
 #include <array>
-#include <bit>
 #include <climits>
 #include <cstdint>
 #include <functional>
 #include <iterator>
 #include <utility>
 
+#include "tcs/basic/bubble_sort.hpp"
 #include "tcs/common/assert.hpp"
 #include "tcs/common/bit.hpp"
 
@@ -67,18 +67,6 @@ struct BitStack {
         return res;
     }
 };
-
-template <typename RandomIt, typename Proj = std::identity>
-void bubble_sort(RandomIt first, RandomIt last, Proj proj = {}) {
-    int64_t len = last - first;
-    for (int64_t i = 0; i + 1 < len; i++) {
-        for (RandomIt j = first; j < last - i - 1; j++) {
-            if (proj(*j) > proj(*(j + 1))) {
-                std::swap(*j, *(j + 1));
-            }
-        }
-    }
-}
 
 template <typename RandomIt, typename Proj = std::identity>
 bool prepare_buffer(RandomIt first, RandomIt last, int64_t n_bits, Proj proj = {}) {
@@ -147,7 +135,7 @@ void inplace_unstable_select(RandomIt first, RandomIt mid, RandomIt last, Proj p
     constexpr int64_t alignment = group_size * 2;         // 10
     int64_t len = last - first;
     if (len < alignment) {
-        bubble_sort(first, last, proj);
+        basic::bubble_sort(first, last, proj);
         return;
     }
     int64_t word_bits = common::ceil_log2(len);
@@ -170,7 +158,7 @@ void inplace_unstable_select(RandomIt first, RandomIt mid, RandomIt last, Proj p
             }
             // median of medians of each group
             for (int64_t i = 0; i + group_size <= aligned_len; i += group_size) {
-                bubble_sort(first + i, first + i + group_size, proj);
+                basic::bubble_sort(first + i, first + i + group_size, proj);
                 std::swap(first[i / group_size], first[i + (group_size / 2)]);
             }
             // prepare buffer
@@ -179,7 +167,7 @@ void inplace_unstable_select(RandomIt first, RandomIt mid, RandomIt last, Proj p
                 T possible_majority = *(tail - 1);
                 RandomIt mid = std::partition(first, tail,
                     [possible_majority, proj](T x) { return proj(x) != proj(possible_majority); });
-                bubble_sort(first, mid, proj);
+                basic::bubble_sort(first, mid, proj);
                 std::ranges::rotate(std::ranges::find_if(first, mid,
                                         [possible_majority, proj](
                                             T x) { return proj(x) >= proj(possible_majority); }),

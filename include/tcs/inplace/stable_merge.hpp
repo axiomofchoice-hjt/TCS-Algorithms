@@ -16,6 +16,7 @@
 #include <tuple>
 #include <utility>
 
+#include "tcs/basic/bubble_sort.hpp"
 #include "tcs/common/assert.hpp"
 
 namespace tcs::inplace::stable_merge {
@@ -217,18 +218,6 @@ void inplace_block_merge_pairwise(
 }
 
 template <typename RandomIt, typename Proj = std::identity>
-void bubble_sort(RandomIt first, RandomIt last, Proj proj = {}) {
-    int64_t len = last - first;
-    for (int64_t i = 0; i + 1 < len; i++) {
-        for (RandomIt j = first; j < last - i - 1; j++) {
-            if (proj(*j) > proj(*(j + 1))) {
-                std::swap(*j, *(j + 1));
-            }
-        }
-    }
-}
-
-template <typename RandomIt, typename Proj = std::identity>
 void inplace_stable_merge(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
     common::assert_or_throw(first <= mid && mid <= last, "Error: invalid input");
     common::assert_or_throw(
@@ -240,7 +229,7 @@ void inplace_stable_merge(RandomIt first, RandomIt mid, RandomIt last, Proj proj
     int64_t len = last - first;
     int64_t block_size = std::floor(std::sqrt(len));
     if (block_size <= 4) {
-        bubble_sort(first, last, proj);
+        basic::bubble_sort(first, last, proj);
         common::assert_or_throw(std::ranges::is_sorted(orig_first, orig_last, std::less{}, proj),
             "inplace_stable_merge: result is not sorted");
         return;
@@ -263,7 +252,7 @@ void inplace_stable_merge(RandomIt first, RandomIt mid, RandomIt last, Proj proj
         RandomIt buf2 = first - block_size;
         block_selection_sort(first, last, buf1 + 1, block_size, proj);
         block_merge_pairwise(buf2, last, buf1, block_size, proj);
-        bubble_sort(buf1, first, proj);
+        basic::bubble_sort(buf1, first, proj);
         inplace_merge_with_rotation(buf1, first, last, proj);
         first = buf1;
         inplace_merge_with_rotation(first, last, original_last, proj);
@@ -274,7 +263,7 @@ void inplace_stable_merge(RandomIt first, RandomIt mid, RandomIt last, Proj proj
             align_blocks_limit(first, mid, last, block_size, buffer_len, proj);
         block_selection_sort(first, last, buf1, block_size, proj);
         inplace_block_merge_pairwise(first, last, buf1, block_size, proj);
-        bubble_sort(buf1, first, proj);
+        basic::bubble_sort(buf1, first, proj);
         inplace_merge_with_rotation(buf1, first, last, proj);
         first = buf1;
         inplace_merge_with_rotation(first, last, original_last, proj);

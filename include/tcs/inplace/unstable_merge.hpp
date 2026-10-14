@@ -15,6 +15,7 @@
 #include <functional>
 #include <utility>
 
+#include "tcs/basic/bubble_sort.hpp"
 #include "tcs/common/assert.hpp"
 
 namespace tcs::inplace::unstable_merge {
@@ -90,18 +91,6 @@ void block_merge_pairwise(RandomIt first, RandomIt last, int64_t block_size, Pro
 }
 
 template <typename RandomIt, typename Proj = std::identity>
-void bubble_sort(RandomIt first, RandomIt last, Proj proj = {}) {
-    int64_t len = last - first;
-    for (int64_t i = 0; i + 1 < len; i++) {
-        for (RandomIt j = first; j < last - i - 1; j++) {
-            if (proj(*j) > proj(*(j + 1))) {
-                std::swap(*j, *(j + 1));
-            }
-        }
-    }
-}
-
-template <typename RandomIt, typename Proj = std::identity>
 void inplace_unstable_merge(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
     common::assert_or_throw(first <= mid && mid <= last, "Error: invalid input");
     common::assert_or_throw(
@@ -122,7 +111,7 @@ void inplace_unstable_merge(RandomIt first, RandomIt mid, RandomIt last, Proj pr
     std::ranges::rotate(first + left_aligned_len, mid, mid + right_aligned_len);
     block_selection_sort(first, first + aligned_len, block_size, proj);
     block_merge_pairwise(first, first + aligned_len, block_size, proj);
-    bubble_sort(first + aligned_len - block_size, last, proj);
+    basic::bubble_sort(first + aligned_len - block_size, last, proj);
     inplace_merge_with_rotation(first, first + aligned_len - block_size, last, proj);
     common::assert_or_throw(std::ranges::is_sorted(first, last, std::less{}, proj),
         "inplace_unstable_merge: result is not sorted");

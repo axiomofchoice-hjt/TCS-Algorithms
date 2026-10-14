@@ -30,6 +30,7 @@
 #include <vector>
 #endif
 
+#include "tcs/basic/bubble_sort.hpp"
 #include "tcs/common/assert.hpp"
 #include "tcs/common/bit.hpp"
 
@@ -66,18 +67,6 @@ void inplace_stable_unpartition_ref(RandomIt first, RandomIt last, Pred pred, Pl
 }
 
 template <typename RandomIt, typename Proj = std::identity>
-void bubble_sort(RandomIt first, RandomIt last, Proj proj = {}) {
-    int64_t len = last - first;
-    for (int64_t i = 0; i + 1 < len; i++) {
-        for (RandomIt j = first; j < last - i - 1; j++) {
-            if (proj(*j) > proj(*(j + 1))) {
-                std::swap(*j, *(j + 1));
-            }
-        }
-    }
-}
-
-template <typename RandomIt, typename Proj = std::identity>
 std::iter_value_t<RandomIt> probable_major(RandomIt first, RandomIt last, Proj proj = {}) {
     using T = std::iter_value_t<RandomIt>;
     T major = *first;
@@ -108,7 +97,7 @@ bool extract_buffer(RandomIt first, RandomIt last, int64_t buffer_len, Proj proj
     // *(first + i) != *(first + i + buffer_len), giving us 2*buffer_len valid label pairs.
     if (std::ranges::count_if(first, first + (buffer_len * 2),
             [&](T x) { return proj(x) == proj(major); }) <= buffer_len) {
-        bubble_sort(first, first + (buffer_len * 2), proj);
+        basic::bubble_sort(first, first + (buffer_len * 2), proj);
         return true;
     }
     // Case 2: majority is not overwhelming (count <= len - buffer_len).
@@ -121,7 +110,7 @@ bool extract_buffer(RandomIt first, RandomIt last, int64_t buffer_len, Proj proj
         inplace_stable_partition_ref(first, last, [&](T x) { return proj(x) != proj(major); });
         RandomIt major_it =
             std::ranges::find_if(first, last, [&](T x) { return proj(x) == proj(major); });
-        bubble_sort(first, first + buffer_len, proj);
+        basic::bubble_sort(first, first + buffer_len, proj);
         RandomIt major_insert_it = std::ranges::find_if(
             first, first + buffer_len, [&](T x) { return proj(x) > proj(major); });
         std::ranges::rotate(major_insert_it, major_it, major_it + buffer_len);
@@ -380,7 +369,7 @@ void inplace_stable_select(RandomIt first, RandomIt mid, RandomIt last, Proj pro
         int64_t len = last - first;
         int64_t block_size = static_cast<int64_t>(std::floor(std::sqrt(len))) / 4;
         if (block_size <= 1) {
-            bubble_sort(first, last, proj);
+            basic::bubble_sort(first, last, proj);
             return;
         }
         int64_t buffer_len = restoring_select_buffer_size(block_size);
@@ -389,7 +378,7 @@ void inplace_stable_select(RandomIt first, RandomIt mid, RandomIt last, Proj pro
             inplace_stable_partition_ref(first, last, [&](T x) { return proj(x) != proj(major); });
             RandomIt major_it =
                 std::ranges::find_if(first, last, [&](T x) { return proj(x) == proj(major); });
-            bubble_sort(first, major_it, proj);
+            basic::bubble_sort(first, major_it, proj);
             std::ranges::rotate(
                 std::ranges::find_if(first, major_it, [&](T x) { return proj(x) >= proj(major); }),
                 major_it, last);
@@ -400,7 +389,7 @@ void inplace_stable_select(RandomIt first, RandomIt mid, RandomIt last, Proj pro
         RandomIt main = first + (buffer_len * 2);
         int64_t n_blocks = (last - main) / block_size;
         if (n_blocks == 0) {
-            bubble_sort(first, last, proj);
+            basic::bubble_sort(first, last, proj);
             return;
         }
         for (int64_t i = 0; i < n_blocks; i++) {

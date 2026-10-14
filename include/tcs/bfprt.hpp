@@ -15,21 +15,10 @@
 #include <iterator>
 #include <utility>
 
+#include "tcs/basic/bubble_sort.hpp"
 #include "tcs/common/assert.hpp"
 
 namespace tcs::bfprt {
-template <typename RandomIt, typename Proj = std::identity>
-void bubble_sort(RandomIt first, RandomIt last, Proj proj = {}) {
-    int64_t len = last - first;
-    for (int64_t i = 0; i + 1 < len; i++) {
-        for (RandomIt j = first; j < last - i - 1; j++) {
-            if (proj(*j) > proj(*(j + 1))) {
-                std::swap(*j, *(j + 1));
-            }
-        }
-    }
-}
-
 template <typename RandomIt, typename Proj = std::identity>
 void bfprt(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
     using T = std::iter_value_t<RandomIt>;
@@ -37,12 +26,12 @@ void bfprt(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
     int64_t len = last - first;
     constexpr int64_t group_size = 5;
     if (len < group_size) {
-        bubble_sort(first, last, proj);
+        basic::bubble_sort(first, last, proj);
         return;
     }
     // median of medians of each group
     for (int64_t i = 0; i + group_size <= len; i += group_size) {
-        bubble_sort(first + i, first + i + group_size, proj);
+        basic::bubble_sort(first + i, first + i + group_size, proj);
         std::swap(first[i / group_size], first[i + (group_size / 2)]);
     }
     bfprt(first, first + (len / group_size / 2), first + (len / group_size), proj);
