@@ -16,22 +16,23 @@
 #include <functional>
 #include <optional>
 #include <tuple>
+#include <utility>
 
 #include "tcs/basic/bit_vector.hpp"
 #include "tcs/common/assert.hpp"
 #include "tcs/common/bit.hpp"
 
 namespace tcs::readonly::mtree_sort {
-template <typename RandomIt, typename IterOptProj>
+template <typename RandomIt, typename IterProj>
 struct MTreeAttributes {
     RandomIt first;
     RandomIt last;
     int64_t height;
     int64_t root_sub_block_size;
-    IterOptProj iter_opt_proj;
+    IterProj iter_proj;
 };
 
-template <typename RandomIt, typename IterOptProj>
+template <typename RandomIt, typename IterProj>
 struct MTree {
     RandomIt first_ = {};
     RandomIt last_ = {};
@@ -42,7 +43,7 @@ struct MTree {
     int64_t block_size_ = 0;
     basic::BitVector state_;
     basic::BitVector mu_;
-    IterOptProj iter_opt_proj_;
+    IterProj iter_proj_;
 
     int64_t data_offset(int64_t level, int64_t offset) const {
         common::assert_or_throw(level >= 0 && level <= height_);
@@ -51,8 +52,8 @@ struct MTree {
                (offset * (height_ - level));
     }
 
-    static MTree create(MTreeAttributes<RandomIt, IterOptProj> attrs) {
-        auto [first, last, height, root_sub_block_size, iter_opt_proj] = attrs;
+    static MTree create(MTreeAttributes<RandomIt, IterProj> attrs) {
+        auto [first, last, height, root_sub_block_size, iter_proj] = attrs;
         int64_t n_blocks = int64_t{1} << height;
         int64_t block_size = root_sub_block_size * n_blocks;
         int64_t capacity = block_size * n_blocks;
@@ -69,7 +70,7 @@ struct MTree {
             .block_size_ = block_size,
             .state_ = state,
             .mu_ = mu,
-            .iter_opt_proj_ = iter_opt_proj,
+            .iter_proj_ = iter_proj,
         };
         tree.state_.resize(tree.data_offset(height, 0));
         tree.mu_.resize(tree.data_offset(height, 0));
@@ -102,8 +103,8 @@ struct MTree {
         std::optional<RandomIt> res;
         for (int64_t i = l; i < r; i++) {
             if (i < last_ - first_ &&
-                (!filter_.has_value() || iter_opt_proj_(first_ + i) > iter_opt_proj_(filter_)) &&
-                iter_opt_proj_(first_ + i) < iter_opt_proj_(res)) {
+                (!filter_.has_value() || iter_proj_(first_ + i) > iter_proj_(*filter_)) &&
+                (!res.has_value() || iter_proj_(first_ + i) < iter_proj_(*res))) {
                 res = first_ + i;
             }
         }
@@ -121,7 +122,8 @@ struct MTree {
         if (!lchild_min.has_value() && !rchild_min.has_value()) {
             state_.store(off, len, 0);
             mu_.store(off, len, 0);
-        } else if (iter_opt_proj_(lchild_min) < iter_opt_proj_(rchild_min)) {
+        } else if (!rchild_min.has_value() ||
+                   (lchild_min.has_value() && iter_proj_(*lchild_min) < iter_proj_(*rchild_min))) {
             int64_t child_off = data_offset(level + 1, offset * 2);
             int64_t child_len = len - 1;
             state_.store(off, len, state_.load(child_off, child_len));
@@ -161,21 +163,16 @@ void mtree_sort(RandomIt first, RandomIt last, OutputIt output, int64_t workspac
         return;
     }
     workspace = std::min(workspace, size);
-    auto iter_opt_proj = [proj, first](std::optional<RandomIt> opt) {
-        if (!opt.has_value()) {
-            return std::tuple{true, proj(*first), first};
-        }
-        return std::tuple{false, proj(*opt.value()), opt.value()};
-    };
+    auto iter_proj = [proj](RandomIt it) { return std::pair{proj(*it), it}; };
     int64_t height = std::max(common::ceil_log2(workspace), int64_t{1});
     int64_t n_blocks = int64_t{1} << height;
     int64_t root_sub_block_size = (size + (n_blocks * n_blocks) - 1) / (n_blocks * n_blocks);
 
-    auto tree = MTree<RandomIt, decltype(iter_opt_proj)>::create(MTreeAttributes{.first = first,
+    auto tree = MTree<RandomIt, decltype(iter_proj)>::create(MTreeAttributes{.first = first,
         .last = first + size,
         .height = height,
         .root_sub_block_size = root_sub_block_size,
-        .iter_opt_proj = iter_opt_proj});
+        .iter_proj = iter_proj});
     for (int64_t i = 0; i < size; i++) {
         std::optional<RandomIt> min_opt = tree.min();
         tree.pop();

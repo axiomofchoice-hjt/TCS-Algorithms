@@ -15,20 +15,20 @@
 #include <cstdint>
 #include <functional>
 #include <optional>
-#include <tuple>
+#include <utility>
 #include <vector>
 
 #include "tcs/common/assert.hpp"
 
 namespace tcs::readonly::multiway_mergesort {
-template <typename RandomIt, typename IterOptProj>
+template <typename RandomIt, typename IterProj>
 std::optional<RandomIt> next_element(
-    RandomIt first, RandomIt last, std::optional<RandomIt> filter, IterOptProj iter_opt_proj) {
+    RandomIt first, RandomIt last, std::optional<RandomIt> filter, IterProj iter_proj) {
     common::assert_or_throw(first <= last);
     std::optional<RandomIt> res;
     for (RandomIt i = first; i != last; i++) {
-        if ((!filter.has_value() || iter_opt_proj(i) > iter_opt_proj(filter)) &&
-            iter_opt_proj(i) < iter_opt_proj(res)) {
+        if ((!filter.has_value() || iter_proj(i) > iter_proj(*filter)) &&
+            (!res.has_value() || iter_proj(i) < iter_proj(*res))) {
             res = i;
         }
     }
@@ -44,36 +44,41 @@ void multiway_mergesort(
     if (size == 0) {
         return;
     }
-    auto iter_opt_proj = [proj, first](std::optional<RandomIt> opt) {
-        if (!opt.has_value()) {
-            return std::tuple{true, proj(*first), first};
-        }
-        return std::tuple{false, proj(*opt.value()), opt.value()};
-    };
+    auto iter_proj = [proj](RandomIt it) { return std::pair{proj(*it), it}; };
     int64_t block_size = (size + workspace - 1) / workspace;
     int64_t n_blocks = (size + block_size - 1) / block_size;
 
-    std::vector<std::optional<RandomIt>> heap;
+    // One slot per block that still has an element left; a block that runs out
+    // drops its slot, so the heap never holds a sentinel.
+    std::vector<RandomIt> heap;
     for (int64_t i = 0; i < n_blocks; i++) {
         int64_t block_start = i * block_size;
         int64_t block_end = std::min(size, block_start + block_size);
-        heap.push_back(next_element(
-            first + block_start, first + block_end, std::optional<RandomIt>{}, iter_opt_proj));
+        auto block_min = next_element(
+            first + block_start, first + block_end, std::optional<RandomIt>{}, iter_proj);
+        common::assert_or_throw(block_min.has_value());
+        heap.push_back(*block_min);
     }
 
-    std::ranges::make_heap(heap, std::greater{}, iter_opt_proj);
+    std::ranges::make_heap(heap, std::greater{}, iter_proj);
     for (int64_t i = 0; i < size; i++) {
-        common::assert_or_throw(heap[0].has_value());
-        RandomIt min_it = heap[0].value();
-        *output = *min_it;
+        common::assert_or_throw(!heap.empty());
+        *output = *heap.front();
         ++output;
-        std::ranges::pop_heap(heap, std::greater{}, iter_opt_proj);
+        // pop_heap moves the emitted element into the last slot, which is the
+        // slot of the block it came from.
+        std::ranges::pop_heap(heap, std::greater{}, iter_proj);
+        RandomIt min_it = heap.back();
+        heap.pop_back();
         int64_t block_id = (min_it - first) / block_size;
         int64_t block_start = block_id * block_size;
         int64_t block_end = std::min(size, block_start + block_size);
-        heap.back() = next_element(
-            first + block_start, first + block_end, std::optional<RandomIt>{min_it}, iter_opt_proj);
-        std::ranges::push_heap(heap, std::greater{}, iter_opt_proj);
+        auto block_next = next_element(
+            first + block_start, first + block_end, std::optional<RandomIt>{min_it}, iter_proj);
+        if (block_next.has_value()) {
+            heap.push_back(*block_next);
+            std::ranges::push_heap(heap, std::greater{}, iter_proj);
+        }
     }
 }
 }  // namespace tcs::readonly::multiway_mergesort
