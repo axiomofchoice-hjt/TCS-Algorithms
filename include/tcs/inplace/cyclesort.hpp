@@ -31,8 +31,6 @@ std::tuple<RandomIt, RandomIt> destination_range(
             eq++;
         }
     }
-    common::assert_or_throw(
-        gt + eq <= last - first, "cyclesort: destination range exceeds the array");
     return {first + gt, first + gt + eq};
 }
 
