@@ -378,22 +378,21 @@ inline void print_param_skipped(Output& out, int64_t skipped, std::size_t expect
     }
 }
 
-// AGENTS.md caps every algorithm's test file at this budget in a debug build
-// that does not define TCS_NO_TEMP_IMPL. Keep this value in sync with the
-// 测试运行时间上限 section of AGENTS.md. --time enforces the budget on the
-// per-file totals it prints and exits with kOverBudget when one exceeds it.
+// AGENTS.md caps every algorithm's test file at this budget in a debug build.
+// Keep this value in sync with the 测试运行时间上限 section of AGENTS.md. --time
+// enforces the budget on the per-file totals it prints and exits with
+// kOverBudget when one exceeds it.
 inline constexpr double kFileBudgetSeconds = 1.0;
 
 // The budget only describes the configuration AGENTS.md names. A release build
-// (NDEBUG), one using the true in-place primitives, or a sanitized build is a
-// different measurement: ASan/UBSan slow the suite by 4-7x, so enforcing the cap
-// there would report a file as over budget that never is without the
-// instrumentation. --time still prints the table in all of them, but only the
-// plain debug build can fail the run. __SANITIZE_ADDRESS__ covers GCC invoked
-// directly; TCS_SANITIZE is defined by xmake's tcs_sanitize option, which also
-// covers compilers that do not predefine it (Clang).
-#if defined(NDEBUG) || defined(TCS_NO_TEMP_IMPL) || defined(__SANITIZE_ADDRESS__) || \
-    defined(TCS_SANITIZE)
+// (NDEBUG) or a sanitized build is a different measurement: ASan/UBSan slow the
+// suite by 4-7x, so enforcing the cap there would report a file as over budget
+// that never is without the instrumentation. --time still prints the table in
+// all of them, but only the plain debug build can fail the run.
+// __SANITIZE_ADDRESS__ covers GCC invoked directly; TCS_SANITIZE is defined by
+// xmake's tcs_sanitize option, which also covers compilers that do not
+// predefine it (Clang).
+#if defined(NDEBUG) || defined(__SANITIZE_ADDRESS__) || defined(TCS_SANITIZE)
 inline constexpr bool kBudgetConfig = false;
 #else
 inline constexpr bool kBudgetConfig = true;
@@ -429,7 +428,7 @@ inline void print_usage(Output& out, std::string_view program) {
         kTestFailed, kBadUsage, kNothingSelected);
     out.line("             {} a file was over the {:.1f}s budget (enforced only in a debug build",
         kOverBudget, kFileBudgetSeconds);
-    out.line("             without TCS_NO_TEMP_IMPL or sanitizers)");
+    out.line("             without sanitizers)");
 }
 
 struct FileStats {
@@ -563,8 +562,7 @@ inline int run(int argc, char* argv[]) {
             out.flush();
             err.line(
                 "utest: --time is running outside the AGENTS.md budget config (debug without "
-                "TCS_NO_TEMP_IMPL or sanitizers); the {:.1f}s/file budget is reported but not "
-                "enforced",
+                "sanitizers); the {:.1f}s/file budget is reported but not enforced",
                 kFileBudgetSeconds);
         }
         if (!opts.filter.empty() || !opts.param_specs.empty()) {

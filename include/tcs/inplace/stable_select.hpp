@@ -2,11 +2,9 @@
 // --------------------------------------------------------------------------
 // Selects the k-th smallest element of a range while preserving stability,
 // using a restoring-select core that encodes its recursion stack into spare
-// buffer elements. The partition/unpartition helpers come from the real O(1)
-// in-place primitives in stable_partition.hpp / stable_unpartition.hpp when
-// TCS_NO_TEMP_IMPL is defined; otherwise they fall back to std-based stubs
-// (std::stable_partition / a temporary buffer). Target: O(n) time, O(1) extra
-// space.
+// buffer elements. The partition/unpartition helpers are the real O(1)
+// in-place primitives from stable_partition.hpp / stable_unpartition.hpp.
+// Target: O(n) time, O(1) extra space.
 //
 // Blog: https://axiomofchoice-hjt.github.io/pages/8da648/
 

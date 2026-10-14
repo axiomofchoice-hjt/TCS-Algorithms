@@ -1,10 +1,8 @@
 // In-place stable three-way quicksort
 // --------------------------------------------------------------------------
 // A stable three-way quicksort that partitions around a median-of-medians
-// pivot. The partition/select helpers come from the real O(1) in-place
-// primitives in stable_partition.hpp / stable_select.hpp when TCS_NO_TEMP_IMPL
-// is defined; otherwise they fall back to std-based stubs (std::stable_partition
-// / std::ranges::nth_element via a temporary buffer). Target: O(n log n) time,
+// pivot. The partition/select helpers are the real O(1) in-place primitives
+// from stable_partition.hpp / stable_select.hpp. Target: O(n log n) time,
 // O(1) extra space.
 //
 // Blog: https://axiomofchoice-hjt.github.io/pages/74ae0e/

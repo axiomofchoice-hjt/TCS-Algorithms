@@ -2,9 +2,8 @@
 // --------------------------------------------------------------------------
 // A stable variant of cycle sort that preserves the relative order of equal
 // elements while keeping the total number of moves O(n), with O(n^2)
-// comparisons. The equal-keys partition helper uses the real O(1) in-place
-// primitive in stable_partition.hpp when TCS_NO_TEMP_IMPL is defined;
-// otherwise it falls back to std::stable_partition.
+// comparisons. The equal-keys partition helper is the real O(1) in-place
+// primitive from stable_partition.hpp.
 //
 // Blog: https://axiomofchoice-hjt.github.io/pages/e2847a/
 
