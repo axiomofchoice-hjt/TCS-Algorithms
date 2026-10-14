@@ -18,7 +18,7 @@
 
 #include "tcs/common/assert.hpp"
 
-namespace tcs::cyclesort {
+namespace tcs::inplace::cyclesort {
 template <typename RandomIt, typename Proj>
 std::tuple<RandomIt, RandomIt> destination_range(
     RandomIt first, RandomIt last, std::iter_value_t<RandomIt> key, Proj proj) {
@@ -56,4 +56,4 @@ void cyclesort(RandomIt first, RandomIt last, Proj proj) {
     common::assert_or_throw(
         std::ranges::is_sorted(first, last, std::less{}, proj), "cyclesort: result is not sorted");
 }
-}  // namespace tcs::cyclesort
+}  // namespace tcs::inplace::cyclesort

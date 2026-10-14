@@ -19,7 +19,7 @@
 #include <utility>
 #include <vector>
 
-#include "tcs/bfprt.hpp"
+#include "tcs/basic/bfprt.hpp"
 #include "tcs/common/assert.hpp"
 #include "tcs/common/bit.hpp"
 #include "tcs/ds/compact_bit_vector.hpp"
@@ -95,11 +95,13 @@ RandomIt median_of_medians(const BitVector& bit_vector, RandomIt first, IterProj
             buffer.push_back(first + bit_vector.select(j));
         }
         int64_t mid_index = (static_cast<int64_t>(buffer.size()) - 1) / 2;
-        tcs::bfprt::bfprt(buffer.begin(), buffer.begin() + mid_index, buffer.end(), iter_proj);
+        tcs::basic::bfprt::bfprt(
+            buffer.begin(), buffer.begin() + mid_index, buffer.end(), iter_proj);
         medians.push_back(buffer[mid_index]);
     }
     int64_t mid_index = (static_cast<int64_t>(medians.size()) - 1) / 2;
-    tcs::bfprt::bfprt(medians.begin(), medians.begin() + mid_index, medians.end(), iter_proj);
+    tcs::basic::bfprt::bfprt(
+        medians.begin(), medians.begin() + mid_index, medians.end(), iter_proj);
     return medians[mid_index];
 }
 

@@ -5,7 +5,7 @@
 
 #include "common/test_array.hpp"
 #include "common/utest.hpp"
-#include "tcs/bfprt.hpp"
+#include "tcs/basic/bfprt.hpp"
 
 namespace {
 struct TestParam {
@@ -53,7 +53,8 @@ void random_test(TestParam param) {
         auto expected = arr;
         std::ranges::sort(expected, {}, IndexedElement::proj);
 
-        tcs::bfprt::bfprt(arr.begin(), arr.begin() + param.k, arr.end(), IndexedElement::proj);
+        tcs::basic::bfprt::bfprt(
+            arr.begin(), arr.begin() + param.k, arr.end(), IndexedElement::proj);
 
         utest::assert_or_throw(
             IndexedElement::proj(arr[param.k]) == IndexedElement::proj(expected[param.k]));

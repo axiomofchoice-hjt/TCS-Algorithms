@@ -71,21 +71,21 @@ see [`proof/README.md`](proof/README.md).
 ```text
 TCS-Algorithms/
 ├── include/tcs/            # Header-only library
-│   ├── bfprt.hpp           # Median-of-medians selection
-│   ├── cyclesort.hpp       # Classic in-place cycle sort
+│   ├── basic/              # Basic building blocks (BFPRT, bubble sort, bit vector)
 │   ├── inplace/            # In-place algorithms (O(1) space)
 │   ├── pointer/            # Pointer-machine algorithms
 │   ├── readonly/           # Read-only-input algorithms
 │   └── ds/                 # Data structures
 ├── tests/                  # Unit tests
 │   ├── common/             # Shared test helpers
+│   ├── basic/              # Tests for basic building blocks
 │   ├── inplace/            # Tests for in-place algorithms
 │   ├── pointer/            # Tests for pointer-machine algorithms
 │   ├── readonly/           # Tests for readonly algorithms
 │   └── ds/                 # Tests for data structures
 ├── examples/               # Usage examples
 │   ├── common.hpp          # Shared example helpers
-│   ├── example_bfprt.cpp   # BFPRT selection demo
+│   ├── basic/              # Examples for basic building blocks
 │   └── inplace/            # Examples for in-place algorithms
 ├── proof/                  # Lean 4 formalization (see proof/README.md)
 ├── scripts/                # Dev scripts
@@ -112,12 +112,12 @@ documented in [`proof/README.md`](proof/README.md).
 Header-only — copy `include/tcs/` into your project, or integrate via xmake:
 
 ```cpp
-#include <tcs/bfprt.hpp>
+#include <tcs/basic/bfprt.hpp>
 #include <vector>
 
 std::vector<int> arr = {3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5};
 int k = 5;
-tcs::bfprt::bfprt(arr.begin(), arr.begin() + k, arr.end());
+tcs::basic::bfprt::bfprt(arr.begin(), arr.begin() + k, arr.end());
 // arr[k] holds the k-th smallest element
 ```
 

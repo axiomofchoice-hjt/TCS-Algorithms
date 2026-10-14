@@ -1,7 +1,7 @@
 #include "common/test_array.hpp"
 #include "common/test_sort.hpp"
 #include "common/utest.hpp"
-#include "tcs/cyclesort.hpp"
+#include "tcs/inplace/cyclesort.hpp"
 
 namespace {
 constexpr int kRandomSeed = 42;
@@ -19,7 +19,9 @@ constexpr TestSortParam kCases[] = {
 };
 
 auto random_test = gen_random_sort_test(
-    [](TestArray& arr) { tcs::cyclesort::cyclesort(arr.begin(), arr.end(), IndexedElement::proj); },
+    [](TestArray& arr) {
+        tcs::inplace::cyclesort::cyclesort(arr.begin(), arr.end(), IndexedElement::proj);
+    },
     false, kRandomSeed);
 
 auto sweep = utest::register_test([] {

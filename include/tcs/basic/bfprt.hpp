@@ -18,7 +18,7 @@
 #include "tcs/basic/bubble_sort.hpp"
 #include "tcs/common/assert.hpp"
 
-namespace tcs::bfprt {
+namespace tcs::basic::bfprt {
 template <typename RandomIt, typename Proj = std::identity>
 void bfprt(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
     using T = std::iter_value_t<RandomIt>;
@@ -48,4 +48,4 @@ void bfprt(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
         bfprt(pivot_end, mid, last, proj);
     }
 }
-}  // namespace tcs::bfprt
+}  // namespace tcs::basic::bfprt
