@@ -16,81 +16,19 @@
 #include <algorithm>
 #include <cstdint>
 #include <functional>
-#include <type_traits>
 #include <utility>
 #include <vector>
 
+#include "tcs/bfprt.hpp"
 #include "tcs/common/assert.hpp"
 #include "tcs/common/bit.hpp"
-
-#ifdef TCS_NO_TEMP_IMPL
-#include "tcs/bfprt.hpp"
 #include "tcs/ds/compact_bit_vector.hpp"
-#endif
 
 namespace tcs::readonly::bit_vector_select {
-template <typename RandomIt, typename Proj = std::identity>
-void select_ref(RandomIt first, RandomIt nth, RandomIt last, Proj proj = {}) {
-#ifdef TCS_NO_TEMP_IMPL
-    tcs::bfprt::bfprt(first, nth, last, proj);
-#else
-    std::ranges::nth_element(first, nth, last, {}, proj);
-#endif
-}
-
-#ifdef TCS_NO_TEMP_IMPL
-using CompactBitVectorType = tcs::ds::compact_bit_vector::CompactBitVector;
-#else
-struct CompactBitVectorStub {
-    int64_t size_;
-    int64_t count_;
-    std::vector<bool> data_;
-    std::vector<int64_t> rank_;
-    std::vector<int64_t> select_;
-
-    template <typename Placement>
-    static CompactBitVectorStub create(
-        int64_t size, Placement placement, [[maybe_unused]] int64_t n_word_bits) {
-        static_assert(std::is_invocable_r_v<bool, Placement&, int64_t>);
-        common::assert_or_throw(size >= 0);
-        common::assert_or_throw(n_word_bits > 0 && n_word_bits <= common::n_machine_word_bits);
-        std::vector<bool> data;
-        std::vector<int64_t> rank;
-        std::vector<int64_t> select;
-        int64_t count = 0;
-        for (int64_t i = 0; i < size; i++) {
-            bool value = placement(i);
-            data.push_back(value);
-            rank.push_back(count);
-            if (value) {
-                count++;
-                select.push_back(i);
-            }
-        }
-        return {.size_ = size, .count_ = count, .data_ = data, .rank_ = rank, .select_ = select};
-    }
-    bool get(int64_t index) const {
-        common::assert_or_throw(index >= 0 && index < size_);
-        return data_[index];
-    }
-    int64_t size() const { return size_; }
-    int64_t count() const { return count_; }
-    int64_t rank(int64_t index) const {
-        common::assert_or_throw(index >= 0 && index <= size_);
-        return index == size_ ? count_ : rank_[index];
-    }
-    int64_t select(int64_t k) const {
-        common::assert_or_throw(k >= 0 && k < count_);
-        return select_[k];
-    }
-};
-using CompactBitVectorType = CompactBitVectorStub;
-#endif
-
 struct WaveletStack {
     int64_t size_ = 0;
     int64_t n_word_bits_ = 0;
-    std::vector<CompactBitVectorType> stack_;
+    std::vector<ds::compact_bit_vector::CompactBitVector> stack_;
 
     static WaveletStack create(int64_t size, int64_t n_word_bits) {
         common::assert_or_throw(size >= 0);
@@ -100,13 +38,11 @@ struct WaveletStack {
 
     template <typename Placement>
     void update(Placement placement) {
-        auto bit_vector = CompactBitVectorType::create(
-            count(),
-            [this, placement](int64_t k) {
+        auto bit_vector =
+            ds::compact_bit_vector::CompactBitVector::create(count(), [this, placement](int64_t k) {
                 int64_t index = select(k);
                 return placement(index);
-            },
-            n_word_bits_);
+            });
         stack_.push_back(bit_vector);
     }
 
@@ -159,11 +95,11 @@ RandomIt median_of_medians(const BitVector& bit_vector, RandomIt first, IterProj
             buffer.push_back(first + bit_vector.select(j));
         }
         int64_t mid_index = (static_cast<int64_t>(buffer.size()) - 1) / 2;
-        select_ref(buffer.begin(), buffer.begin() + mid_index, buffer.end(), iter_proj);
+        tcs::bfprt::bfprt(buffer.begin(), buffer.begin() + mid_index, buffer.end(), iter_proj);
         medians.push_back(buffer[mid_index]);
     }
     int64_t mid_index = (static_cast<int64_t>(medians.size()) - 1) / 2;
-    select_ref(medians.begin(), medians.begin() + mid_index, medians.end(), iter_proj);
+    tcs::bfprt::bfprt(medians.begin(), medians.begin() + mid_index, medians.end(), iter_proj);
     return medians[mid_index];
 }
 

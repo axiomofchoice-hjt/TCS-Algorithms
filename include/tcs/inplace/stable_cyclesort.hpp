@@ -19,21 +19,9 @@
 #include <utility>
 
 #include "tcs/common/assert.hpp"
-
-#ifdef TCS_NO_TEMP_IMPL
 #include "tcs/inplace/stable_partition.hpp"
-#endif
 
 namespace tcs::inplace::stable_cyclesort {
-template <typename RandomIt, typename Pred>
-RandomIt inplace_stable_partition_ref(RandomIt first, RandomIt last, Pred pred) {
-#ifdef TCS_NO_TEMP_IMPL
-    return stable_partition::inplace_stable_partition(first, last, pred);
-#else
-    return std::stable_partition(first, last, pred);
-#endif
-}
-
 template <typename RandomIt, typename Proj>
 std::tuple<RandomIt, RandomIt> destination_range(
     RandomIt first, RandomIt last, std::iter_value_t<RandomIt> key, Proj proj) {
@@ -91,7 +79,7 @@ void inplace_stable_cyclesort(RandomIt first, RandomIt last, Proj proj) {
     for (std::optional<T> key = *std::ranges::min_element(first, last, {}, proj); key;
         key = unordered_upper_bound(first, last, *key, proj)) {
         auto [left, right] = destination_range(first, last, *key, proj);
-        int64_t inner_sames = inplace_stable_partition_ref(left, right, [&](T x) {
+        int64_t inner_sames = stable_partition::inplace_stable_partition(left, right, [&](T x) {
             return proj(x) == proj(*key);
         }) - left;
         int64_t left_sames = std::count_if(first, left, [&](T x) { return proj(x) == proj(*key); });

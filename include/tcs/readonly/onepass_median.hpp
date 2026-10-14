@@ -20,28 +20,17 @@
 #include <utility>
 
 #include "tcs/common/assert.hpp"
-
-#ifdef TCS_NO_TEMP_IMPL
 #include "tcs/inplace/unstable_select.hpp"
-#endif
 
 namespace tcs::readonly::onepass_median {
 template <typename RandomIt, typename Proj = std::identity>
-void inplace_unstable_select_ref(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
-#ifdef TCS_NO_TEMP_IMPL
-    return inplace::unstable_select::inplace_unstable_select(first, mid, last, proj);
-#else
-    std::ranges::nth_element(first, mid, last, {}, proj);
-#endif
-}
-
-template <typename RandomIt, typename Proj = std::identity>
-void select_range(RandomIt first, RandomIt left, RandomIt right, RandomIt last, Proj proj = {}) {
+void three_way_select(
+    RandomIt first, RandomIt left, RandomIt right, RandomIt last, Proj proj = {}) {
     if (left != last) {
-        inplace_unstable_select_ref(first, left, last, proj);
+        inplace::unstable_select::inplace_unstable_select(first, left, last, proj);
     }
     if (right != last) {
-        inplace_unstable_select_ref(left, right, last, proj);
+        inplace::unstable_select::inplace_unstable_select(left, right, last, proj);
     }
 }
 
@@ -50,7 +39,7 @@ std::array<std::iter_value_t<RandomIt>, 2> median(RandomIt first, RandomIt last,
     int64_t size = last - first;
     common::assert_or_throw(size > 0, "onepass_median: size must be positive");
     if (size > 2) {
-        select_range(first, first + ((size - 1) / 2), first + (size / 2) + 1, last, proj);
+        three_way_select(first, first + ((size - 1) / 2), first + (size / 2) + 1, last, proj);
     }
     std::array<std::iter_value_t<RandomIt>, 2> result = {first[(size - 1) / 2], first[size / 2]};
     if (proj(result[0]) > proj(result[1])) {
@@ -103,7 +92,7 @@ std::array<std::iter_value_t<ForwardIt>, 2> onepass_median(
             int64_t n_keeps = (ladder_size - 1) * 2;
             common::assert_or_throw(
                 n_keeps < right - left, "onepass_median: ladder exceeds the window");
-            select_range(left, left + (n_keeps / 2), right - (n_keeps / 2), right, proj);
+            three_way_select(left, left + (n_keeps / 2), right - (n_keeps / 2), right, proj);
             right = std::rotate(left + (n_keeps / 2), right - (n_keeps / 2), right);
         }
         common::assert_or_throw(left == right, "onepass_median: ladder did not converge");
@@ -128,7 +117,7 @@ std::array<std::iter_value_t<ForwardIt>, 2> onepass_median(
         }
         BufferIt left = candidates;
         BufferIt right = buffer_first + n_candidates;
-        select_range(left, left + (n_drops / 2), right - (n_drops / 2), right, proj);
+        three_way_select(left, left + (n_drops / 2), right - (n_drops / 2), right, proj);
         candidates = std::rotate(left + (n_drops / 2), right - (n_drops / 2), right);
     }
     return median(candidates, buffer_last, proj);

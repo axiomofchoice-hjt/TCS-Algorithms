@@ -17,48 +17,18 @@
 #include <tuple>
 #include <utility>
 
-#ifdef TCS_NO_TEMP_IMPL
+#include "tcs/common/assert.hpp"
 #include "tcs/inplace/stable_partition.hpp"
 #include "tcs/inplace/stable_select.hpp"
-#else
-#include <vector>
-#endif
-
-#include "tcs/common/assert.hpp"
 
 namespace tcs::inplace::stable_quicksort {
-template <typename RandomIt, typename Pred>
-RandomIt inplace_stable_partition_ref(RandomIt first, RandomIt last, Pred pred) {
-#ifdef TCS_NO_TEMP_IMPL
-    return stable_partition::inplace_stable_partition(first, last, pred);
-#else
-    return std::stable_partition(first, last, pred);
-#endif
-}
-
-template <typename RandomIt, typename Proj = std::identity>
-void inplace_stable_select_ref(RandomIt first, RandomIt mid, RandomIt last, Proj proj = {}) {
-#ifdef TCS_NO_TEMP_IMPL
-    return stable_select::inplace_stable_select(first, mid, last, proj);
-#else
-    using T = std::iter_value_t<RandomIt>;
-    auto buffer = std::vector<T>(first, last);
-    std::ranges::nth_element(
-        buffer.begin(), buffer.begin() + (mid - first), buffer.end(), {}, proj);
-    T pivot = buffer[mid - first];
-    RandomIt pivot_it =
-        std::stable_partition(first, last, [&](T x) { return proj(x) < proj(pivot); });
-    std::stable_partition(pivot_it, last, [&](T x) { return proj(x) == proj(pivot); });
-#endif
-}
-
 template <typename RandomIt, typename Proj = std::identity>
 std::tuple<RandomIt, RandomIt> three_way_partition(
     RandomIt first, RandomIt last, std::iter_value_t<RandomIt> pivot, Proj proj = {}) {
     using T = std::iter_value_t<RandomIt>;
-    RandomIt pivot_start =
-        inplace_stable_partition_ref(first, last, [&](T x) { return proj(x) < proj(pivot); });
-    RandomIt pivot_end = inplace_stable_partition_ref(
+    RandomIt pivot_start = stable_partition::inplace_stable_partition(
+        first, last, [&](T x) { return proj(x) < proj(pivot); });
+    RandomIt pivot_end = stable_partition::inplace_stable_partition(
         pivot_start, last, [&](T x) { return proj(x) == proj(pivot); });
     return {pivot_start, pivot_end};
 }
@@ -73,14 +43,14 @@ void inplace_stable_quicksort(RandomIt first, RandomIt last, Proj proj = {}) {
             return;
         }
         T max = *std::ranges::max_element(first, tail_it, {}, proj);
-        tail_it =
-            inplace_stable_partition_ref(first, tail_it, [&](T x) { return proj(x) < proj(max); });
+        tail_it = stable_partition::inplace_stable_partition(
+            first, tail_it, [&](T x) { return proj(x) < proj(max); });
     }
     RandomIt left = first;
     RandomIt right = tail_it;
     while (true) {
         if (right - left > 1) {
-            inplace_stable_select_ref(left, left + ((right - left) / 2), right, proj);
+            stable_select::inplace_stable_select(left, left + ((right - left) / 2), right, proj);
             T pivot = left[(right - left) / 2];
             auto [pivot_start, pivot_end] = three_way_partition(left, right, pivot, proj);
             std::swap(*pivot_end, *right);
