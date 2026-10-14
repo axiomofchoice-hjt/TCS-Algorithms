@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <cstdint>
 #include <format>
 #include <random>
@@ -9,12 +8,13 @@
 #include <vector>
 
 #include "common/utest.hpp"
+#include "tcs/basic/bit_vector.hpp"
 #include "tcs/ds/compact_bit_vector.hpp"
 
 namespace {
+using tcs::basic::BitVector;
 using tcs::common::ceil_log2;
 using tcs::common::n_machine_word_bits;
-using tcs::ds::compact_bit_vector::BitVector;
 using tcs::ds::compact_bit_vector::CompactBitVector;
 using tcs::ds::compact_bit_vector::PackedVector;
 
@@ -23,9 +23,6 @@ constexpr int64_t kSeed = 20261003;
 constexpr int64_t kSeedStride = 7919;
 constexpr int64_t kSeedStrideWords = 131;
 constexpr int64_t kShortPattern = 40;
-constexpr int64_t kExtraWidthA = 13;
-constexpr int64_t kExtraWidthB = 37;
-constexpr int64_t kTinyPoolMax = 8;
 constexpr int64_t kSmallPoolMax = 10;
 constexpr int64_t kWidthSwitchN = 4096;
 constexpr int64_t kLargeN = 4096;
@@ -38,19 +35,9 @@ constexpr int64_t kProjectionStep = 5;
 constexpr int64_t kMixStep = 200;
 constexpr int64_t kSparseStep = 977;
 constexpr int64_t kPermilleScale = 1000;
-constexpr int64_t kSetStride = 3;
-constexpr int64_t kSetPops = 5;
-constexpr int64_t kBitVectorOps = 500;
-constexpr int64_t kRangeProbes = 500;
-constexpr int64_t kPackedArgScale = 100;
 constexpr int64_t kPackedLen = 300;
 constexpr int64_t kPackedProbes = 200;
 constexpr int64_t kPackedPops = 50;
-constexpr int64_t kInvalidWidth = 8;
-constexpr int64_t kInvalidWidthPlusOne = 9;
-constexpr int64_t kInvalidValue = 256;
-constexpr int64_t kInvalidBits = 64;
-constexpr int64_t kTooSmallWordBits = 3;
 
 template <typename F>
 bool throws(F&& f) {
@@ -71,25 +58,11 @@ std::string to_bits(const std::vector<uint8_t>& bits) {
     return out;
 }
 
-std::string describe(std::string_view what, const std::vector<uint8_t>& bits, int64_t n_word_bits) {
+std::string describe(std::string_view what, const std::vector<uint8_t>& bits) {
     if (static_cast<int64_t>(bits.size()) <= kShortPattern) {
-        return std::format("{} bits={} w={}", what, to_bits(bits), n_word_bits);
+        return std::format("{} bits={}", what, to_bits(bits));
     }
-    return std::format("{} size={} w={}", what, bits.size(), n_word_bits);
-}
-
-// Candidate word widths for n bits: the smallest legal one (every stored range
-// is exactly one machine word), a few around it, and the full machine word.
-std::vector<int64_t> widths_for(int64_t n) {
-    int64_t min_w = std::max(ceil_log2(std::max(n, int64_t{1})), int64_t{1});
-    std::vector<int64_t> widths{min_w};
-    for (int64_t w : {min_w + 1, min_w + 2, kExtraWidthA, kExtraWidthB, n_machine_word_bits}) {
-        if (w >= min_w && w <= n_machine_word_bits &&
-            std::find(widths.begin(), widths.end(), w) == widths.end()) {
-            widths.push_back(w);
-        }
-    }
-    return widths;
+    return std::format("{} size={}", what, bits.size());
 }
 
 template <typename Pred>
@@ -123,12 +96,11 @@ struct Reference {
     int64_t select(int64_t k) const { return ones[k]; }
 };
 
-void check_all(const std::vector<uint8_t>& bits, int64_t n_word_bits, std::string_view what,
-    bool check_bounds = false) {
+void check_all(const std::vector<uint8_t>& bits, std::string_view what, bool check_bounds = false) {
     Reference ref(bits);
-    auto where = [&] { return describe(what, bits, n_word_bits); };
-    auto cbv = CompactBitVector::create(
-        bits.begin(), bits.end(), n_word_bits, [](uint8_t bit) { return bit != 0; });
+    auto where = [&] { return describe(what, bits); };
+    auto cbv =
+        CompactBitVector::create(bits.begin(), bits.end(), [](uint8_t bit) { return bit != 0; });
 
     for (int64_t i = 0; i < ref.size(); i++) {
         bool expected = ref.bits[i] != 0;
@@ -171,38 +143,23 @@ void check_all(const std::vector<uint8_t>& bits, int64_t n_word_bits, std::strin
 
 struct ExhaustiveParam {
     int64_t n_max;
-    int64_t all_widths;
 };
 
 void exhaustive_test(ExhaustiveParam param) {
     for (int64_t n = 0; n <= param.n_max; n++) {
-        std::vector<int64_t> candidates = widths_for(n);
-        std::vector<int64_t> widths;
-        if (param.all_widths != 0) {
-            widths = candidates;
-        } else {
-            widths = {candidates.front(), candidates.back()};
-        }
         for (uint64_t mask = 0; mask < (uint64_t{1} << n); mask++) {
             std::vector<uint8_t> bits(n);
             for (int64_t i = 0; i < n; i++) {
                 bits[i] = (mask >> i) & 1;
             }
-            for (int64_t w : widths) {
-                check_all(bits, w, "exhaustive");
-            }
+            check_all(bits, "exhaustive");
         }
     }
 }
 
-auto exhaustive_small = utest::register_test([] {
-    utest::test("compact_bit_vector", "exhaustive_all_widths", exhaustive_test,
-        ExhaustiveParam{.n_max = kTinyPoolMax, .all_widths = 1});
-});
-
-auto exhaustive_large = utest::register_test([] {
-    utest::test("compact_bit_vector", "exhaustive_two_widths", exhaustive_test,
-        ExhaustiveParam{.n_max = kSmallPoolMax, .all_widths = 0});
+auto exhaustive = utest::register_test([] {
+    utest::test("compact_bit_vector", "exhaustive", exhaustive_test,
+        ExhaustiveParam{.n_max = kSmallPoolMax});
 });
 
 // --------------------------------------------------------------- one-hot / one-cold
@@ -213,25 +170,19 @@ struct PositionsParam {
 
 void single_one_test(PositionsParam param) {
     const int64_t n = param.n;
-    std::vector<int64_t> widths = widths_for(n);
     for (int64_t p = 0; p < n; p++) {
         std::vector<uint8_t> bits(n, 0);
         bits[p] = 1;
-        for (int64_t w : {widths.front(), widths.back()}) {
-            check_all(bits, w, std::format("single_one n={} p={}", n, p));
-        }
+        check_all(bits, std::format("single_one n={} p={}", n, p));
     }
 }
 
 void single_zero_test(PositionsParam param) {
     const int64_t n = param.n;
-    std::vector<int64_t> widths = widths_for(n);
     for (int64_t p = 0; p < n; p++) {
         std::vector<uint8_t> bits(n, 1);
         bits[p] = 0;
-        for (int64_t w : {widths.front(), widths.back()}) {
-            check_all(bits, w, std::format("single_zero n={} p={}", n, p));
-        }
+        check_all(bits, std::format("single_zero n={} p={}", n, p));
     }
 }
 
@@ -279,9 +230,7 @@ void structured_test(StructuredParam param) {
         make_pattern(n, [n](int64_t i) { return i < (n / 2) ? i % kMixStep == 0 : true; }));
 
     for (auto& [name, bits] : patterns) {
-        for (int64_t w : widths_for(n)) {
-            check_all(bits, w, std::format("structured {} n={}", name, n), true);
-        }
+        check_all(bits, std::format("structured {} n={}", name, n), true);
     }
 }
 
@@ -302,18 +251,12 @@ struct RandomParam {
 void random_test(RandomParam param) {
     std::mt19937_64 gen(kSeed + (param.n * kSeedStride) + param.permille);
     std::vector<uint8_t> bits(param.n);
-    std::vector<int64_t> candidates = widths_for(param.n);
-    std::vector<int64_t> widths = param.n > kWidthSwitchN
-                                      ? std::vector<int64_t>{candidates.front(), candidates.back()}
-                                      : candidates;
     for (int64_t rep = 0; rep < param.repeat; rep++) {
         for (int64_t i = 0; i < param.n; i++) {
             bits[i] = static_cast<int64_t>(gen() % kPermilleScale) < param.permille ? 1 : 0;
         }
-        for (int64_t w : widths) {
-            check_all(bits, w,
-                std::format("random n={} permille={} rep={}", param.n, param.permille, rep), true);
-        }
+        check_all(bits, std::format("random n={} permille={} rep={}", param.n, param.permille, rep),
+            true);
     }
 }
 
@@ -348,11 +291,8 @@ void large_test(StructuredParam param) {
             "back", make_pattern(n, [n](int64_t i) { return i >= n - (n / kSixteenth); }));
     }
 
-    std::vector<int64_t> candidates = widths_for(n);
     for (auto& [name, bits] : patterns) {
-        for (int64_t w : {candidates.front(), candidates.back()}) {
-            check_all(bits, w, std::format("large {} n={}", name, n));
-        }
+        check_all(bits, std::format("large {} n={}", name, n));
     }
 }
 
@@ -366,14 +306,12 @@ auto large = utest::register_test([] {
 
 void empty_test() {
     std::vector<uint8_t> bits;
-    for (int64_t w : {int64_t{1}, kInvalidWidth, kExtraWidthA, n_machine_word_bits}) {
-        auto cbv = CompactBitVector::create(
-            bits.begin(), bits.end(), w, [](uint8_t bit) { return bit != 0; });
-        utest::assert_or_throw(cbv.rank(0) == 0, "empty rank(0) must be 0");
-        utest::assert_or_throw(throws([&] { cbv.get(0); }), "empty get(0) must throw");
-        utest::assert_or_throw(throws([&] { cbv.rank(1); }), "empty rank(1) must throw");
-        utest::assert_or_throw(throws([&] { cbv.select(0); }), "empty select(0) must throw");
-    }
+    auto cbv =
+        CompactBitVector::create(bits.begin(), bits.end(), [](uint8_t bit) { return bit != 0; });
+    utest::assert_or_throw(cbv.rank(0) == 0, "empty rank(0) must be 0");
+    utest::assert_or_throw(throws([&] { cbv.get(0); }), "empty get(0) must throw");
+    utest::assert_or_throw(throws([&] { cbv.rank(1); }), "empty rank(1) must throw");
+    utest::assert_or_throw(throws([&] { cbv.select(0); }), "empty select(0) must throw");
 }
 
 auto empty = utest::register_test([] { utest::test("compact_bit_vector", "empty", empty_test); });
@@ -393,18 +331,16 @@ void projection_test(PositionsParam param) {
     }
 
     Reference ref(bits);
-    for (int64_t w : widths_for(n)) {
-        auto cbv = CompactBitVector::create(
-            items.begin(), items.end(), w, [](const Item& item) { return item.value != 0; });
-        for (int64_t i = 0; i <= n; i++) {
-            utest::assert_or_throw(cbv.rank(i) == ref.rank(i),
-                std::format("projection rank({}) = {}, expected {}", i, cbv.rank(i), ref.rank(i)));
-        }
-        for (int64_t k = 0; k < ref.count(); k++) {
-            utest::assert_or_throw(cbv.select(k) == ref.select(k),
-                std::format(
-                    "projection select({}) = {}, expected {}", k, cbv.select(k), ref.select(k)));
-        }
+    auto cbv = CompactBitVector::create(
+        items.begin(), items.end(), [](const Item& item) { return item.value != 0; });
+    for (int64_t i = 0; i <= n; i++) {
+        utest::assert_or_throw(cbv.rank(i) == ref.rank(i),
+            std::format("projection rank({}) = {}, expected {}", i, cbv.rank(i), ref.rank(i)));
+    }
+    for (int64_t k = 0; k < ref.count(); k++) {
+        utest::assert_or_throw(
+            cbv.select(k) == ref.select(k), std::format("projection select({}) = {}, expected {}",
+                                                k, cbv.select(k), ref.select(k)));
     }
 }
 
@@ -420,42 +356,36 @@ void placement_test(PositionsParam param) {
     const int64_t n = param.n;
     std::vector<uint8_t> bits = make_pattern(n, [](int64_t i) { return i % kProjectionStep == 0; });
     Reference ref(bits);
-    for (int64_t w : widths_for(n)) {
-        auto cbv = CompactBitVector::create(n, [&bits](int64_t i) { return bits[i] != 0; }, w);
-        for (int64_t i = 0; i < n; i++) {
-            utest::assert_or_throw(cbv.get(i) == (bits[i] != 0),
-                std::format("placement get({}) = {}, expected {}", i, cbv.get(i), bits[i] != 0));
-        }
-        for (int64_t i = 0; i <= n; i++) {
-            utest::assert_or_throw(cbv.rank(i) == ref.rank(i),
-                std::format("placement rank({}) = {}, expected {}", i, cbv.rank(i), ref.rank(i)));
-        }
-        for (int64_t k = 0; k < ref.count(); k++) {
-            utest::assert_or_throw(cbv.select(k) == ref.select(k),
-                std::format(
-                    "placement select({}) = {}, expected {}", k, cbv.select(k), ref.select(k)));
-        }
+    auto cbv = CompactBitVector::create(n, [&bits](int64_t i) { return bits[i] != 0; });
+    for (int64_t i = 0; i < n; i++) {
+        utest::assert_or_throw(cbv.get(i) == (bits[i] != 0),
+            std::format("placement get({}) = {}, expected {}", i, cbv.get(i), bits[i] != 0));
+    }
+    for (int64_t i = 0; i <= n; i++) {
+        utest::assert_or_throw(cbv.rank(i) == ref.rank(i),
+            std::format("placement rank({}) = {}, expected {}", i, cbv.rank(i), ref.rank(i)));
+    }
+    for (int64_t k = 0; k < ref.count(); k++) {
+        utest::assert_or_throw(cbv.select(k) == ref.select(k),
+            std::format("placement select({}) = {}, expected {}", k, cbv.select(k), ref.select(k)));
     }
 
     // An empty result must never consult the placement.
-    auto empty = CompactBitVector::create(
-        0,
-        [](int64_t) -> bool {
-            utest::assert_or_throw(false, "placement called for size 0");
-            return false;
-        },
-        kExtraWidthA);
+    auto empty = CompactBitVector::create(0, [](int64_t) -> bool {
+        utest::assert_or_throw(false, "placement called for size 0");
+        return false;
+    });
     utest::assert_or_throw(empty.rank(0) == 0, "placement empty rank(0) must be 0");
     utest::assert_or_throw(
-        throws([&] { CompactBitVector::create(-1, [](int64_t) { return false; }, kExtraWidthA); }),
+        throws([&] { CompactBitVector::create(-1, [](int64_t) { return false; }); }),
         "negative size must throw");
 
     // The BitVector overload takes its size from the bit vector itself.
-    auto raw = BitVector::create(kExtraWidthA);
+    auto raw = BitVector::create();
     for (uint8_t bit : bits) {
         raw.push_back(bit != 0);
     }
-    auto rebuilt = CompactBitVector::create(raw, kExtraWidthA);
+    auto rebuilt = CompactBitVector::create(raw);
     for (int64_t i = 0; i <= n; i++) {
         utest::assert_or_throw(rebuilt.rank(i) == ref.rank(i),
             std::format("bit vector rank({}) = {}, expected {}", i, rebuilt.rank(i), ref.rank(i)));
@@ -473,85 +403,13 @@ auto placement = utest::register_test([] {
     }
 });
 
-// ------------------------------------------------------ BitVector / PackedVector
+// --------------------------------------------------------------- PackedVector
 
-void bit_vector_test(int64_t n_word_bits) {
-    const int64_t w = n_word_bits;
-    std::mt19937_64 gen(kSeed + (w * kSeedStrideWords));
-    auto bv = BitVector::create(w);
-    std::vector<uint8_t> ref;
-
-    for (int64_t step = 0; step < kBitVectorOps; step++) {
-        int64_t op = static_cast<int64_t>(gen() % 3);
-        if (op == 0 || ref.empty()) {
-            uint8_t bit = static_cast<uint8_t>(gen() & 1);
-            bv.push_back(bit != 0);
-            ref.push_back(bit);
-        } else if (op == 1) {
-            int64_t bits = static_cast<int64_t>(gen() % (w + 1));
-            uint64_t value = 0;
-            if (bits > 0) {
-                value = bits == n_machine_word_bits ? gen() : gen() & ((uint64_t{1} << bits) - 1);
-            }
-            bv.push_back_range(value, bits);
-            for (int64_t j = 0; j < bits; j++) {
-                ref.push_back(static_cast<uint8_t>((value >> j) & 1));
-            }
-        } else {
-            bv.pop_back();
-            ref.pop_back();
-        }
-        utest::assert_or_throw(bv.size_ == static_cast<int64_t>(ref.size()),
-            std::format("w={}: size {} != {}", w, bv.size_, ref.size()));
-    }
-
-    for (int64_t i = 0; i < static_cast<int64_t>(ref.size()); i++) {
-        utest::assert_or_throw(bv.get(i) == (ref[i] != 0),
-            std::format("w={}: get({}) = {}, expected {}", w, i, bv.get(i), ref[i] != 0));
-    }
-
-    for (int64_t probe = 0; probe < kRangeProbes; probe++) {
-        int64_t l = static_cast<int64_t>(gen() % (ref.size() + 1));
-        int64_t max_len = std::min<int64_t>(w, static_cast<int64_t>(ref.size()) - l);
-        int64_t len = max_len == 0 ? 0 : static_cast<int64_t>(gen() % (max_len + 1));
-        uint64_t expected = 0;
-        for (int64_t j = 0; j < len; j++) {
-            expected |= uint64_t{ref[l + j]} << j;
-        }
-        uint64_t actual = bv.get_range(l, l + len);
-        utest::assert_or_throw(
-            actual == expected, std::format("w={}: get_range({}, {}) = {}, expected {}", w, l,
-                                    l + len, actual, expected));
-    }
-
-    // set()/pop_back_range() must stay consistent with the plain-bits model.
-    for (int64_t i = 0; i < static_cast<int64_t>(ref.size()); i += kSetStride) {
-        bv.set(i, true);
-        ref[i] = 1;
-        utest::assert_or_throw(bv.get(i), std::format("w={}: set({}) failed", w, i));
-    }
-    for (int64_t j = 0; j < kSetPops && bv.size_ > 0; j++) {
-        int64_t bits = std::min<int64_t>(w, bv.size_);
-        int64_t r = bv.size_;
-        bv.pop_back_range(bits);
-        utest::assert_or_throw(bv.size_ == r - bits, std::format("w={}: pop_back_range", w));
-    }
-}
-
-auto bit_vector = utest::register_test([] {
-    for (int64_t w : {int64_t{1}, int64_t{2}, int64_t{3}, int64_t{5}, int64_t{7}, kInvalidWidth,
-             kExtraWidthA, int64_t{32}, kExtraWidthB, n_machine_word_bits}) {
-        utest::test("compact_bit_vector", "bit_vector", [](int64_t x) { bit_vector_test(x); }, w);
-    }
-});
-
-void packed_vector_test(int64_t arg) {
-    const int64_t n_word_bits = arg / kPackedArgScale;
-    const int64_t element_bits = arg % kPackedArgScale;
-    std::mt19937_64 gen(kSeed + (n_word_bits * kSeedStrideWords) + element_bits);
+void packed_vector_test(int64_t element_bits) {
+    std::mt19937_64 gen(kSeed + (element_bits * kSeedStrideWords));
     uint64_t mask =
         element_bits == n_machine_word_bits ? ~uint64_t{0} : (uint64_t{1} << element_bits) - 1;
-    auto pv = PackedVector::create(element_bits, n_word_bits);
+    auto pv = PackedVector::create(element_bits);
     std::vector<uint64_t> ref;
     for (int64_t i = 0; i < kPackedLen; i++) {
         uint64_t value = gen() & mask;
@@ -581,45 +439,22 @@ void packed_vector_test(int64_t arg) {
 }
 
 auto packed_vector = utest::register_test([] {
-    for (int64_t w : {int64_t{1}, int64_t{2}, int64_t{3}, kInvalidWidth, kExtraWidthA, int64_t{32},
-             n_machine_word_bits}) {
-        for (int64_t element_bits : {int64_t{1}, w / 2, w}) {
-            if (element_bits < 1) {
-                continue;
-            }
-            utest::test(
-                "compact_bit_vector", "packed_vector", [](int64_t x) { packed_vector_test(x); },
-                (w * kPackedArgScale) + element_bits);
-        }
+    // PackedVector packs into machine-word-wide storage, so only the element width varies.
+    for (int64_t element_bits : {int64_t{1}, int64_t{2}, int64_t{3}, int64_t{4}, int64_t{6},
+             int64_t{8}, int64_t{13}, int64_t{16}, int64_t{32}, n_machine_word_bits}) {
+        utest::test(
+            "compact_bit_vector", "packed_vector", [](int64_t x) { packed_vector_test(x); },
+            element_bits);
     }
 });
 
 // ------------------------------------------------------------ invalid arguments
 
 void invalid_test() {
-    std::vector<uint8_t> bits(kInvalidBits, 1);
-    utest::assert_or_throw(throws([] { BitVector::create(0); }), "create(0) must throw");
-    utest::assert_or_throw(
-        throws([] { BitVector::create(n_machine_word_bits + 1); }), "create(word + 1) must throw");
-    utest::assert_or_throw(
-        throws([] { PackedVector::create(0, kInvalidWidth); }), "width 0 must throw");
-    utest::assert_or_throw(
-        throws([] { PackedVector::create(kInvalidWidthPlusOne, kInvalidWidth); }),
-        "width > word must throw");
+    utest::assert_or_throw(throws([] { PackedVector::create(0); }), "element bits 0 must throw");
+    utest::assert_or_throw(throws([] { PackedVector::create(n_machine_word_bits + 1); }),
+        "element bits > word must throw");
     utest::assert_or_throw(throws([] { (void)ceil_log2(0); }), "ceil_log2(0) must throw");
-    // n_word_bits must fit ceil_log2(size).
-    utest::assert_or_throw(
-        throws([&] { CompactBitVector::create(bits.begin(), bits.end(), kTooSmallWordBits); }),
-        "too small n_word_bits must throw");
-    // get/set out of range.
-    auto bv = BitVector::create(kInvalidWidth);
-    bv.push_back(true);
-    utest::assert_or_throw(throws([&] { bv.get(1); }), "get past end must throw");
-    utest::assert_or_throw(throws([&] { bv.set(-1, true); }), "set(-1) must throw");
-    utest::assert_or_throw(throws([&] { bv.push_back_range(0, kInvalidWidthPlusOne); }),
-        "push_back_range too wide must throw");
-    utest::assert_or_throw(throws([&] { bv.set_range(0, kInvalidWidth, kInvalidValue); }),
-        "value too wide must throw");
 }
 
 auto invalid =

@@ -12,86 +12,22 @@
 #pragma once
 
 #include <algorithm>
-#include <bit>
 #include <cstdint>
 #include <functional>
 #include <optional>
 #include <tuple>
-#include <vector>
 
+#include "tcs/basic/bit_vector.hpp"
 #include "tcs/common/assert.hpp"
 #include "tcs/common/bit.hpp"
 
 namespace tcs::readonly::mtree_sort {
-struct BitVector {
-    int64_t n_word_bits_ = 0;
-    int64_t size_ = 0;
-    std::vector<uint64_t> data_;
-
-    static uint64_t low_mask(int64_t len) {
-        common::assert_or_throw(len >= 0 && len <= common::n_machine_word_bits);
-        return len == common::n_machine_word_bits ? ~uint64_t{0} : (uint64_t{1} << len) - 1;
-    }
-
-    static BitVector create(int64_t n_word_bits) {
-        common::assert_or_throw(n_word_bits > 0 && n_word_bits <= common::n_machine_word_bits);
-        return {.n_word_bits_ = n_word_bits, .size_ = 0, .data_ = {}};
-    }
-
-    int64_t size() const { return size_; }
-
-    void resize(int64_t new_size) {
-        common::assert_or_throw(new_size >= 0);
-        data_.resize((new_size + n_word_bits_ - 1) / n_word_bits_, 0);
-        if (new_size % n_word_bits_ != 0) {
-            data_.back() &= low_mask(new_size % n_word_bits_);
-        }
-        size_ = new_size;
-    }
-
-    uint64_t load(int64_t pos, int64_t len) const {
-        common::assert_or_throw(pos >= 0 && len >= 0 && pos + len <= size_);
-        common::assert_or_throw(len <= n_word_bits_);
-        if (len == 0) {
-            return 0;
-        }
-        int64_t off = pos % n_word_bits_;
-        int64_t n_low = n_word_bits_ - off;
-        uint64_t low = data_[pos / n_word_bits_] >> off;
-        if (len <= n_low) {
-            return low & low_mask(len);
-        }
-        return (low & low_mask(n_low)) | (data_[(pos + len) / n_word_bits_] & low_mask(len - n_low))
-                                             << n_low;
-    }
-
-    void store(int64_t pos, int64_t len, uint64_t value) {
-        common::assert_or_throw(pos >= 0 && len >= 0 && pos + len <= size_);
-        common::assert_or_throw(len <= n_word_bits_);
-        common::assert_or_throw(std::bit_width(value) <= len);
-        if (len == 0) {
-            return;
-        }
-        int64_t off = pos % n_word_bits_;
-        int64_t n_low = n_word_bits_ - off;
-        uint64_t& low_word = data_[pos / n_word_bits_];
-        if (len <= n_low) {
-            low_word = (low_word & ~(low_mask(len) << off)) | (value << off);
-        } else {
-            low_word = ((low_word & low_mask(off)) | (value << off)) & low_mask(n_word_bits_);
-            uint64_t& high_word = data_[(pos + len) / n_word_bits_];
-            high_word = (high_word & ~low_mask(len - n_low)) | (value >> n_low);
-        }
-    }
-};
-
 template <typename RandomIt, typename IterOptProj>
 struct MTreeAttributes {
     RandomIt first;
     RandomIt last;
     int64_t height;
     int64_t root_sub_block_size;
-    int64_t n_word_bits;
     IterOptProj iter_opt_proj;
 };
 
@@ -104,8 +40,8 @@ struct MTree {
     int64_t n_blocks_ = 0;
     int64_t root_sub_block_size_ = 0;
     int64_t block_size_ = 0;
-    BitVector state_;
-    BitVector mu_;
+    basic::BitVector state_;
+    basic::BitVector mu_;
     IterOptProj iter_opt_proj_;
 
     int64_t data_offset(int64_t level, int64_t offset) const {
@@ -116,12 +52,12 @@ struct MTree {
     }
 
     static MTree create(MTreeAttributes<RandomIt, IterOptProj> attrs) {
-        auto [first, last, height, root_sub_block_size, n_word_bits, iter_opt_proj] = attrs;
+        auto [first, last, height, root_sub_block_size, iter_opt_proj] = attrs;
         int64_t n_blocks = int64_t{1} << height;
         int64_t block_size = root_sub_block_size * n_blocks;
         int64_t capacity = block_size * n_blocks;
-        auto state = BitVector::create(n_word_bits);
-        auto mu = BitVector::create(n_word_bits);
+        auto state = basic::BitVector::create();
+        auto mu = basic::BitVector::create();
         common::assert_or_throw(first < last && last - first <= capacity);
         MTree tree{
             .first_ = first,
@@ -234,13 +170,11 @@ void mtree_sort(RandomIt first, RandomIt last, OutputIt output, int64_t workspac
     int64_t height = std::max(common::ceil_log2(workspace), int64_t{1});
     int64_t n_blocks = int64_t{1} << height;
     int64_t root_sub_block_size = (size + (n_blocks * n_blocks) - 1) / (n_blocks * n_blocks);
-    int64_t n_word_bits = std::max(common::ceil_log2(size), int64_t{1});
 
     auto tree = MTree<RandomIt, decltype(iter_opt_proj)>::create(MTreeAttributes{.first = first,
         .last = first + size,
         .height = height,
         .root_sub_block_size = root_sub_block_size,
-        .n_word_bits = n_word_bits,
         .iter_opt_proj = iter_opt_proj});
     for (int64_t i = 0; i < size; i++) {
         std::optional<RandomIt> min_opt = tree.min();
