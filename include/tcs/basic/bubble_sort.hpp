@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <functional>
+#include <utility>
 
 namespace tcs::basic {
 template <typename RandomIt, typename Proj = std::identity>
