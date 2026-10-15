@@ -84,7 +84,8 @@ bool extract_buffer(RandomIt first, RandomIt last, int64_t buffer_len, Proj proj
 
 template <typename RandomIt, typename Proj = std::identity>
 RandomIt strided_min_element(RandomIt first, RandomIt last, int64_t stride, Proj proj = {}) {
-    common::assert_or_throw((last - first) % stride == 0, "range must be aligned to stride");
+    common::assert_or_throw(
+        (last - first) % stride == 0, "strided_min_element: range must be aligned to stride");
     RandomIt min_it = first;
     for (RandomIt i = first; i < last; i += stride) {
         if (proj(*i) < proj(*min_it)) {
@@ -113,7 +114,8 @@ RandomIt strided_next_element(
 
 template <typename RandomIt, typename Proj = std::identity>
 RandomIt strided_topk(RandomIt first, RandomIt last, int64_t stride, int64_t k, Proj proj = {}) {
-    common::assert_or_throw((last - first) % stride == 0, "range must be aligned to stride");
+    common::assert_or_throw(
+        (last - first) % stride == 0, "strided_topk: range must be aligned to stride");
     RandomIt median_it = strided_min_element(first, last, stride, proj);
     for (int64_t i = 0; i < k; i++) {
         median_it = strided_next_element(first, last, stride, median_it, proj);

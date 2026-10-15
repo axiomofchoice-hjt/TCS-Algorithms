@@ -24,7 +24,7 @@ namespace tcs::readonly::multiway_mergesort {
 template <typename RandomIt, typename IterProj>
 std::optional<RandomIt> next_element(
     RandomIt first, RandomIt last, std::optional<RandomIt> filter, IterProj iter_proj) {
-    common::assert_or_throw(first <= last);
+    common::assert_or_throw(first <= last, "next_element: first must not be past last");
     std::optional<RandomIt> res;
     for (RandomIt i = first; i != last; i++) {
         if ((!filter.has_value() || iter_proj(i) > iter_proj(*filter)) &&
@@ -38,8 +38,8 @@ std::optional<RandomIt> next_element(
 template <typename RandomIt, typename OutputIt, typename Proj = std::identity>
 void multiway_mergesort(
     RandomIt first, RandomIt last, OutputIt output, int64_t workspace, Proj proj = {}) {
-    common::assert_or_throw(first <= last);
-    common::assert_or_throw(workspace > 0);
+    common::assert_or_throw(first <= last, "multiway_mergesort: first must not be past last");
+    common::assert_or_throw(workspace > 0, "multiway_mergesort: workspace must be positive");
     int64_t size = last - first;
     if (size == 0) {
         return;
@@ -54,13 +54,15 @@ void multiway_mergesort(
         int64_t block_end = std::min(size, block_start + block_size);
         auto block_min = next_element(
             first + block_start, first + block_end, std::optional<RandomIt>{}, iter_proj);
-        common::assert_or_throw(block_min.has_value());
+        common::assert_or_throw(
+            block_min.has_value(), "multiway_mergesort: a block came out empty");
         heap.push_back(*block_min);
     }
 
     std::ranges::make_heap(heap, std::greater{}, iter_proj);
     for (int64_t i = 0; i < size; i++) {
-        common::assert_or_throw(!heap.empty());
+        common::assert_or_throw(
+            !heap.empty(), "multiway_mergesort: the heap ran empty before emitting the range");
         *output = *heap.front();
         ++output;
         std::ranges::pop_heap(heap, std::greater{}, iter_proj);

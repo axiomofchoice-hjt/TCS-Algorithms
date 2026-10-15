@@ -31,8 +31,9 @@ struct WaveletStack {
     std::vector<ds::compact_bit_vector::CompactBitVector> stack_;
 
     static WaveletStack create(int64_t size, int64_t n_word_bits) {
-        common::assert_or_throw(size >= 0);
-        common::assert_or_throw(n_word_bits > 0 && n_word_bits <= common::n_machine_word_bits);
+        common::assert_or_throw(size >= 0, "WaveletStack::create: size must not be negative");
+        common::assert_or_throw(n_word_bits > 0 && n_word_bits <= common::n_machine_word_bits,
+            "WaveletStack::create: n_word_bits must be in [1, machine word bits]");
         return {.size_ = size, .n_word_bits_ = n_word_bits, .stack_ = {}};
     }
 
@@ -47,7 +48,8 @@ struct WaveletStack {
     }
 
     bool get(int64_t index) const {
-        common::assert_or_throw(index >= 0 && index < size_);
+        common::assert_or_throw(
+            index >= 0 && index < size_, "WaveletStack::get: index out of range");
         for (const auto& bit_vector : stack_) {
             if (!bit_vector.get(index)) {
                 return false;
@@ -61,7 +63,8 @@ struct WaveletStack {
     int64_t count() const { return stack_.empty() ? size_ : stack_.back().count(); }
 
     int64_t rank(int64_t index) const {
-        common::assert_or_throw(index >= 0 && index <= size_);
+        common::assert_or_throw(
+            index >= 0 && index <= size_, "WaveletStack::rank: index out of range");
         for (const auto& bit_vector : stack_) {
             index = bit_vector.rank(index);
         }
@@ -70,7 +73,7 @@ struct WaveletStack {
 
     int64_t select(int64_t k) const {
         if (stack_.empty()) {
-            common::assert_or_throw(k >= 0 && k < size_);
+            common::assert_or_throw(k >= 0 && k < size_, "WaveletStack::select: k out of range");
         }
         for (auto it = stack_.rbegin(); it != stack_.rend(); ++it) {
             k = it->select(k);
@@ -83,7 +86,8 @@ template <typename BitVector, typename RandomIt, typename IterProj>
 RandomIt median_of_medians(const BitVector& bit_vector, RandomIt first, IterProj iter_proj) {
     int64_t size = bit_vector.size();
     int64_t n_candidates = bit_vector.count();
-    common::assert_or_throw(size > 0 && n_candidates > 0);
+    common::assert_or_throw(
+        size > 0 && n_candidates > 0, "median_of_medians: bit vector or candidate set is empty");
     int64_t block_size = std::max(size / std::max(common::ceil_log2(size), int64_t{1}), int64_t{1});
     int64_t n_blocks = (n_candidates + block_size - 1) / block_size;
     std::vector<RandomIt> medians;
@@ -108,9 +112,9 @@ RandomIt median_of_medians(const BitVector& bit_vector, RandomIt first, IterProj
 template <typename RandomIt, typename Proj = std::identity>
 RandomIt bit_vector_select(RandomIt first, RandomIt last, int64_t k, Proj proj = {}) {
     auto iter_proj = [proj](RandomIt it) { return std::pair{proj(*it), it}; };
-    common::assert_or_throw(first < last);
+    common::assert_or_throw(first < last, "bit_vector_select: range must not be empty");
     int64_t size = last - first;
-    common::assert_or_throw(k >= 0 && k < size);
+    common::assert_or_throw(k >= 0 && k < size, "bit_vector_select: k out of range");
     int64_t n_word_bits = std::max(common::ceil_log2(size), int64_t{1});
     auto wavelet_stack = WaveletStack::create(size, n_word_bits);
     while (true) {

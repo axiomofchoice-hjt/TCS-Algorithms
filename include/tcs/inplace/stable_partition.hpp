@@ -46,7 +46,7 @@ void homogenize_blocks(RandomIt first, RandomIt last, int64_t block_size, Proj p
     using T = std::iter_value_t<RandomIt>;
     static_assert(std::is_invocable_v<Proj, T>);
     common::assert_or_throw((last - first) % block_size == 0,
-        "stable_partition: range must be a whole number of blocks");
+        "homogenize_blocks: range must be a whole number of blocks");
     int64_t n_blocks = (last - first) / block_size;
     for (int64_t i = 0; i + 2 <= n_blocks; i++) {
         RandomIt left = first + (i * block_size);
@@ -73,8 +73,8 @@ template <typename RandomIt, typename Pred>
 int64_t block_count_if(RandomIt first, RandomIt last, int64_t block_size, Pred pred) {
     using T = std::iter_value_t<RandomIt>;
     static_assert(std::is_invocable_r_v<bool, Pred, T>);
-    common::assert_or_throw((last - first) % block_size == 0,
-        "stable_partition: range must be a whole number of blocks");
+    common::assert_or_throw(
+        (last - first) % block_size == 0, "block_count_if: range must be a whole number of blocks");
     int64_t n_blocks = (last - first) / block_size;
     int64_t res = 0;
     for (int64_t i = 0; i < n_blocks; i++) {
@@ -102,14 +102,16 @@ struct WordStorage {
     }
 
     uint64_t get(int64_t index) const {
-        common::assert_or_throw(index < n_bits / element_bits, "storage index exceeds capacity");
+        common::assert_or_throw(
+            index < n_bits / element_bits, "WordStorage: storage index exceeds capacity");
         return (word >> (index * element_bits)) & ((uint64_t{1} << element_bits) - 1);
     }
 
     void set(int64_t index, uint64_t value) {
-        common::assert_or_throw(index < n_bits / element_bits, "storage index exceeds capacity");
         common::assert_or_throw(
-            value < (uint64_t{1} << element_bits), "value does not fit in element_bits");
+            index < n_bits / element_bits, "WordStorage: storage index exceeds capacity");
+        common::assert_or_throw(value < (uint64_t{1} << element_bits),
+            "WordStorage: value does not fit in element_bits");
         auto slot_mask = ((uint64_t{1} << element_bits) - 1) << (index * element_bits);
         word = (word & ~slot_mask) | (value << (index * element_bits));
     }
@@ -137,7 +139,8 @@ struct BufferStorage {
     }
 
     uint64_t get(int64_t index) const {
-        common::assert_or_throw(index < n_bits / element_bits, "storage index exceeds capacity");
+        common::assert_or_throw(
+            index < n_bits / element_bits, "BufferStorage: storage index exceeds capacity");
         uint64_t res = 0;
         for (int64_t i = 0; i < element_bits; i++) {
             res |= uint64_t(proj(buf0[(index * element_bits) + i])) << i;
@@ -146,9 +149,10 @@ struct BufferStorage {
     }
 
     void set(int64_t index, uint64_t value) {
-        common::assert_or_throw(index < n_bits / element_bits, "storage index exceeds capacity");
         common::assert_or_throw(
-            value < (uint64_t{1} << element_bits), "value does not fit in element_bits");
+            index < n_bits / element_bits, "BufferStorage: storage index exceeds capacity");
+        common::assert_or_throw(value < (uint64_t{1} << element_bits),
+            "BufferStorage: value does not fit in element_bits");
         for (int64_t i = 0; i < element_bits; i++) {
             if (uint64_t(proj(buf0[(index * element_bits) + i])) != ((value >> i) & 1)) {
                 std::swap(buf0[(index * element_bits) + i], buf1[(index * element_bits) + i]);
@@ -199,14 +203,15 @@ void sort_blocks_using_word(
     using T = std::iter_value_t<RandomIt>;
     static_assert(std::is_invocable_v<Proj, T>);
     common::assert_or_throw((last - first) % block_size == 0,
-        "stable_partition: range must be a whole number of blocks");
+        "sort_blocks_using_word: range must be a whole number of blocks");
     int64_t n_blocks = (last - first) / block_size;
     if (n_blocks <= 1) {
         return;
     }
     int64_t element_bits = common::ceil_log2(n_blocks);
     common::assert_or_throw(n_blocks * element_bits <= word_bits,
-        std::format("{} {} {}", n_blocks, element_bits, word_bits));
+        std::format("sort_blocks_using_word: {} blocks x {} bits exceed word_bits = {}", n_blocks,
+            element_bits, word_bits));
     auto storage = WordStorage::create({.n_bits = word_bits, .element_bits = element_bits});
     sort_blocks_impl(first, last, block_size, proj, storage);
 }
@@ -217,14 +222,15 @@ void sort_blocks_using_buffer(RandomIt first, RandomIt last, int64_t block_size,
     using T = std::iter_value_t<RandomIt>;
     static_assert(std::is_invocable_v<Proj, T>);
     common::assert_or_throw((last - first) % block_size == 0,
-        "stable_partition: range must be a whole number of blocks");
+        "sort_blocks_using_buffer: range must be a whole number of blocks");
     int64_t n_blocks = (last - first) / block_size;
     if (n_blocks <= 1) {
         return;
     }
     int64_t element_bits = common::ceil_log2(n_blocks);
     common::assert_or_throw(n_blocks * element_bits <= buffer_len,
-        std::format("{} {} {}", n_blocks, element_bits, buffer_len));
+        std::format("sort_blocks_using_buffer: {} blocks x {} bits exceed buffer_len = {}",
+            n_blocks, element_bits, buffer_len));
     auto storage = BufferStorage<RandomIt, Proj>::create(
         {.n_bits = buffer_len, .element_bits = element_bits}, buf0, buf1, proj);
     sort_blocks_impl(first, last, block_size, proj, storage);

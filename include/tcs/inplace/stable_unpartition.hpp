@@ -42,7 +42,7 @@ void check_partition_consistency(RandomIt first, RandomIt last, Proj proj, Place
     static_assert(std::is_invocable_v<Placement, RandomIt>);
     common::assert_or_throw(std::ranges::count_if(first, last, proj) ==
                                 count_if_placement_equals(first, last, 1, placement),
-        "partition is inconsistent with the placement", loc);
+        "check_partition_consistency: placement disagrees with the partition", loc);
 }
 
 template <typename RandomIt, typename Proj = std::identity, typename Placement>
@@ -50,7 +50,7 @@ void dehomogenize_blocks(
     RandomIt first, RandomIt last, int64_t block_size, Proj proj, Placement placement) {
     using T = std::iter_value_t<RandomIt>;
     common::assert_or_throw((last - first) % block_size == 0,
-        "stable_unpartition: range must be a whole number of blocks");
+        "dehomogenize_blocks: range must be a whole number of blocks");
     int64_t n_blocks = (last - first) / block_size;
     for (int64_t i = 0; i + 2 <= n_blocks; i++) {
         RandomIt left = first + (i * block_size);
@@ -91,14 +91,16 @@ struct WordStorage {
     }
 
     uint64_t get(int64_t index) const {
-        common::assert_or_throw(index < n_bits / element_bits, "storage index exceeds capacity");
+        common::assert_or_throw(
+            index < n_bits / element_bits, "WordStorage: storage index exceeds capacity");
         return (word >> (index * element_bits)) & ((uint64_t{1} << element_bits) - 1);
     }
 
     void set(int64_t index, uint64_t value) {
-        common::assert_or_throw(index < n_bits / element_bits, "storage index exceeds capacity");
         common::assert_or_throw(
-            value < (uint64_t{1} << element_bits), "value does not fit in element_bits");
+            index < n_bits / element_bits, "WordStorage: storage index exceeds capacity");
+        common::assert_or_throw(value < (uint64_t{1} << element_bits),
+            "WordStorage: value does not fit in element_bits");
         auto slot_mask = ((uint64_t{1} << element_bits) - 1) << (index * element_bits);
         word = (word & ~slot_mask) | (value << (index * element_bits));
     }
@@ -126,7 +128,8 @@ struct BufferStorage {
     }
 
     uint64_t get(int64_t index) const {
-        common::assert_or_throw(index < n_bits / element_bits, "storage index exceeds capacity");
+        common::assert_or_throw(
+            index < n_bits / element_bits, "BufferStorage: storage index exceeds capacity");
         uint64_t res = 0;
         for (int64_t i = 0; i < element_bits; i++) {
             res |= uint64_t(proj(buf0[(index * element_bits) + i])) << i;
@@ -135,9 +138,10 @@ struct BufferStorage {
     }
 
     void set(int64_t index, uint64_t value) {
-        common::assert_or_throw(index < n_bits / element_bits, "storage index exceeds capacity");
         common::assert_or_throw(
-            value < (uint64_t{1} << element_bits), "value does not fit in element_bits");
+            index < n_bits / element_bits, "BufferStorage: storage index exceeds capacity");
+        common::assert_or_throw(value < (uint64_t{1} << element_bits),
+            "BufferStorage: value does not fit in element_bits");
         for (int64_t i = 0; i < element_bits; i++) {
             if (uint64_t(proj(buf0[(index * element_bits) + i])) != ((value >> i) & 1)) {
                 std::swap(buf0[(index * element_bits) + i], buf1[(index * element_bits) + i]);
@@ -261,14 +265,15 @@ template <typename RandomIt, typename Proj = std::identity, typename Placement>
 void merge_blocks_using_word(RandomIt first, RandomIt last, int64_t block_size, Proj proj,
     Placement placement, int64_t word_bits) {
     common::assert_or_throw((last - first) % block_size == 0,
-        "stable_unpartition: range must be a whole number of blocks");
+        "merge_blocks_using_word: range must be a whole number of blocks");
     int64_t n_blocks = (last - first) / block_size;
     if (n_blocks <= 2) {
         return;
     }
     int64_t element_bits = common::ceil_log2(n_blocks);
     common::assert_or_throw(n_blocks * element_bits <= word_bits,
-        std::format("{} {} {}", n_blocks, element_bits, word_bits));
+        std::format("merge_blocks_using_word: {} blocks x {} bits exceed word_bits = {}", n_blocks,
+            element_bits, word_bits));
     common::assert_or_throw(word_bits <= static_cast<int64_t>(sizeof(uint64_t) * CHAR_BIT),
         "merge_blocks_using_word: word_bits exceeds a word");
     auto storage = WordStorage::create({.n_bits = word_bits, .element_bits = element_bits});
@@ -279,14 +284,15 @@ template <typename RandomIt, typename Proj = std::identity, typename Placement>
 void merge_blocks_using_buffer(RandomIt first, RandomIt last, int64_t block_size, RandomIt buf0,
     RandomIt buf1, int64_t buffer_len, Proj proj, Placement placement) {
     common::assert_or_throw((last - first) % block_size == 0,
-        "stable_unpartition: range must be a whole number of blocks");
+        "merge_blocks_using_buffer: range must be a whole number of blocks");
     int64_t n_blocks = (last - first) / block_size;
     if (n_blocks <= 2) {
         return;
     }
     int64_t element_bits = common::ceil_log2(n_blocks);
     common::assert_or_throw(n_blocks * element_bits <= buffer_len,
-        std::format("{} {} {}", n_blocks, element_bits, buffer_len));
+        std::format("merge_blocks_using_buffer: {} blocks x {} bits exceed buffer_len = {}",
+            n_blocks, element_bits, buffer_len));
     auto storage = BufferStorage<RandomIt, Proj>::create(
         {.n_bits = buffer_len, .element_bits = element_bits}, buf0, buf1, proj);
     merge_blocks_impl(first, last, block_size, storage, proj, placement);

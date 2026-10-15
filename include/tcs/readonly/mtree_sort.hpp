@@ -48,8 +48,10 @@ struct MTree {
     IterProj iter_proj_;
 
     int64_t data_offset(int64_t level, int64_t offset) const {
-        common::assert_or_throw(level >= 0 && level <= height_);
-        common::assert_or_throw(offset >= 0 && offset <= (int64_t{1} << level));
+        common::assert_or_throw(
+            level >= 0 && level <= height_, "MTree::data_offset: level out of range");
+        common::assert_or_throw(offset >= 0 && offset <= (int64_t{1} << level),
+            "MTree::data_offset: offset out of range");
         return ((height_ - level + 2) * (int64_t{1} << level)) - height_ - 2 +
                (offset * (height_ - level));
     }
@@ -61,7 +63,8 @@ struct MTree {
         int64_t capacity = block_size * n_blocks;
         auto state = basic::BitVector::create();
         auto mu = basic::BitVector::create();
-        common::assert_or_throw(first < last && last - first <= capacity);
+        common::assert_or_throw(first < last && last - first <= capacity,
+            "MTree::create: range must be non-empty and fit the tree capacity");
         MTree tree{
             .first_ = first,
             .last_ = last,
@@ -85,8 +88,9 @@ struct MTree {
     }
 
     std::tuple<int64_t, int64_t> range(int64_t level, int64_t offset) const {
-        common::assert_or_throw(level >= 0 && level <= height_);
-        common::assert_or_throw(offset >= 0 && offset < (int64_t{1} << level));
+        common::assert_or_throw(level >= 0 && level <= height_, "MTree::range: level out of range");
+        common::assert_or_throw(
+            offset >= 0 && offset < (int64_t{1} << level), "MTree::range: offset out of range");
         int64_t n_sub_blocks = int64_t{1} << (height_ - level);
         int64_t off = data_offset(level, offset);
         int64_t len = height_ - level;
@@ -99,8 +103,9 @@ struct MTree {
     }
 
     std::optional<RandomIt> min(int64_t level, int64_t offset) const {
-        common::assert_or_throw(level >= 0 && level <= height_);
-        common::assert_or_throw(offset >= 0 && offset < (int64_t{1} << level));
+        common::assert_or_throw(level >= 0 && level <= height_, "MTree::min: level out of range");
+        common::assert_or_throw(
+            offset >= 0 && offset < (int64_t{1} << level), "MTree::min: offset out of range");
         auto [l, r] = range(level, offset);
         std::optional<RandomIt> res;
         for (int64_t i = l; i < r; i++) {
@@ -114,8 +119,9 @@ struct MTree {
     }
 
     void update(int64_t level, int64_t offset) {
-        common::assert_or_throw(level >= 0 && level < height_);
-        common::assert_or_throw(offset >= 0 && offset < (int64_t{1} << level));
+        common::assert_or_throw(level >= 0 && level < height_, "MTree::update: level out of range");
+        common::assert_or_throw(
+            offset >= 0 && offset < (int64_t{1} << level), "MTree::update: offset out of range");
         auto lchild_min = min(level + 1, offset * 2);
         auto rchild_min = min(level + 1, (offset * 2) + 1);
         int64_t n_level_nodes = int64_t{1} << level;
@@ -158,8 +164,8 @@ struct MTree {
 
 template <typename RandomIt, typename OutputIt, typename Proj = std::identity>
 void mtree_sort(RandomIt first, RandomIt last, OutputIt output, int64_t workspace, Proj proj = {}) {
-    common::assert_or_throw(first <= last);
-    common::assert_or_throw(workspace > 0);
+    common::assert_or_throw(first <= last, "mtree_sort: first must not be past last");
+    common::assert_or_throw(workspace > 0, "mtree_sort: workspace must be positive");
     int64_t size = last - first;
     if (size == 0) {
         return;
@@ -178,7 +184,8 @@ void mtree_sort(RandomIt first, RandomIt last, OutputIt output, int64_t workspac
     for (int64_t i = 0; i < size; i++) {
         std::optional<RandomIt> min_opt = tree.min();
         tree.pop();
-        common::assert_or_throw(min_opt.has_value());
+        common::assert_or_throw(min_opt.has_value(),
+            "mtree_sort: the tree ran out of elements before emitting the range");
         *output = *min_opt.value();
         ++output;
     }

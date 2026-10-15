@@ -26,18 +26,20 @@ struct PackedVector {
     basic::BitVector data_;
 
     static PackedVector create(int64_t n_element_bits) {
-        common::assert_or_throw(
-            n_element_bits > 0 && n_element_bits <= common::n_machine_word_bits);
+        common::assert_or_throw(n_element_bits > 0 && n_element_bits <= common::n_machine_word_bits,
+            "PackedVector::create: n_element_bits must be in [1, machine word bits]");
         return {.n_element_bits_ = n_element_bits, .data_ = basic::BitVector::create()};
     }
 
     uint64_t get(int64_t block_index) const {
-        common::assert_or_throw(block_index >= 0 && block_index < size());
+        common::assert_or_throw(block_index >= 0 && block_index < size(),
+            "PackedVector::get: block index out of range");
         return data_.load(block_index * n_element_bits_, n_element_bits_);
     }
 
     void set(int64_t block_index, uint64_t value) {
-        common::assert_or_throw(block_index >= 0 && block_index < size());
+        common::assert_or_throw(block_index >= 0 && block_index < size(),
+            "PackedVector::set: block index out of range");
         data_.store(block_index * n_element_bits_, n_element_bits_, value);
     }
 
@@ -77,7 +79,8 @@ struct RankIndexer {
 
     int64_t operator()(
         int64_t index, const basic::BitVector& data, const PackedVector& popcount_table) const {
-        common::assert_or_throw(index >= 0 && index <= data.size_);
+        common::assert_or_throw(
+            index >= 0 && index <= data.size_, "RankIndexer: index out of range");
         if (index == data.size_) {
             return count_;
         }
@@ -121,7 +124,7 @@ struct SelectIndexer {
             if ((i + 1) % n_ones_per_segment == 0 || i + 1 == count) {
                 common::assert_or_throw(
                     compact.size_ / n_align_bits <= (int64_t{1} << n_index_bits) - 1,
-                    "segment offset does not fit in n_index_bits");
+                    "SelectIndexer: segment offset does not fit in n_index_bits");
                 compact_offsets.push_back(compact.size_ / n_align_bits);
                 int64_t span =
                     static_cast<int64_t>(segment.get(segment.size() - 1) - segment.get(0) + 1);
@@ -179,7 +182,7 @@ struct SelectIndexer {
     }
 
     int64_t operator()(int64_t k, const PackedVector& popcount_table) const {
-        common::assert_or_throw(k >= 0 && k < count_);
+        common::assert_or_throw(k >= 0 && k < count_, "SelectIndexer: k out of range");
         int64_t offset =
             static_cast<int64_t>(compact_offsets_.get(k / n_ones_per_segment_)) * n_align_bits;
         int64_t segment_first = static_cast<int64_t>(compact_.load(offset, n_index_bits_));
@@ -209,7 +212,7 @@ struct SelectIndexer {
             segment_rank -= ones;
             local_high += end - i - ones;
         }
-        common::assert_or_throw(found, "select: segment high bits are inconsistent");
+        common::assert_or_throw(found, "SelectIndexer: segment high bits are inconsistent");
         offset += high_len;
         offset += k % n_ones_per_segment_ * n_low_bits;
         int64_t local_low = static_cast<int64_t>(compact_.load(offset, n_low_bits));
@@ -240,7 +243,7 @@ struct CompactBitVector {
     template <typename Placement>
     static CompactBitVector create(int64_t size, Placement placement) {
         static_assert(std::is_invocable_r_v<bool, Placement&, int64_t>);
-        common::assert_or_throw(size >= 0, "create: size must not be negative");
+        common::assert_or_throw(size >= 0, "CompactBitVector::create: size must not be negative");
         auto data = basic::BitVector::create();
         for (int64_t i = 0; i < size; i++) {
             data.push_back(placement(i));

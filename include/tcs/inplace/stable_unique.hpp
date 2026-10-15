@@ -78,7 +78,7 @@ std::tuple<RandomIt, RandomIt> build_blocks(
 template <typename RandomIt, typename Proj = std::identity>
 RandomIt partition_blocks(RandomIt first, RandomIt last, int64_t block_size, Proj proj = {}) {
     common::assert_or_throw(
-        (last - first) % block_size == 0, "stable_unique: block size must divide the range");
+        (last - first) % block_size == 0, "partition_blocks: block size must divide the range");
     int64_t n_blocks = (last - first) / block_size;
     RandomIt mid = last;
     for (int64_t i = n_blocks - 1; i >= 0; i--) {
@@ -98,7 +98,7 @@ RandomIt partition_blocks(RandomIt first, RandomIt last, int64_t block_size, Pro
 template <typename RandomIt, typename Proj = std::identity>
 void sort_blocks(RandomIt first, RandomIt last, int64_t block_size, Proj proj = {}) {
     common::assert_or_throw(
-        (last - first) % block_size == 0, "stable_unique: block size must divide the range");
+        (last - first) % block_size == 0, "sort_blocks: block size must divide the range");
     for (RandomIt cur = first; cur < last; cur += block_size) {
         RandomIt min = cur;
         for (RandomIt scan = cur + block_size; scan < last; scan += block_size) {
@@ -114,7 +114,7 @@ void sort_blocks(RandomIt first, RandomIt last, int64_t block_size, Proj proj = 
 
 template <typename RandomIt, typename Proj = std::identity>
 RandomIt inplace_stable_unique(RandomIt first, RandomIt last, Proj proj = {}) {
-    common::assert_or_throw(first <= last, "Error: invalid input");
+    common::assert_or_throw(first <= last, "inplace_stable_unique: first must not be past last");
     int64_t len = last - first;
     int64_t block_size = std::floor(std::sqrt(len));
     if (block_size < 2) {
