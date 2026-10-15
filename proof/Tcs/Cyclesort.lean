@@ -1,5 +1,5 @@
 /-
-  Cycle sort (`include/tcs/cyclesort.hpp`), modelled on `Array` and proved correct.
+  Cycle sort (`include/tcs/inplace/cyclesort.hpp`), modelled on `Array` and proved correct.
 
   The C++ routine is modelled closely: `destination_range` becomes the block of a
   key (see `InBlock`), `std::swap` becomes `Array.swap`, and the `while (true)`

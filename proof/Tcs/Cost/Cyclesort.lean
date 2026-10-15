@@ -1,7 +1,7 @@
 /-
   Cost of `Tcs.Cyclesort.cyclesort`.
 
-  The counting copy mirrors the C++ in `include/tcs/cyclesort.hpp` operation for
+  The counting copy mirrors the C++ in `include/tcs/inplace/cyclesort.hpp` operation for
   operation, with the charge rules of `Tcs.Cost`:
 
   * `destination_range` scans the whole range, paying one key comparison per element

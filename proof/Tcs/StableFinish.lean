@@ -1,6 +1,6 @@
 /-
   The finishing merges of C++'s `inplace_stable_merge`
-  (`include/tcs/inplace/stable_merge.hpp` lines 275-277 and 286-288): the two calls
+  (`include/tcs/inplace/stable_merge.hpp`, at the end of each branch): the two calls
 
       inplace_merge_with_rotation(buf1, first, last, proj);
       first = buf1;

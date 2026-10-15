@@ -20,7 +20,7 @@ toolchain installed.
 
 ### Cycle sort — `Tcs/Cyclesort.lean`
 
-`tcs::cyclesort::cyclesort`: the result is a permutation of the input and is sorted
+`tcs::inplace::cyclesort::cyclesort`: the result is a permutation of the input and is sorted
 by `proj` (`cyclesort_perm`, `cyclesort_sorted`, and `cyclesort_isSort` for both
 halves together). The proof also covers the memory-safety property the C++ relies
 on implicitly — that `std::find_if` in the inner loop can never run past the
@@ -30,7 +30,7 @@ of unsettled positions.
 
 ### BFPRT selection — `Tcs/Bfprt.lean`
 
-`tcs::bfprt::bfprt`, matching `tests/test_bfprt.cpp`: the result is a permutation
+`tcs::basic::bfprt::bfprt`, matching `tests/basic/test_bfprt.cpp`: the result is a permutation
 of the range and its element at index `k = mid - first` has rank `k`
 (`bfprtAux_selects`) — its key is the `(k+1)`-th smallest of the range counting
 multiplicity. At the `Array` level this is `bfprtRange_selects`, and
@@ -298,6 +298,7 @@ Conventions shared by every proof module (`Tcs/Spec.lean` states them):
 
 ```text
 proof/
+├── Tcs.lean                    # Root module: imports every proof module below
 ├── Tcs/Spec.lean               # Specification vocabulary (Sorted / Permutes / IsSort)
 ├── Tcs/Order.lean              # `Cmp`: a decidable total order on keys
 ├── Tcs/Count.lean              # Generic `List.countP` lemmas

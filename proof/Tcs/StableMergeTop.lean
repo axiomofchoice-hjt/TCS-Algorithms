@@ -1,7 +1,7 @@
 /-
-  The assembly of C++'s `inplace_stable_merge` (`include/tcs/inplace/stable_merge.hpp`,
-  lines 241-292): the list-level model of the whole routine, both branches, and the
-  proof that it meets `StableMergeSpec`.
+  The assembly of C++'s `inplace_stable_merge`
+  (`include/tcs/inplace/stable_merge.hpp`): the list-level model of the whole routine,
+  both branches, and the proof that it meets `StableMergeSpec`.
 
   The model is the one validated against an exact index-level simulation of the C++:
   `stable_unique_limit` becomes `uniqueLimitRange`, `align_blocks_limit` becomes

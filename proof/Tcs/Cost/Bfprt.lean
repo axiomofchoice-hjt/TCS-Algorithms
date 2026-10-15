@@ -1,5 +1,5 @@
 /-
-  Cost of median-of-medians selection (`include/tcs/bfprt.hpp`).
+  Cost of median-of-medians selection (`include/tcs/basic/bfprt.hpp`).
 
   This module gives a counting transcription `bfprtAuxC` of the verified model
   `Tcs.Bfprt.bfprtAux` (same recursion, same list manipulations) and bounds its

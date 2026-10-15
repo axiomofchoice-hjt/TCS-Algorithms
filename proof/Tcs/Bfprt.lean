@@ -1,5 +1,5 @@
 /-
-  BFPRT (median of medians) selection (`include/tcs/bfprt.hpp`), proved correct.
+  BFPRT (median of medians) selection (`include/tcs/basic/bfprt.hpp`), proved correct.
 
   Modelling. The C++ routine walks the iterator range `[first, last)` and never
   reads outside it, so the model works on that range's element list; `mid` becomes
@@ -8,7 +8,7 @@
 
   What is proved (`bfprtAux_selects`): the result is a permutation of the range in
   which the element at index `k` has rank `k` - its key is the `(k+1)`-th smallest
-  of the range, counting multiplicity. That is the contract `tests/test_bfprt.cpp`
+  of the range, counting multiplicity. That is the contract `tests/basic/test_bfprt.cpp`
   checks by sorting a copy and comparing keys at index `k`.
 
   The median-of-medians *choice* is deliberately not used: a three-way partition
@@ -586,7 +586,7 @@ theorem bfprtRange_selects (proj : α → β) (a : Array α) {lo mid hi : Nat} (
   rw [List.getElem?_append_right (Nat.le_refl _)]
   simp
 
-/-- What `tests/test_bfprt.cpp` asserts: the key at `mid` equals the key a sorted
+/-- What `tests/basic/test_bfprt.cpp` asserts: the key at `mid` equals the key a sorted
 copy of the range carries there. -/
 theorem bfprtRange_key_eq_sorted (proj : α → β) (a : Array α) {lo mid hi : Nat}
     (hlo : lo ≤ mid) (hmid : mid < hi) (hhi : hi ≤ a.size) :
