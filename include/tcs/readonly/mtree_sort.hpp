@@ -8,6 +8,8 @@
 //
 // Time-space complexity: T * S = O(n^2) for Θ(log n) <= S <= Θ(n / log n),
 // where S is the workspace budget in bits.
+//
+// Blog: https://axiomofchoice-hjt.github.io/pages/cbe60d/
 
 #pragma once
 

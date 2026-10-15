@@ -7,7 +7,7 @@
 // ceil(size / workspace), merged by a heap holding the smallest not-yet-emitted
 // element of each block. All scratch space is allocated here.
 //
-// Blog: ...
+// Blog: https://axiomofchoice-hjt.github.io/pages/cbe60d/
 
 #pragma once
 
