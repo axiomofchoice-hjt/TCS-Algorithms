@@ -14,7 +14,6 @@ The answer to each of these is yes, but the algorithms are buried in academic pa
 This project brings them to life under the **Word RAM model** — the standard model for algorithm analysis where a word is just large enough to hold a pointer (like `size_t`), but cannot encode arbitrary information.
 Under this model, "in-place" has a rigorous meaning: $O(1)$ extra space, not just "no heap allocation."
 The `include/tcs/pointer/` directory instead hosts algorithms for the **pointer-machine model**, where following a link is the only cost unit and linked structures are the native representation.
-Each header is self-contained — copy one file, include it, and you're done.
 
 The goal is **algorithmic clarity**, not chasing constant factors.
 For the full story behind each algorithm, start with the [overview](https://axiomofchoice-hjt.github.io/pages/1b8e07/) (Chinese).
@@ -38,16 +37,10 @@ For the full story behind each algorithm, start with the [overview](https://axio
 
 4. **In-place Stable Select** — `#include <tcs/inplace/stable_select.hpp>`
    - $O(n)$ time, $O(1)$ extra space
-   - k-th smallest element selection with stability guarantee
+   - Select the k-th smallest element, preserving the order of equal keys
    - [Blog post](https://axiomofchoice-hjt.github.io/pages/8da648/)
 
 More algorithms are available in `include/tcs/` and `examples/` for usage demos.
-
-The complexity above is that of the algorithms. A few headers delegate to a
-secondary helper (partition / unpartition / select); those helpers are the true
-O(1) extra-space primitives in `stable_partition.hpp`, `stable_unpartition.hpp`,
-`stable_select.hpp`, and `unstable_select.hpp`. A delegating header therefore
-needs the `include/tcs/` tree and is not standalone-copyable.
 
 ## 3. Quick Start
 
@@ -63,8 +56,8 @@ curl -fsSL https://xmake.io/shget.text | bash
 ./scripts/asan.sh
 ```
 
-The Lean 4 formalization lives in `proof/` and is built on its own with `lake` —
-see [`proof/README.md`](proof/README.md).
+Test binaries land in `./build/tests/test`; run it with `--help` to see the
+`--filter`, `--params`, `--list` and `--time` options.
 
 ## 4. Directory Structure
 
@@ -72,17 +65,18 @@ see [`proof/README.md`](proof/README.md).
 TCS-Algorithms/
 ├── include/tcs/            # Header-only library
 │   ├── basic/              # Basic building blocks (BFPRT, bubble sort, bit vector)
-│   ├── inplace/            # In-place algorithms (O(1) space)
+│   ├── common/             # Shared helpers (assertions, bit tricks)
+│   ├── ds/                 # Data structures (compact bit vector, scapegoat table)
+│   ├── inplace/            # In-place algorithms (O(1) extra space)
 │   ├── pointer/            # Pointer-machine algorithms
-│   ├── readonly/           # Read-only-input algorithms
-│   └── ds/                 # Data structures
+│   └── readonly/           # Read-only-input algorithms
 ├── tests/                  # Unit tests
-│   ├── common/             # Shared test helpers
+│   ├── common/             # Shared test helpers (harness, arrays, reference sort)
 │   ├── basic/              # Tests for basic building blocks
+│   ├── ds/                 # Tests for data structures
 │   ├── inplace/            # Tests for in-place algorithms
 │   ├── pointer/            # Tests for pointer-machine algorithms
-│   ├── readonly/           # Tests for readonly algorithms
-│   └── ds/                 # Tests for data structures
+│   └── readonly/           # Tests for readonly algorithms
 ├── examples/               # Usage examples
 │   ├── common.hpp          # Shared example helpers
 │   ├── basic/              # Examples for basic building blocks
@@ -92,6 +86,7 @@ TCS-Algorithms/
 │   ├── format.sh           # clang-format all sources
 │   ├── code-quality.sh     # clang-format + clang-tidy checks
 │   └── asan.sh             # Manual ASan+UBSan build & run
+├── run.sh                  # Configure (debug), build and run all tests
 └── xmake.lua               # Build configuration
 ```
 
@@ -101,7 +96,9 @@ documented in [`proof/README.md`](proof/README.md).
 
 ## 5. Dependencies
 
-- **Compiler**: GCC 14+ / Clang 18+ (C++23 support required)
+- **Compiler**: GCC 14+ / Clang 18+ with a C++23 standard library — the library
+  uses `<format>` and C++23 deducing `this`; the tests and examples additionally
+  need `<print>` and `std::ranges::to`
 - **Build tool**: [xmake](https://xmake.io/)
 - **Lean toolchain** (optional, `proof/` only): Lean 4 via
   [elan](https://github.com/leanprover/elan); `lake` builds it with no further
@@ -109,7 +106,13 @@ documented in [`proof/README.md`](proof/README.md).
 
 ## 6. Usage
 
-Header-only — copy `include/tcs/` into your project, or integrate via xmake:
+Header-only — copy `include/tcs/` into your project, or point your build at the
+include directory:
+
+```lua
+-- xmake.lua
+add_includedirs("path/to/TCS-Algorithms/include")
+```
 
 ```cpp
 #include <tcs/basic/bfprt.hpp>
