@@ -98,21 +98,21 @@ argument about sorted permutations is needed anywhere.
 
 Proved so far:
 
-* `bubbleSort_stableSort` — `bubble_sort` is a stable sort of *any* list, because it
+- `bubbleSort_stableSort` — `bubble_sort` is a stable sort of *any* list, because it
   only ever swaps two elements of strictly different keys. This closes the
   `block_size <= 4` branch of the C++, which below 25 elements calls `bubble_sort`
   over the whole range (the exhaustive cross-check below exercises exactly that
   branch for every input of length ≤ 24).
-* `mergeTwo_stableSort` — the reference merge `mergeTwo` satisfies the same
+- `mergeTwo_stableSort` — the reference merge `mergeTwo` satisfies the same
   contract on two sorted runs, i.e. it takes from the left run exactly on ties.
-* `uniqueLimit_sorted_keysNodup` — the buffer the three-argument
+- `uniqueLimit_sorted_keysNodup` — the buffer the three-argument
   `stable_unique_limit` builds is sorted and its keys are pairwise different, and
   `uniqueLimit_perm` says nothing is lost. The model (`keepUnique`/`uniqueLimitAux`/
   `uniqueLimit`) is the C++ loop, with the buffer held in the accumulator that the
   C++ keeps contiguously just before the scanned position: `UniqueInv` records that
   the buffer's last key is the largest kept key, which is what makes the C++
   comparison against `*(right - 1)` sufficient.
-* `scrollRight_spec` — **the scroll-right pass of the stable
+- `scrollRight_spec` — **the scroll-right pass of the stable
   `inplace_merge_with_rotation` is exactly `mergeTwo`** on its two runs. The model
   keeps the state as `P ++ A ++ B` (the final prefix plus the two remaining runs) and
   `fuel` bounds `A.length + B.length`; `splitRight`/`splitEq` are the C++'s two inner
@@ -124,18 +124,18 @@ Proved so far:
 
 Cross-checked against the C++ (element-wise, with original indices attached):
 
-* the three-argument overload's net effect is exactly "the first occurrence of each
+- the three-argument overload's net effect is exactly "the first occurrence of each
   of the first `max` distinct keys, then the skipped elements in order" — 0 violations
   in 19,680 randomized sorted runs;
-* the four-argument overload returns the same buffer, but its remainder is *not* in
+- the four-argument overload returns the same buffer, but its remainder is *not* in
   the stable order (9,280/19,680 differ), so the later stages do real work rather than
   a formality;
-* per-key order is preserved by `stable_unique_limit`, `align_blocks_limit`,
+- per-key order is preserved by `stable_unique_limit`, `align_blocks_limit`,
   `block_merge_pairwise`, `bubble_sort` and both rotation merges, and only
   `block_selection_sort` reorders equal keys (9,145/26,400 cases), which the pairwise
   merge then repairs — so the invariant to carry through the block phase is exactly
   `∀ k, keyFilter proj k state = keyFilter proj k input`;
-* `inplace_merge_with_rotation` alone is the stable merge of its two runs — 0
+- `inplace_merge_with_rotation` alone is the stable merge of its two runs — 0
   mismatches in 41,000 randomized cases.
 
 ## Running time
@@ -148,9 +148,9 @@ the `Tcs/Cost/` modules add *how much it costs*, also machine-checked.
 A cost is a pair: the number of **key comparisons** and the number of **element
 moves**, charged the way the C++ operations pay for them.
 
-* one comparison for each evaluation of a scalar key test (`Cmp.ble` / `Cmp.blt`),
+- one comparison for each evaluation of a scalar key test (`Cmp.ble` / `Cmp.blt`),
   i.e. for each `proj`-compared C++ expression;
-* one move per element assignment or copy. `std::swap` is 3 (a temporary plus two
+- one move per element assignment or copy. `std::swap` is 3 (a temporary plus two
   assignments, exactly how it is written for a non-trivial value type); a by-value
   lambda parameter, as in `std::find_if` and `std::partition`, is 1 per call; a
   linear rotate of `m` elements is `Cost.rot m = 2m`, an upper bound valid for every
@@ -224,15 +224,15 @@ The cost model was cross-checked against instrumented copies of the C++
 implementations (a key type and an element type whose comparisons and assignments are
 counted), on deterministic input families and sizes up to 4096:
 
-* cycle sort: the comparison counts match the C++ *exactly* (five families at sizes
+- cycle sort: the comparison counts match the C++ *exactly* (five families at sizes
   16, 64 and 256 — the bound `7 n^2` is proved, so the asymptotic claim does not rest
   on the measured range), and the move count is the C++'s plus one key copy per
   `destination_range` call, the by-value argument the C++ makes and the model
   charges;
-* BFPRT: the model's comparison count is 1.00–1.24× the C++'s and its move count at
+- BFPRT: the model's comparison count is 1.00–1.24× the C++'s and its move count at
   most 3.5× (the model charges every `std::partition` a full `n` predicate calls plus
   up to `n` swaps, while the C++ performs a data-dependent number of swaps);
-* the unstable merge pipeline: comparisons are 1.0–1.7× and moves 0.86–1.33× the
+- the unstable merge pipeline: comparisons are 1.0–1.7× and moves 0.86–1.33× the
   C++'s over seven families and sizes 64…4096. The one family where the model counts
   *fewer* moves is explained by the abstraction just described: the internal order of
   the block displaced by `merge_with_swap` is not modelled, which shifts the
@@ -397,13 +397,13 @@ an element at position `i` by `(x, i)` and comparing tagged elements by
 `instCmpProdNat` - reproduces exactly the C++ tie-break, and turns the block phase into a
 plain merge under a total order:
 
-* `seqMergeTag`/`blkSortTag` model the pairwise merges and the block sort; `seqMergeTag`
+- `seqMergeTag`/`blkSortTag` model the pairwise merges and the block sort; `seqMergeTag`
   keeps only the *sorted* result, which is legitimate precisely because a merge writes a
   prefix of its result and carries the rest as its unfinished tail (the blog's "next merge
   only looks at the last part"), so `done ++ pending` is the merge of everything processed
   so far regardless of where the split falls;
-* `tagFrom`/`taggedBlocks`/`tagProj` carry the positions, `blkPhaseData` erases them again;
-* `blkPhaseData_spec` is the interface: for tagged blocks that partition a region,
+- `tagFrom`/`taggedBlocks`/`tagProj` carry the positions, `blkPhaseData` erases them again;
+- `blkPhaseData_spec` is the interface: for tagged blocks that partition a region,
   `blkPhaseData` is **key-sorted**, a **permutation** of the region, and **preserves every
   key's subsequence** - the last point is where stability comes from, because the tags
   increase along the array, so sorting by `(key, tag)` sorts equal keys into their input
