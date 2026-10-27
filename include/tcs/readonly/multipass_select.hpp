@@ -40,11 +40,11 @@ std::vector<T> thin(std::vector<T> data) {
 }
 
 template <typename T, typename Proj>
-std::vector<T> merge(std::vector<T> data0, std::vector<T> data1, Proj proj) {
-    int64_t size0 = data0.size();
-    std::ranges::copy(data1, std::back_inserter(data0));
-    std::ranges::inplace_merge(data0, data0.begin() + size0, {}, proj);
-    return data0;
+std::vector<T> merge(std::vector<T> lhs, std::vector<T> rhs, Proj proj) {
+    int64_t size0 = lhs.size();
+    std::ranges::copy(rhs, std::back_inserter(lhs));
+    std::ranges::inplace_merge(lhs, lhs.begin() + size0, {}, proj);
+    return lhs;
 }
 
 template <typename T, typename Proj = std::identity>
@@ -126,28 +126,28 @@ std::iter_value_t<ForwardIt> onepass(ForwardIt first, int64_t size, int64_t k,
     using T = std::iter_value_t<ForwardIt>;
     ForwardIt input_it = first;
     std::vector<std::iter_value_t<ForwardIt>> buffer;
-    int64_t lo = 0;
-    int64_t hi = 0;
+    int64_t n_below = 0;
+    int64_t n_above = 0;
     for (int64_t i = 0; i < size; i++) {
         T input = *input_it;
         if (lower_bound.has_value() && proj(input) <= proj(lower_bound.value())) {
-            lo++;
+            n_below++;
         } else if (upper_bound.has_value() && proj(input) >= proj(upper_bound.value())) {
-            hi++;
+            n_above++;
         } else {
             buffer.push_back(input);
         }
         ++input_it;
     }
-    common::assert_or_throw(k >= lo - 1 && k <= size - hi);
-    if (k == lo - 1) {
+    common::assert_or_throw(k >= n_below - 1 && k <= size - n_above);
+    if (k == n_below - 1) {
         return lower_bound.value();
     }
-    if (k == size - hi) {
+    if (k == size - n_above) {
         return upper_bound.value();
     }
-    basic::bfprt::bfprt(buffer.begin(), buffer.begin() + k - lo, buffer.end(), proj);
-    return buffer[k - lo];
+    basic::bfprt::bfprt(buffer.begin(), buffer.begin() + k - n_below, buffer.end(), proj);
+    return buffer[k - n_below];
 }
 
 template <typename ForwardIt, typename Proj = std::identity>
@@ -165,41 +165,39 @@ narrow(ForwardIt first, int64_t size, int64_t k,
     auto n_quartiles = std::max(common::bit_ceil(size / population), int64_t{4});
     auto min_block_size =
         std::max(common::bit_floor(workspace / common::ceil_log2(size) / n_quartiles), int64_t{1});
-    {
-        int64_t q = population / n_quartiles;
-        min_block_size = std::min(min_block_size,
-            std::max(common::bit_floor(static_cast<int64_t>(std::sqrt(q))), int64_t{1}));
-    }
+    min_block_size = std::min(min_block_size,
+        std::max(common::bit_floor(static_cast<int64_t>(std::sqrt(population / n_quartiles))),
+            int64_t{1}));
     auto spacing_level = common::ceil_log2(min_block_size);
     ForwardIt input_it = first;
-    int64_t lo = 0;
-    int64_t hi = 0;
+    int64_t n_below = 0;
+    int64_t n_above = 0;
     auto sampler =
         Sampler<T, decltype(proj)>::create(min_block_size, n_quartiles, spacing_level, proj);
     for (int64_t i = 0; i < size; i++) {
         T input = *input_it;
         if (lower_bound.has_value() && proj(input) <= proj(lower_bound.value())) {
-            lo++;
+            n_below++;
         } else if (upper_bound.has_value() && proj(input) >= proj(upper_bound.value())) {
-            hi++;
+            n_above++;
         } else {
             sampler.append(input);
         }
         ++input_it;
     }
-    common::assert_or_throw(population >= size - lo - hi);
-    common::assert_or_throw(lo - 1 <= k && k <= size - hi);
-    if (k == lo - 1) {
+    common::assert_or_throw(population >= size - n_below - n_above);
+    common::assert_or_throw(n_below - 1 <= k && k <= size - n_above);
+    if (k == n_below - 1) {
         return {lower_bound, lower_bound, 0};
     }
-    if (k == size - hi) {
+    if (k == size - n_above) {
         return {upper_bound, upper_bound, 0};
     }
     auto [level, samples] = sampler.finalize();
 
     int64_t height = level - spacing_level;
-    int64_t pw = int64_t{1} << level;
-    int64_t upper_sample = (k - lo) / pw;
+    int64_t spacing = int64_t{1} << level;
+    int64_t upper_sample = (k - n_below) / spacing;
     int64_t lower_sample = upper_sample - height - (min_block_size - 1);
     if (lower_sample >= 0) {
         common::assert_or_throw(lower_sample < static_cast<int64_t>(samples.size()));
@@ -209,9 +207,9 @@ narrow(ForwardIt first, int64_t size, int64_t k,
         common::assert_or_throw(upper_sample >= 0);
         upper_bound = samples[upper_sample];
     }
-    population =
-        std::min(size - lo - hi, std::max<int64_t>(0, ((2 * height) + (2 * min_block_size) - 3) *
-                                                          min_block_size * (int64_t{1} << height)));
+    population = std::min(size - n_below - n_above,
+        std::max<int64_t>(0,
+            ((2 * height) + (2 * min_block_size) - 3) * min_block_size * (int64_t{1} << height)));
     return {lower_bound, upper_bound, population};
 }
 
