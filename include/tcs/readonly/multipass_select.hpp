@@ -2,11 +2,16 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
+#include <functional>
 #include <iterator>
 #include <optional>
+#include <tuple>
+#include <utility>
 #include <vector>
 
 #include "tcs/basic/bfprt.hpp"
+#include "tcs/common/assert.hpp"
 #include "tcs/common/bit.hpp"
 
 namespace tcs::readonly::multipass_select {
