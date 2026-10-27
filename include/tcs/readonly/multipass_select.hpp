@@ -25,7 +25,7 @@ std::vector<T> quartiles(std::vector<T> data, int64_t n_quartiles, Proj proj) {
         data[i] = data[(size / n_quartiles * (i + 1)) - 1];
     }
     data.erase(data.begin() + n_quartiles, data.end());
-    return std::move(data);
+    return data;
 }
 
 template <typename T>
@@ -36,7 +36,7 @@ std::vector<T> thin(std::vector<T> data) {
         data[i / 2] = data[i];
     }
     data.erase(data.begin() + (size / 2), data.end());
-    return std::move(data);
+    return data;
 }
 
 template <typename T, typename Proj>
@@ -44,7 +44,7 @@ std::vector<T> merge(std::vector<T> data0, std::vector<T> data1, Proj proj) {
     int64_t size0 = data0.size();
     std::ranges::copy(data1, std::back_inserter(data0));
     std::ranges::inplace_merge(data0, data0.begin() + size0, {}, proj);
-    return std::move(data0);
+    return data0;
 }
 
 template <typename T, typename Proj = std::identity>
@@ -219,6 +219,9 @@ template <typename ForwardIt, typename Proj = std::identity>
 std::iter_value_t<ForwardIt> multipass_select(
     ForwardIt first, int64_t size, int64_t k, int64_t workspace, Proj proj = {}) {
     using T = std::iter_value_t<ForwardIt>;
+    common::assert_or_throw(size > 0);
+    common::assert_or_throw(k >= 0 && k < size);
+    common::assert_or_throw(workspace > 0);
     std::optional<T> lower_bound;
     std::optional<T> upper_bound;
     int64_t population = size;
