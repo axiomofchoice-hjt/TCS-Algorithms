@@ -12,6 +12,9 @@
 namespace {
 constexpr int kRandomSeed = 42;
 constexpr int64_t kSweepMaxSize = 100;
+// The forward_list sizes below top out at kSweepMaxSize, and distinct keys need
+// max_key >= size, so that value is exactly the key range they require.
+constexpr int64_t kForwardListMaxKey = kSweepMaxSize;
 constexpr int64_t kMinWorkspace = 8;
 
 struct TestParam {
@@ -135,7 +138,7 @@ auto random = utest::register_test([] {
 auto forward_list = utest::register_test([] {
     for (int64_t n : {1, 2, 3, 7, 16, 64, 100}) {
         utest::test("multipass_select", "forward_list", forward_list_test,
-            TestParam{.size = n, .k = n / 2, .max_key = 100, .repeat = 1});
+            TestParam{.size = n, .k = n / 2, .max_key = kForwardListMaxKey, .repeat = 1});
     }
 });
 }  // namespace
